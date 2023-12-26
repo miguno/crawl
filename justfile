@@ -26,6 +26,8 @@ build-console: deps
 # build default version
 build: build-tiles
 
+# run the app from the git source tree
 run:
-    crawl-ref/source/mac/crawl
+    # Alternatively, take a look at `crawl-ref/source/mac/crawl`
+    crawl-ref/source/crawl
 
