@@ -71,6 +71,7 @@
 #include "species.h" // random_starting_species
 #include "spl-clouds.h" // explode_blastmotes_at
 #include "spl-damage.h"
+#include "spl-monench.h"
 #include "spl-selfench.h"
 #include "spl-summoning.h"
 #include "spl-transloc.h"
@@ -204,7 +205,7 @@ bool check_moveto_trap(const coord_def& p, const string &move_verb,
 
         if (prompted)
             *prompted = true;
-        if (!yes_or_no("%s", prompt.c_str()))
+        if (!confirm_prompt("yes", "%s", prompt.c_str()))
         {
             canned_msg(MSG_OK);
             return false;
@@ -250,15 +251,9 @@ static bool _check_moveto_dangerous(const coord_def& p, const string& msg)
     return false;
 }
 
-bool check_moveto_terrain(const coord_def& p, const string &move_verb,
-                          const string &msg, bool *prompted)
+static bool _check_moveto_binding_sigil(coord_def p, const string &move_verb,
+                                        const string &msg, bool *prompted)
 {
-    // Boldly go into the unknown (for ranged move prompts)
-    if (!env.map_knowledge(p).known())
-        return true;
-
-    if (!_check_moveto_dangerous(p, msg))
-        return false;
     if (env.grid(p) == DNGN_BINDING_SIGIL && !you.is_binding_sigil_immune())
     {
         string prompt;
@@ -277,6 +272,22 @@ bool check_moveto_terrain(const coord_def& p, const string &move_verb,
             return false;
         }
     }
+    return true;
+}
+
+bool check_moveto_terrain(const coord_def& p, const string &move_verb,
+                          const string &msg, bool *prompted)
+{
+    // Boldly go into the unknown (for ranged move prompts)
+    if (!env.map_knowledge(p).known())
+        return true;
+
+    if (!_check_moveto_dangerous(p, msg))
+        return false;
+
+    if (!_check_moveto_binding_sigil(p, move_verb, msg, prompted))
+        return false;
+
     if (!you.airborne() && !you.duration[DUR_NOXIOUS_BOG]
         && env.grid(you.pos()) != DNGN_TOXIC_BOG
         && env.grid(p) == DNGN_TOXIC_BOG)
@@ -388,6 +399,24 @@ bool check_moveto(const coord_def& p, const string &move_verb, bool physically)
            && check_moveto_exclusion(p, move_verb);
 }
 
+static bool _check_move_over_terrain(coord_def p, const string& move_verb)
+{
+    // Boldly go into the unknown (for ranged move prompts)
+    if (!env.map_knowledge(p).known())
+        return true;
+
+    if (crawl_state.disables[DIS_CONFIRMATIONS])
+        return true;
+
+    return _check_moveto_binding_sigil(p, move_verb, "", nullptr);
+}
+
+bool check_move_over(coord_def p, const string& move_verb)
+{
+    return _check_move_over_terrain(p, move_verb)
+        && check_moveto_trap(p, move_verb);
+}
+
 // Returns true if this is a valid swap for this monster. If true, then
 // the valid location is set in loc. (Otherwise loc becomes garbage.)
 bool swap_check(monster* mons, coord_def &loc, bool quiet)
@@ -435,14 +464,22 @@ bool swap_check(monster* mons, coord_def &loc, bool quiet)
     if (mons->unswappable() || mons->asleep())
     {
         if (!quiet)
-            simple_monster_message(*mons, " cannot move out of your way!");
+        {
+            if (is_valid_tempering_target(*mons, you))
+            {
+                simple_monster_message(*mons, " cannot move out of your way! "
+                    "(Use ctrl+direction or * direction to deconstruct it instead.)");
+            }
+            else
+                simple_monster_message(*mons, " cannot move out of your way!");
+        }
         return false;
     }
 
     // prompt when swapping into known zot traps
     if (!quiet && trap_at(loc) && trap_at(loc)->type == TRAP_ZOT
-        && !yes_or_no("Do you really want to swap %s into the Zot trap?",
-                      mons->name(DESC_YOUR).c_str()))
+        && !confirm_prompt("yes", "Do you really want to swap %s into the Zot trap?",
+                           mons->name(DESC_YOUR).c_str()))
     {
         return false;
     }
@@ -1869,6 +1906,10 @@ static int _player_base_evasion_modifiers()
 
     if (you.get_mutation_level(MUT_DISTORTION_FIELD))
         evbonus += you.get_mutation_level(MUT_DISTORTION_FIELD) + 1;
+
+    // XXX: rescale these modifiers to allow +0.5 EV bonuses past the soft cap?
+    if (you.get_mutation_level(MUT_PROTEAN_GRACE))
+        evbonus += protean_grace_amount();
 
     if (you.has_mutation(MUT_TENGU_FLIGHT))
         evbonus += 4;
@@ -3515,6 +3556,9 @@ int slaying_bonus(bool throwing, bool random)
     ret += 3 * augmentation_amount();
     ret += you.get_mutation_level(MUT_SHARP_SCALES);
 
+    if (you.get_mutation_level(MUT_PROTEAN_GRACE))
+        ret += protean_grace_amount();
+
     if (you.duration[DUR_FUGUE])
         ret += you.props[FUGUE_KEY].get_int();
 
@@ -4857,10 +4901,10 @@ bool haste_player(int turns, bool rageext)
         return false;
     }
 
-    // Cutting the nominal turns in half since hasted actions take half the
-    // usual delay.
-    turns = haste_div(turns);
-    const int threshold = 40;
+    // This used to be applying haste_div to turns versus a cap of 40, which
+    // was unncessarily opaque for actually hasting the player and capped
+    // lower than the intended quantity for haste sources.
+    const int threshold = 80;
 
     if (!you.duration[DUR_HASTE])
         mpr("You feel yourself speed up.");
@@ -5135,6 +5179,11 @@ bool land_player(bool quiet)
     // there was another source keeping you aloft
     if (you.airborne())
         return false;
+
+    // XXX: If a flight item is removed while the player is in level transition,
+    //      (ie: before they've been properly placed on the map), don't crash.
+    if (!in_bounds(you.pos()))
+        return true;
 
     // Handle landing on (formerly) instakill terrain
     if (is_feat_dangerous(env.grid(you.pos())))
@@ -6063,25 +6112,28 @@ int stone_body_armour_bonus()
  * @param armour    The armour in question.
  * @param scale     A value to multiply the result by. (Used to avoid integer
  *                  rounding.)
+ * @param include_penalties     Whether to include penalties to base AC from
+ *                              forms or mutations.
  * @return          The AC from that armour, including armour skill, mutations
  *                  & divine blessings, but not enchantments or egos.
  */
-int player::base_ac_from(const item_def &armour, int scale) const
+int player::base_ac_from(const item_def &armour, int scale, bool include_penalties) const
 {
     const int base = property(armour, PARM_AC) * scale;
 
     // [ds] effectively: ac_value * (22 + Arm) / 22, where Arm = Armour Skill.
     const int AC = base * (440 + skill(SK_ARMOUR, 20)) / 440;
 
-    // The deformed don't fit into body armour very well.
-    // (This includes nagas and armataurs.)
-    if (get_armour_slot(armour) != SLOT_BODY_ARMOUR)
+    // Only body armour can have additional penalties from mutations or forms.
+    if (get_armour_slot(armour) != SLOT_BODY_ARMOUR || !include_penalties)
         return AC;
 
-    int penalty = get_form()->get_base_ac_penalty(base);
+    int mult = get_form()->get_body_ac_mult();
     if (get_mutation_level(MUT_DEFORMED) || get_mutation_level(MUT_PSEUDOPODS))
-        penalty += base / 2; // Should we double this if you have both?
-    return max(0, AC - penalty);
+        mult -= 40; // Should we double this if you have both?
+    const int mod = AC * mult / 100;
+
+    return max(0, AC + mod);
 }
 
 /**
@@ -6425,28 +6477,31 @@ void player::preview_stats_with_specific_item(int scale, const item_def& new_ite
     // the change that would happen if they used this item *on top* of their
     // current equipment.
 
-    vector<vector<item_def*>> removal_candidates;  // Items eligible to be removed
     vector<item_def*> to_remove;                   // List of items chosen to swap out
-    equipment_slot slot = you.equipment.find_slot_to_equip_item(item, removal_candidates, true);
+    bool requires_replace = false;
+    equipment_slot slot = you.equipment.find_slot_to_equip_item(item, requires_replace, true);
 
     // Check if the required removals involve any decisions. If they do not,
     // gather list of items to swap out.
-    bool needs_choice = false;
-    if (!removal_candidates.empty())
+    if (requires_replace)
     {
-        for (vector<item_def*> slot_candidates : removal_candidates)
+        vector<equipment_slot> slots = get_all_item_slots(item);
+        vector<item_def*> slot_candidates;
+        for (equipment_slot wanted_slot : slots)
         {
+            equipment_slot free_slot = equipment.find_free_compatible_slot(wanted_slot);
+            if (free_slot != SLOT_UNUSED)
+                continue;
+            equipment.find_removable_items_for_slot(wanted_slot, slot_candidates, true);
             if (slot_candidates.size() > 1)
             {
-                needs_choice = true;
+                to_remove.clear();
                 break;
             }
+            to_remove.push_back(slot_candidates[0]);
+            slot_candidates.clear();
         }
     }
-
-    if (!needs_choice)
-        for (vector<item_def*> slot_candidates : removal_candidates)
-            to_remove.push_back(slot_candidates[0]);
 
     // Place this in its 'default' slot (should be good enough for preview purposes)
     if (slot == SLOT_UNUSED)
@@ -6497,6 +6552,56 @@ void player::preview_stats_without_specific_item(int scale,
         (*fail)[i] = raw_spell_fail(spells[i]);
 }
 
+/**
+ * What would our natural AC/EV/SH and fail rate for all known spells be if we
+ * were in a specific form right now?
+ *
+ * @param talisman  The talisman used to enter the form.
+ * @param ac        The player's AC if this item were equipped.
+ * @param ev        The player's EV if this item were equipped.
+ * @param sh        The player's SH if this item were equipped.
+ * @param fail      The player's raw spell fail for all spells if this item
+ *                  were equipped.
+ */
+void player::preview_stats_in_specific_form(int scale, const item_def& talisman,
+    int *ac, int *ev, int *sh,
+    FixedVector<int, MAX_KNOWN_SPELLS> *fail)
+{
+    ASSERT(talisman.base_type == OBJ_TALISMANS);
+
+    // Save the current state of the player, so that we can rewind once
+    // we're done.
+    unwind_var<player_equip_set> unwind_eq(you.equipment);
+    unwind_var<item_def> unwind_talisman(you.active_talisman);
+    unwind_var<transformation> unwind_default_form(you.default_form);
+    unwind_var<transformation> unwind_form(you.form);
+
+    // Quickly simulate being in the new form
+    transformation which_trans = form_for_talisman(talisman);
+    you.default_form = which_trans;
+    you.form = which_trans;
+    you.active_talisman = talisman;
+    you.equipment.unmeld_all_equipment(true);
+    you.equipment.meld_equipment(get_form(which_trans)->blocked_slots, true);
+
+    // Pretend incompatible items fell away.
+    vector<item_def*> forced_remove = you.equipment.get_forced_removal_list();
+    for (item_def* item : forced_remove)
+        you.equipment.remove(*item);
+
+    you.equipment.update();
+
+    // Now, calculate AC/EV/SH without temporary boosts.
+    *ac = base_ac(scale);
+    *ev = evasion_scaled(scale, true);
+    *sh = player_displayed_shield_class(scale, true);
+
+    for (int i = 0; i < MAX_KNOWN_SPELLS; ++i)
+        (*fail)[i] = raw_spell_fail(spells[i]);
+
+    // Player state should revert to its previous one automatically.
+}
+
 bool player::heal(int amount)
 {
     int oldhp = hp;
@@ -6528,7 +6633,7 @@ mon_holy_type player::holiness(bool temp, bool incl_form) const
     if (incl_form)
     {
         const transformation f = temp ? form : default_form;
-        // Special-cased to add undead holiness onto the player's basse type,
+        // Special-cased to add undead holiness onto the player's base type,
         // rather than replace it
         if (f == transformation::vampire
                  || f == transformation::bat_swarm)
@@ -6720,6 +6825,7 @@ bool player::res_constrict() const
 {
     return is_insubstantial()
            || is_amorphous()
+           || you.form == transformation::quill
            || get_mutation_level(MUT_SPINY)
            || you.unrand_equipped(UNRAND_SLICK_SLIPPERS)
            || you.duration[DUR_CONSTRICTION_IMMUNITY];
@@ -7272,7 +7378,7 @@ int player::has_claws(bool allow_tran) const
 bool player::has_usable_claws(bool allow_tran) const
 {
     return has_claws(allow_tran)
-           && !you.equipment.slot_is_fully_covered(SLOT_GLOVES);
+           && !you.equipment.innate_slot_is_covered(SLOT_GLOVES);
 }
 
 int player::has_talons(bool allow_tran) const
@@ -7287,7 +7393,7 @@ int player::has_talons(bool allow_tran) const
 bool player::has_usable_talons(bool allow_tran) const
 {
     return has_talons(allow_tran)
-           && !you.equipment.slot_is_fully_covered(SLOT_BOOTS);
+           && !you.equipment.innate_slot_is_covered(SLOT_BOOTS);
 }
 
 int player::has_hooves(bool allow_tran) const
@@ -7302,7 +7408,7 @@ int player::has_hooves(bool allow_tran) const
 bool player::has_usable_hooves(bool allow_tran) const
 {
     return has_hooves(allow_tran)
-           && !you.equipment.slot_is_fully_covered(SLOT_BOOTS);
+           && !you.equipment.innate_slot_is_covered(SLOT_BOOTS);
 }
 
 int player::has_fangs(bool allow_tran) const
@@ -7353,8 +7459,8 @@ bool player::has_tail(bool allow_tran) const
 // purpose of punching.
 bool player::has_usable_offhand() const
 {
-    return !you.equipment.slot_is_fully_covered(SLOT_OFFHAND)
-            && !you.equipment.slot_is_fully_covered(SLOT_WEAPON_OR_OFFHAND);
+    return !you.equipment.innate_slot_is_covered(SLOT_OFFHAND)
+            && !you.equipment.innate_slot_is_covered(SLOT_WEAPON_OR_OFFHAND);
 }
 
 bool player::has_usable_tentacle() const
@@ -7662,6 +7768,8 @@ bool player::polymorph(int dur, bool allow_immobile)
 
     if (f != transformation::none && transform(dur, f, true))
     {
+        stop_delay(true, true);
+
         transform_uncancellable = true;
         return true;
     }
@@ -8894,6 +9002,7 @@ static bool _ench_triggers_trickster(enchant_type ench)
         case ENCH_GRASPING_ROOTS:
         case ENCH_WRETCHED:
         case ENCH_DEEP_SLEEP:
+        case ENCH_VEXED:
             return true;
 
         default:
@@ -8968,7 +9077,7 @@ void maybe_harvest_memory(const monster& victim)
     }
 
     int& progress = you.props[ENKINDLE_PROGRESS_KEY].get_int();
-    int xp = exper_value(victim);
+    int xp = exp_value(victim);
     if (crawl_state.game_is_sprint())
         xp = sprint_modify_exp(xp);
 
@@ -9026,6 +9135,8 @@ bool player::immune_to_hex(const spell_type hex) const
         return !actor::can_sleep();
     case SPELL_HIBERNATION:
         return !can_hibernate();
+    case SPELL_AGONY:
+        return res_torment();
     default:
         return false;
     }

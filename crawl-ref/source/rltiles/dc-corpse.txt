@@ -198,6 +198,8 @@ eleionoma CORPSE_ELEIONOMA
 bog_body CORPSE_BOG_BODY
 necrophage CORPSE_NECROPHAGE
 ghoul CORPSE_GHOUL
+# maybe this should be customized, to avoid showing the psychic eyes?
+cognitogaunt CORPSE_COGNITOGAUNT
 
 ## Orcs ('o')
 %back blood_puddle_red blood_puddle_red1 blood_puddle_red2 blood_puddle_red3 blood_puddle_red4
@@ -273,6 +275,7 @@ mon/holy/pearl_dragon CORPSE_PEARL_DRAGON
 ## Hybrids ('H')
 %sdir mon/animals
 %back blood_puddle_red blood_puddle_red1 blood_puddle_red2 blood_puddle_red3 blood_puddle_red4
+hippogriff CORPSE_HIPPOGRIFF
 manticore CORPSE_MANTICORE
 %sdir mon/demihumanoids
 harpy CORPSE_HARPY
@@ -309,7 +312,9 @@ troll CORPSE_TROLL
 iron_troll CORPSE_IRON_TROLL
 deep_troll CORPSE_DEEP_TROLL
 
-## Cephalopods ('x')
+## Lesser miscelllaney ('x')
+%sdir mon/aberrations
+chonchon0 CORPSE_CHONCHON
 %sdir player
 base/octopode1 CORPSE_OCTOPODE
 %sdir mon/animals

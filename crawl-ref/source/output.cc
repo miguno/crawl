@@ -474,8 +474,10 @@ public:
             // Maybe this should use textbackground too?
             textcolour(BLACK + m_empty * 16);
 
-            if (cx < disp)
+            if (cx < disp && cx < old_disp)
                 textcolour(BLACK + m_default * 16);
+            else if (cx < disp)
+                textcolour(BLACK + m_change_pos * 16);
             else if (cx < sub_disp)
                 textcolour(BLACK + YELLOW * 16);
             else if (old_disp >= sub_disp && cx < old_disp)
@@ -1305,9 +1307,9 @@ static void _print_status_lights(int y)
         if (end_x <= crawl_view.hudsz.x)
         {
             textcolour(lights[i_light].colour);
-            CPRINTF("%s", lights[i_light].text.c_str());
+            NOWRAP_EOL_CPRINTF("%s", lights[i_light].text.c_str());
             if (end_x < crawl_view.hudsz.x)
-                CPRINTF(" ");
+                NOWRAP_EOL_CPRINTF(" ");
             ++i_light;
         }
         else
@@ -1350,6 +1352,9 @@ static void _print_status_lights(int y)
         clear_to_end_of_line();
     }
 #endif
+
+    // Reset cursor position so it doesn't complain if we completely fill our space.
+    CGOTOXY(1, 1, GOTO_STAT);
 
     you.redraw_status_lights = false;
 }

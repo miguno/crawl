@@ -36,6 +36,9 @@ enum feature_property_type
     FPROP_OLD_BLOOD     = (1 << 18),
     FPROP_ICY           = (1 << 19),
     FPROP_BLASPHEMY     = (1 << 20),
+    FPROP_SEISMOROCK    = (1 << 21),
+    // Don't reveal this tiles when fully mapping a branch on entry
+    FPROP_NO_AUTOMAP    = (1 << 22),
 };
 DEF_BITFIELD(terrain_property_t, feature_property_type);
 

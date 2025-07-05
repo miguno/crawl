@@ -1435,6 +1435,7 @@ void monster::apply_enchantment(const mon_enchant &me)
     case ENCH_DROWSY:
     case ENCH_PYRRHIC_RECOLLECTION:
     case ENCH_SPELL_CHARGED:
+    case ENCH_PHALANX_BARRIER:
         decay_enchantment(en);
         break;
 
@@ -1469,7 +1470,7 @@ void monster::apply_enchantment(const mon_enchant &me)
 
     case ENCH_AQUATIC_LAND:
         // Aquatic monsters lose hit points every turn they spend on dry land.
-        ASSERT(mons_habitat(*this) == HT_WATER || mons_habitat(*this) == HT_LAVA);
+        ASSERT(!(mons_habitat(*this) & HT_DRY_LAND));
         if (monster_habitable_grid(this, pos()))
         {
             del_ench(ENCH_AQUATIC_LAND);
@@ -1725,6 +1726,23 @@ void monster::apply_enchantment(const mon_enchant &me)
             add_ench(mon_enchant(ENCH_BREATH_WEAPON, 1, this,
                                  breath_timeout_turns * BASELINE_DELAY));
         }
+        break;
+
+    case ENCH_CLOCKWORK_BEE_CAST:
+        if (is_silenced() || cannot_act() || has_ench(ENCH_BREATH_WEAPON)
+            || confused() || asleep() || has_ench(ENCH_FEAR))
+        {
+            del_ench(en, true, false);
+            if (you.can_see(*this))
+            {
+                mprf("%s stops winding %s clockwork bee.", name(DESC_ITS).c_str(),
+                     pronoun(PRONOUN_POSSESSIVE).c_str());
+            }
+            break;
+        }
+
+        if (decay_enchantment(en))
+            launch_clockwork_bee(*this);
         break;
 
     case ENCH_INJURY_BOND:
@@ -2194,7 +2212,8 @@ static const char *enchant_names[] =
     "misdirected", "changed appearance", "shadowless", "doubled_health",
     "grapnel", "tempered", "hatching", "blinkitis", "chaos_laced", "vexed",
     "deep sleep", "drowsy",
-    "vampire thrall", "pyrrhic recollection",
+    "vampire thrall", "pyrrhic recollection", "clockwork bee cast",
+    "phalanx barrier",
     "buggy", // NUM_ENCHANTMENTS
 };
 

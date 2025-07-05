@@ -19,7 +19,7 @@ function grandhive_vaults(e, hivewallglyph)
     e.item('potion of ambrosia / nothing')
     e.kitem('% = % no_pickup')
     e.kitem('* = * no_pickup')
-    e.kitem('& = honeycomb talisman')
+    e.kitem('& = hive talisman')
     e.kfeat(hivewallglyph .. ' = x')
     e.nsubst('% = %%%&')
     e.tile(hivewallglyph .. ' = wall_wax')
@@ -61,35 +61,39 @@ NAME:    minmay_goblin_kobold_castle
 TAGS:    no_rotate
 ORIENT:  north
 DEPTH:   D:3-6
-MONS:    goblin; sling / hobgoblin w:2; sling / nothing
-MONS:    goblin; club / hobgoblin; club / gnoll w:3; club | spear / nothing
-MONS:    kobold; stone / nothing
-MONS:    kobold; club w:18 / kobold brigand w:1 / gnoll w:3; club | spear / nothing
+MONS:    goblin ; sling / hobgoblin w:2 ; sling
+MONS:    goblin ; club / hobgoblin ; club / gnoll w:3 ; club | spear
+MONS:    kobold ; stone
+MONS:    kobold ; club w:18 / kobold brigand w:1 / gnoll w:3 ; club | spear
+MONS:    goblin rider, kobold brigand
 ITEM:    stone q:1 no_pickup
-KFEAT:   M = cache of meat
-SUBST:   y : y:48 w:1 W:1, Y : Y:48 W:1 .:1, y = wWW, Y = WW.
-NSUBST:  ' = 3 = MMMdd / *:d
-SUBST:   5 = 2 1:2 .:22
-SHUFFLE: ABCD
 KITEM:   D = gold
 KMONS:   D = hobgoblin / kobold / gnoll
-SUBST:   ABC = 2
-SHUFFLE: 12 / 34
+KFEAT:   M = cache of meat
+SHUFFLE: ABCD
+SUBST:   ABC = 2, ? = 2 1:2 .:22
+: if you.depth() > 5 then
+NSUBST:  2 = 1:5 / *:2
+: end
+SHUFFLE: 125 / 346
+SUBST:   1 = 1:12 ., 2 = 2:23 ., 3 = 3., 4 = 4:22 .
+SUBST:   y : y:48 w:1 W:1, Y : Y:48 W:1 .:1, y = wWW, Y = WW.
+NSUBST:  ' = 3 = MMMdd / *:d
 MAP
 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 xxxxxxxxxxxxxxwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwxxxxxxxxxxxxxxxx
 xxxxxxxwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwxxxxxxxxx
 xxxxwwwwcccccwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwcccccwwwwxxxxxx
 xxxwwwwwcAAAccccccccccccccccccccccccccccccccccccccccccccccccccccccDDDcwwwwwxxxxx
-xxxwwwwwcAAAc1.....ccccc.....c555555'c1..1c'555555c.............1cDDDcwwwwwwxxxx
-xxxwwwwwcAAAc.......ccc.2....+555555'c....c'555555+...........2..cDDDcwwwwwwxxxx
+xxxwwwwwcAAAc1.....ccccc.....c??????'c1..1c'??????c.............1cDDDcwwwwwwxxxx
+xxxwwwwwcAAAc.......ccc.2....+??????'c....c'??????+...........2..cDDDcwwwwwwxxxx
 xxwwwwwwcc+cc........c1...2..ccccccccc....ccccccccc..............cc+ccwwwwwwwxxx
 xxwwwwwwwc1..........c..2...........c.2..2.c..........cccccccc.....1cwwwwwwwwxxx
 xxwwwwwwwc...........+..............+......+..........cccccccc.2....cwwwwwwwwwxx
 xxwwwwwwwc1..........c..2...........c.2..2.c..........cccccccc.....1cwwwwwwwwwxx
 xwwwwwwwcc+cc........c1...2..ccccccccc....ccccccccc..............cc+ccwwwwwwwwxx
-xwwwwwwwcBBBc.......ccc.2....+555555'c....c'555555+...........2..cCCCcwwwwwwwwwx
-xwwwwwwwcBBBc1.....ccccc.....c555555'c....c'555555c.............1cCCCcwwwwwwwwwx
+xwwwwwwwcBBBc.......ccc.2....+??????'c....c'??????+...........2..cCCCcwwwwwwwwwx
+xwwwwwwwcBBBc1.....ccccc.....c??????'c....c'??????c.............1cCCCcwwwwwwwwwx
 xwwwwwwwcBBBccccccccccccccccccccccccccc++cccccccccccccccccccccccccCCCcwwwwwwwwwx
 xwwwwwwwcccccwwwwwwwwwwwwwwwwwwwwwwwyY1..1Yywwwwwwwwwwwwwwwwwwwwwcccccwwwwwwwwwx
 xwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwyY....Yywwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwx
@@ -849,9 +853,9 @@ KPROP:  -47 = no_tele_into
 ITEM:   any jewellery randart, scroll of acquirement pre_id
 : item(dgn.randart_aux_armour)
 MONS:   human att:neutral, silent spectre, patrolling soul eater
-MONS:   ogre mage / deep elf pyromancer / deep elf zephyrmancer / occultist / \
-        necromancer / merfolk aquamancer / \
-        spriggan air mage / orc sorcerer / kobold demonologist
+MONS:   deep elf pyromancer / deep elf zephyrmancer / occultist / \
+        necromancer / merfolk aquamancer /  spriggan air mage / \
+        orc sorcerer / kobold demonologist / kobold fleshcrafter
 MONS:   draconian shifter / draconian annihilator / lich / deep elf sorcerer / \
         deep elf annihilator / deep elf demonologist
 MONS:   patrolling curse skull, ancient lich / dread lich
@@ -977,14 +981,15 @@ ITEM:   any magical staff w:20 / any wand w:5 / any jewellery
 ITEM:   any randbook / gold
 : if you.in_branch("D") then
 MONS:   kobold demonologist / deep elf pyromancer / tengu conjurer
-MONS:   occultist w:5 / arcanist w:5 / deep elf zephyrmancer / orc sorcerer / ogre mage
-MONS:   deep troll earth mage / deep elf sorcerer / deep elf annihilator \
-        / deep elf demonologist / deep elf death mage / tengu reaver
+MONS:   occultist w:5 / arcanist w:5 / deep elf zephyrmancer / \
+        orc sorcerer / ogre mage
+MONS:   deep troll earth mage / deep elf sorcerer / deep elf annihilator / \
+        deep elf demonologist / deep elf death mage / tengu reaver
 : else
-MONS:   tengu conjurer / occultist / spriggan air mage / vampire mage \
-        / deep troll earth mage
-MONS:   tengu reaver / deep elf annihilator / deep elf sorcerer \
-        / deep elf demonologist / lich
+MONS:   tengu conjurer / occultist / spriggan air mage / chonchon w:5 / \
+        vampire mage / deep troll earth mage / kobold fleshcrafter w:5
+MONS:   tengu reaver / deep elf annihilator / deep elf sorcerer / \
+        deep elf demonologist / lich
 MONS:   ancient lich / dread lich
 : end
 KFEAT:  g = cache of baked goods
@@ -2527,7 +2532,7 @@ KMONS:   3 = frost giant / spriggan air mage
 KMONS:   4 = spark wasp / azure jelly w:4
 KMONS:   5 = nagaraja
 KMONS:   6 = emperor scorpion
-KMONS:   7 = deep elf demonologist / tengu reaver w:4
+KMONS:   7 = kobold fleshcrafter / tengu reaver
 KMONS:   8 = cacodemon
 KITEM:   DEFH = $, % / potion of mutation
 KITEM:   * = demon blade good_item / demon whip good_item / \
@@ -2652,9 +2657,10 @@ KFEAT:   ^ = dispersal trap
 SHUFFLE: {([ / {%% / %%% / %%% / %%%
 SUBST:   ( = ), [ = ]
 : elseif you.in_branch("Depths") then
-MONS:    very ugly thing / glowing orange brain w:5 / spriggan rider
+MONS:    very ugly thing / kobold fleshcrafter / spriggan rider
 MONS:    flayed ghost w:5 / spriggan berserker / glowing shapeshifter
-MONS:    spark wasp / glass eye w:5 / spriggan defender
+MONS:    glass eye w:5 / glowing orange brain w:5 / \
+         spriggan defender / spark wasp
 MONS:    shadow dragon w:4 / tentacled monstrosity w:6 / golden dragon
 MONS:    alderking / caustic shrike / wyrmhole w:2
 KFEAT:   ^ = alarm trap / dispersal trap w:2
@@ -2848,7 +2854,8 @@ NSUBST:  . = 2:12 / 3 = 678, ' = 2:5 / *:', " = 2 = 44" / *:"
 SUBST:   % = .
 :   else
 MONS:    jiangshi, phantasmal warrior, vampire mage, vampire knight
-MONS:    flayed ghost, glowing orange brain, white very ugly thing
+MONS:    flayed ghost, glowing orange brain
+MONS:    white very ugly thing / kobold fleshcrafter w:5
 KMONS:   8 = glass eye
 KMONS:   9 = tentacled monstrosity
 NSUBST:  127 = 1:., . = 4 = 126. / 2 = 7789 / *:.
@@ -3075,7 +3082,7 @@ SUBST:    })] = **|, ! = +, ? = c, ` = W:40 ., . = .:60 W
 : elseif you.branch() == "Depths" then
 MONS:    jiangshi / phantasmal warrior / spriggan defender zombie
 MONS:    spark wasp zombie, vampire knight, vampire mage
-MONS:    flayed ghost, alderking
+MONS:    flayed ghost / chonchon w:2, alderking
 MONS:    spriggan berserker
 KMONS:   8 = spriggan defender
 KMONS:   9 = guardian sphinx
@@ -3370,13 +3377,13 @@ NSUBST:  % = 1:d / 2:e / 1:f / 1:g / 1:zZef / * = def., . = 4:5 / *:.
 : elseif you.in_branch("Depths") then
 :   if you.where() ~= dgn.level_name(dgn.br_entrance("Zot")) then
 MONS:    tengu reaver / titan / lich / alderking w:5
-MONS:    frost giant / vampire mage / vampire knight w:5
+MONS:    frost giant / vampire mage / vampire knight w:5 / chonchon w:5
 MONS:    walking crystal tome / walking frostbound tome / \
          walking divine tome / walking earthen tome
 MONS:    guardian sphinx / spark wasp / caustic shrike / \
          glass eye / wyrmhole w:2
 MONS:    spriggan air mage / very ugly thing / glowing orange brain / \
-         glowing shapeshifter w:20 / rakshasa
+         glowing shapeshifter w:20 / rakshasa / kobold fleshcrafter w:5
 SHUFFLE: }])
 SUBST:   } = }:60 >, ] = ]:40 >
 NSUBST:  . = 2:3 / 2 = 5. / *:.

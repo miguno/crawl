@@ -140,11 +140,44 @@ guaranteed to trigger if your foe does any damage.
 %%%%
 time-warped blood mutation
 
-Your blood has desynchronized itself from the flow of time. Whenever you fall
+Your blood has desynchronised itself from the flow of time. Whenever you fall
 below 50% of your maximum HP, the spilling of your blood surges strangely
 through your surroundings, hasting two of your strongest allies in sight for
 each level of this mutation. After doing so, your blood will be unable to
 further dilate time until your HP has fully recovered.
+%%%%
+efficient metabolism mutation
+
+Your altered digestive system extracts additional value out of select potion
+types, doubling the duration of all status effects gained via potions.
+%%%%
+protean grace mutation
+
+Your limbs are overflowing with morphogenic power, guiding your every movement.
+Each non-innate mutation you have also provides +1 EV and Slay +1, improving
+your accuracy and damage with melee and ranged attacks. This still applies even
+when the mutations would be suppressed by a different form. Past seven or more
+non-innate mutations, this bonus only applies every other mutation.
+
+You currently gain
+{{
+    num = 1
+    muts = you.how_mutated(false, false, true)
+    if muts > 7 then
+        num = 7 + math.floor((muts - 7) / 2)
+    else
+        num = muts
+    end
+    return "+" .. num .. " EV and Slay +" .. num .. " from this mutation."
+}}
+%%%%
+feed off suffering mutation
+
+A vile yet invigorating energy permeates your soul, which resonates with
+specific other energies released at the moment of death. Whenever poisoned or
+drained enemies die in sight of you, you have a chance to siphon away a small
+portion of their life force and magical power. Each level of this mutation
+increases the chance this happens and the amount one siphons.
 %%%%
 # ------ Auxes -----
 horns mutation
@@ -251,9 +284,8 @@ pseudopods mutation
 
 You are covered in pseudopods, allowing you to slap your foes when launching
 melee attacks, but somewhat reducing the amount of protection provided by body
-armour. This has no effect on protection provided by armour enchantments, nor
-on the defensive benefits of training the Armour skill. Each level of this
-mutation makes your pseudopods larger and stronger.
+armour. This has no effect on protection provided by armour enchantments. Each
+level of this mutation makes your pseudopods larger and stronger.
 %%%%
 # ------ Resistance mutations -----
 steam resistance mutation
@@ -415,8 +447,7 @@ deformed body mutation
 
 Your body is shaped in an inhuman way, somewhat reducing the amount of
 protection provided by body armour. This has no effect on protection provided
-by armour enchantments, nor on the defensive benefits of training the Armour
-skill.
+by armour enchantments.
 %%%%
 screaming mutation
 
@@ -766,6 +797,12 @@ Your skin is transparent, improving your stealth and reducing the accuracy of
 your foes' attacks against you. Each level of this mutation reduces your foes'
 accuracy further.
 %%%%
+slime shroud mutation
+
+When struck in melee, the slimy shroud covering your body may deflect the
+attack. Such deflection will break the shroud, however, and it will take time
+for it to reconstitute itself.
+%%%%
 tendrils mutation
 
 When struck in melee, the slimy tendrils covering your body may grab your
@@ -937,8 +974,9 @@ bloodcurse mutation
 
 When you kill a living monster with a stab attack, they may rise again to serve
 you as a vampiric thrall. Thralls possess all the abilities they had in life,
-but are undead, and gain a vampiric bite attack. Spellcaster thralls will also
-gain knowledge of the Vampiric Draining spell.
+but are undead, and gain a vampiric bite attack as well as increased melee
+damage against sleeping foes. Spellcaster thralls will also gain knowledge of
+the Vampiric Draining spell.
 
 You can only create a thrall if you do not have one already, and they will
 inevitably turn to dust after a short time.
@@ -975,7 +1013,8 @@ to reach and perform melee attacks from several tiles away - including auxiliary
 attacks of all sorts.
 
 The precision required to preform stab attacks is still impossible unless you're
-adjacent to your target.
+adjacent to your target, and axes can only cleave to enemies adjacent to you,
+regardless of where you strike.
 %%%%
 water splatter mutation
 
@@ -1000,7 +1039,7 @@ for additional damage which is increased for each empty space adjacent to them.
 hex mastery mutation
 
 Your Hexes spells are much easier to cast (reduced miscast chance and severity)
-and enemies have reduced willpower versus against all your effects.
+and enemies have reduced willpower against all your effects.
 %%%%
 riddle compulsion mutation
 
@@ -1025,8 +1064,8 @@ with fear if it overcomes their willpower.
 stinger hair mutation
 
 Your hair is made of long prehensile jellyfish-like tendrils. Whenever you
-attack in melee, they will lash out and attempt to poison several enemies
-within 2 tiles of the player at random.
+attack in melee, they will lash out and attempt to poison several visible
+enemies within 2 tiles of the player at random.
 
 The number of enemies they can afflict at once is improved by Shapeshifting
 skill.

@@ -134,6 +134,7 @@ void ghost_demon::reset()
     max_hp           = 0;
     ev               = 0;
     ac               = 0;
+    willpower        = -1;
     damage           = 0;
     speed            = 10;
     move_energy      = 10;
@@ -886,6 +887,10 @@ static attack_flavour _ugly_thing_colour_to_flavour(colour_t u_colour)
         u_att_flav = AF_COLD;
         break;
 
+    case MAGENTA:
+        u_att_flav = AF_ANTIMAGIC;
+        break;
+
     default:
         break;
     }
@@ -942,11 +947,15 @@ void ghost_demon::init_ugly_thing(bool very_ugly, bool only_mutate,
 
     // Pick a compatible attack flavour for this colour.
     att_flav = _ugly_thing_colour_to_flavour(colour);
-    if (colour == MAGENTA)
-        damage = damage * 4 / 3; // +5 for uglies, +9 for v uglies
 
     // Pick a compatible resistance for this attack flavour.
     ugly_thing_add_resistance(false, att_flav);
+
+    // Not really a normal resistance, so handle it separately.
+    if (colour == MAGENTA)
+        willpower = ((very_ugly) ? 120 : 80);
+    else
+        willpower = -1;
 
     // If this is a very ugly thing, upgrade it properly.
     if (very_ugly)
@@ -1125,6 +1134,8 @@ spell_type ghost_demon::translate_spell(spell_type spell) const
         return SPELL_SUMMON_DRAGON;
     case SPELL_ELECTRIC_CHARGE:
         return SPELL_ELECTROLUNGE;
+    case SPELL_PERCUSSIVE_TEMPERING:
+        return SPELL_ALL_PURPOSE_TEMPERING;
     default:
         break;
     }

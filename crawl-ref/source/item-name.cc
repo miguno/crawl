@@ -1409,7 +1409,7 @@ static string _name_weapon(const item_def &weap, description_level_type desc,
     const bool identified = weap.is_identified();
 
     const string curse_prefix = !dbname && !terse && weap.cursed() ? "cursed " : "";
-    const string plus_text = identified && !dbname ? _plus_prefix(weap) : "";
+    const string plus_text = identified && !dbname && !qualname ? _plus_prefix(weap) : "";
     const string chaotic = testbits(weap.flags, ISFLAG_CHAOTIC) ? "chaotic " : "";
     const string replica = testbits(weap.flags, ISFLAG_REPLICA) ? "replica " : "";
 
@@ -1749,7 +1749,7 @@ string item_def::name_aux(description_level_type desc, bool terse, bool ident,
     {
         if (!dbname && item_typ == MISC_ZIGGURAT && you.zigs_completed > 0)
             buff << "+" << you.zigs_completed << " ";
-        else if (!dbname && is_xp_evoker(*this))
+        else if (!dbname && is_xp_evoker(*this) && in_inventory(*this))
             buff << "+" << evoker_plus(item_typ) << " ";
 
         buff << misc_type_name(item_typ);

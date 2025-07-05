@@ -10,11 +10,11 @@
 #include "enum.h"
 #include "player.h"
 
-#define DRAGON_CLAWS 3
-#define DRAGON_FANGS 5
+constexpr int DRAGON_CLAWS = 3;
+constexpr int DRAGON_FANGS = 5;
 
 #define FLUX_ENERGY_KEY "flux_energy"
-#define FLUX_ENERGY_WARNING 10
+constexpr int FLUX_ENERGY_WARNING = 10;
 
 enum form_capability
 {
@@ -143,7 +143,7 @@ public:
     virtual int will_bonus() const { return 0; };
     virtual int get_ac_bonus(int skill = -1) const;
     virtual int ev_bonus(int /*skill*/ = -1) const;
-    virtual int get_base_ac_penalty(int /*base*/, int /*skill*/ = -1) const { return 0; }
+    virtual int get_body_ac_mult(int /*skill*/ = -1) const;
     virtual int get_vamp_chance(int /*skill*/ = -1) const { return 0; }
     virtual int get_web_chance(int /*skill*/ = -1) const {return 0; }
     virtual int regen_bonus(int /*skill*/ = -1) const {return 0; }
@@ -261,6 +261,9 @@ protected:
     /// bonuses to EV when in this form, potentially scaling with skill or XL
     const FormScaling ev;
 
+    /// mulplier to base body armour AC when in this form, potentially scaling with skill or XL
+    const FormScaling body_ac_mult;
+
     /// See Form::get_base_unarmed_damage().
     const FormScaling unarmed_bonus_dam;
 
@@ -326,6 +329,7 @@ bool form_has_ears(transformation form = you.form);
 bool feat_dangerous_for_form(transformation which_trans,
                              dungeon_feature_type feat,
                              const item_def* talisman = nullptr);
+bool transforming_is_unsafe(transformation which_trans);
 
 string cant_transform_reason(transformation which_trans, bool involuntary = false,
                              bool temp = true);
@@ -335,13 +339,15 @@ bool transform(int dur, transformation which_trans, bool involuntary = false,
                bool using_talisman = false);
 
 // skip_move: don't make player re-enter current cell
-void untransform(bool skip_move = false, bool scale_hp = true);
+void untransform(bool skip_move = false, bool scale_hp = true,
+                 bool preserve_equipment = false,
+                 transformation new_form = transformation::none);
 
 void unset_default_form();
 void set_default_form(transformation t, const item_def *source);
 
 void set_form(transformation which_trans, int dur, bool scale_hp = true);
-void return_to_default_form();
+void return_to_default_form(bool new_form = false);
 
 monster_type transform_mons();
 string blade_parts(bool terse = false);

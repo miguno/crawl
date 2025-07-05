@@ -137,6 +137,10 @@ enum band_type
     BAND_SLIMES_AND_MASTER,
     BAND_ELEPHANTS_AND_MASTER,
     BAND_SPHINXES,
+    BAND_IRONBOUND_MECHANISTS,
+    BAND_CAGES,
+    BAND_CHONCHON,
+    BAND_FLESHCRAFT,
     NUM_BANDS                   // always last
 };
 

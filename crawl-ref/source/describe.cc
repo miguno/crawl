@@ -111,7 +111,7 @@ struct property_descriptor;
 static const property_descriptor & _get_artp_desc_data(artefact_prop_type p);
 
 static string _describe_talisman(const item_def &item, bool verbose);
-static string _describe_talisman_form(transformation form_type, const item_def* item = nullptr);
+static string _describe_talisman_form(transformation form_type);
 
 int show_description(const string &body, const tile_def *tile)
 {
@@ -1208,6 +1208,8 @@ static int _item_training_target(const item_def &item)
         return (((10 + throw_dam / 2) - FASTEST_PLAYER_THROWING_SPEED) * 2) * 10;
     if (item.base_type == OBJ_TALISMANS)
         return get_form(form_for_talisman(item))->min_skill * 10;
+    if (item.base_type == OBJ_BAUBLES)
+        return get_form(transformation::flux)->min_skill * 10;
     return 0;
 }
 
@@ -1226,7 +1228,7 @@ static skill_type _item_training_skill(const item_def &item)
         return SK_ARMOUR;
     if (item.base_type == OBJ_MISSILES && is_throwable(&you, item))
         return SK_THROWING;
-    if (item.base_type == OBJ_TALISMANS)
+    if (item.base_type == OBJ_TALISMANS || item.base_type == OBJ_BAUBLES)
         return SK_SHAPESHIFTING;
     if (item_ever_evokable(item)) // not very accurate
         return SK_EVOCATIONS;
@@ -1485,15 +1487,32 @@ string damage_rating(const item_def *item, int *rating_value)
         brand_desc.c_str());
 }
 
+static void _append_skill_needed(string &description, const item_def &item,
+                                 bool indent = true, string skill_padding = "")
+{
+    const skill_type skill = _item_training_skill(item);
+    const int target_skill = _item_training_target(item);
+    const bool below_target = _is_below_training_target(item, true);
+    const bool can_set_target = below_target && in_inventory(item)
+                                && !you.has_mutation(MUT_DISTRIBUTED_TRAINING);
+    const bool useful = !is_useless_item(item) && crawl_state.need_save;
+    if (useful)
+    {
+        description += "\n";
+        if (indent)
+            description += "    ";
+        description += _your_skill_desc(skill, can_set_target, target_skill,
+                                        std::move(skill_padding));
+    }
+
+    if (below_target)
+        _append_skill_target_desc(description, skill, target_skill);
+}
+
 static void _append_weapon_stats(string &description, const item_def &item)
 {
     const int base_dam = property(item, PWPN_DAMAGE);
-    const skill_type skill = _item_training_skill(item);
     const int mindelay_skill = _item_training_target(item);
-
-    const bool below_target = _is_below_training_target(item, true);
-    const bool can_set_target = below_target
-        && in_inventory(item) && !you.has_mutation(MUT_DISTRIBUTED_TRAINING);
 
     if (item.base_type == OBJ_STAVES
         && item.is_identified()
@@ -1529,15 +1548,7 @@ static void _append_weapon_stats(string &description, const item_def &item)
             (float) weapon_min_delay(item, item.is_identified()) / 10,
             mindelay_skill / 10);
 
-    const bool want_player_stats = !is_useless_item(item) && crawl_state.need_save;
-    if (want_player_stats)
-    {
-        description += "\n    "
-            + _your_skill_desc(skill, can_set_target, mindelay_skill);
-    }
-
-    if (below_target)
-        _append_skill_target_desc(description, skill, mindelay_skill);
+    _append_skill_needed(description, item);
 
     if (is_slowed_by_armour(&item))
     {
@@ -1569,6 +1580,7 @@ static void _append_weapon_stats(string &description, const item_def &item)
         description += ".";
     }
 
+    const bool want_player_stats = !is_useless_item(item) && crawl_state.need_save;
     if (want_player_stats)
     {
         description += _desc_attack_delay(item);
@@ -1871,6 +1883,8 @@ static string _equipment_property_change_description(const item_def &item,
 
     if (remove)
         you.preview_stats_without_specific_item(100, item, &new_ac, &new_ev, &new_sh, &new_fail);
+    else if (item.base_type == OBJ_TALISMANS)
+        you.preview_stats_in_specific_form(100, item, &new_ac, &new_ev, &new_sh, &new_fail);
     else
         you.preview_stats_with_specific_item(100, item, &new_ac, &new_ev, &new_sh, &new_fail);
 
@@ -1911,6 +1925,8 @@ static string _equipment_property_change_description(const item_def &item,
         description += "If you " + item_unequip_verb(item) + " this "
                         + _equip_type_name(item) + ":";
     }
+    else if (item.base_type == OBJ_TALISMANS)
+        description += "If you transformed using this talisman:";
     else if (item.base_type == OBJ_JEWELLERY && !jewellery_is_amulet(item))
         description += "If you were wearing this ring:";
     else if (item.base_type == OBJ_WEAPONS && you.has_mutation(MUT_WIELD_OFFHAND))
@@ -1971,6 +1987,8 @@ static string _spell_fail_change_description(const item_def &item,
 
     if (remove)
         you.preview_stats_without_specific_item(100, item, &dummy1, &dummy2, &dummy3, &new_fail);
+    else if (item.base_type == OBJ_TALISMANS)
+        you.preview_stats_in_specific_form(100, item, &dummy1, &dummy2, &dummy3, &new_fail);
     else
         you.preview_stats_with_specific_item(100, item, &dummy1, &dummy2, &dummy3, &new_fail);
 
@@ -2213,10 +2231,6 @@ static string _describe_ammo(const item_def &item)
         const int throw_delay = (10 + dam / 2);
         const int target_skill = _item_training_target(item);
 
-        const bool below_target = _is_below_training_target(item, true);
-        const bool can_set_target = below_target && in_inventory(item)
-            && !you.has_mutation(MUT_DISTRIBUTED_TRAINING);
-
         description += make_stringf(
             "\n\nBase damage: %d  Base attack delay: %.1f"
             "\nThis projectile's minimum attack delay (%.1f) "
@@ -2227,13 +2241,7 @@ static string _describe_ammo(const item_def &item)
             target_skill / 10
         );
 
-        if (!is_useless_item(item))
-        {
-            description += "\n    " +
-                    _your_skill_desc(SK_THROWING, can_set_target, target_skill);
-        }
-        if (below_target)
-            _append_skill_target_desc(description, SK_THROWING, target_skill);
+        _append_skill_needed(description, item);
 
         if (!is_useless_item(item) && property(item, PWPN_DAMAGE))
             description += "\nDamage rating: " + damage_rating(&item);
@@ -3055,7 +3063,11 @@ string get_item_description(const item_def &item,
 
     case OBJ_BAUBLES:
         if (!is_useless_item(item, false))
+        {
             description << "\n" << _describe_talisman_form(transformation::flux);
+            _append_skill_needed(desc, item, false, "   ");
+            description << desc;
+        }
         if (verbose)
             _uselessness_desc(description, item);
         break;
@@ -4156,7 +4168,7 @@ command_type describe_item_popup(const item_def &item,
         else if (scroller->on_event(ev))
             return true;
         else if (key == '!'
-                 && is_equippable_item(item)
+                 && (is_equippable_item(item) || is_usable_talisman(item))
                  && item.is_identified())
         {
             string spell_success;
@@ -4342,6 +4354,53 @@ static string _player_spell_stats(const spell_type spell)
     return description;
 }
 
+static string _get_skill_defense_change(skill_type skill)
+{
+    unwind_var<uint8_t> unwind_skill(you.skills[skill]);
+    unwind_var<unsigned int> unwind_sp(you.skill_points[skill]);
+    unwind_var<unsigned int> unwind_xp(you.total_experience);
+    unwind_var<int> unwind_costlevel(you.skill_cost_level);
+
+    const int cur_ac = you.armour_class_scaled(100);
+    const int cur_ev = you.evasion_scaled(100, true);
+    const int cur_sh = player_displayed_shield_class(100, true);
+
+    const double cur_skill = you.skill(skill, 10, true) * 0.1;
+    set_skill_level(skill, cur_skill + 1, true);
+
+    const int new_ac = you.armour_class_scaled(100);
+    const int new_ev = you.evasion_scaled(100, true);
+    const int new_sh = player_displayed_shield_class(100, true);
+
+    const float ac_diff = (float)(new_ac - cur_ac) / 100.0;
+    const float ev_diff = (float)(new_ev - cur_ev) / 100.0;
+    const float sh_diff = (float)(new_sh - cur_sh) / 100.0;
+
+    const char* msg = (cur_skill >= 26) ? "mastering" : "training 1 level of";
+
+    if (skill == SK_ARMOUR)
+    {
+        return make_stringf("\nWith your current stats and equipment, %s "
+                            "this skill would increase your AC by %.1f and "
+                            "your EV by %.1f.",
+                            msg, ac_diff, ev_diff).c_str();
+    }
+    else if (skill == SK_DODGING)
+    {
+        return make_stringf("\nWith your current stats and equipment, %s "
+                            "this skill would increase your EV by %.1f.",
+                            msg, ev_diff).c_str();
+    }
+    else if (skill == SK_SHIELDS)
+    {
+        return make_stringf("\nWith your current stats and equipment, %s "
+                            "this skill would increase your SH by %.1f.",
+                            msg, sh_diff).c_str();
+    }
+
+    return "";
+}
+
 string get_skill_description(skill_type skill, bool need_title)
 {
     string lookup = skill_name(skill);
@@ -4355,6 +4414,11 @@ string get_skill_description(skill_type skill, bool need_title)
 
     result += getLongDescription(lookup);
 
+    if ((skill == SK_ARMOUR || skill == SK_DODGING || skill == SK_SHIELDS)
+        && you.skills[skill] < MAX_SKILL_LEVEL && !is_useless_skill(skill))
+    {
+        result += _get_skill_defense_change(skill);
+    }
     if (skill == SK_INVOCATIONS)
     {
         if (you.has_mutation(MUT_FORLORN))
@@ -5036,6 +5100,7 @@ static string _flavour_base_desc(attack_flavour flavour)
         { AF_BOMBLET,           "deploy bomblets" },
         { AF_AIRSTRIKE,         "open air damage" },
         { AF_TRICKSTER,         "drain, daze, or confuse" },
+        { AF_REACH_CLEAVE_UGLY, "random ugly thing damage" },
         { AF_PLAIN,             "" },
     };
 
@@ -5120,7 +5185,7 @@ static string _brand_damage_string(const monster_info &mi, brand_type brand,
             brand_dam = dam * 0.75;
             break;
         case SPWPN_PAIN:
-            brand_dam = mi.has_necromancy_spell() ? mi.hd : mi.hd / 2;
+            brand_dam = mi.has_necromancy_spell() ? mi.hd * 2 : mi.hd / 2;
             break;
         case SPWPN_VENOM:
         case SPWPN_ANTIMAGIC:
@@ -5223,12 +5288,8 @@ static void _check_attack_counts_and_flavours(const monster_info &mi,
 
         // Multi-headed monsters must always have their multi-attack in the
         // first slot.
-        if ((mons_genus(mi.base_type) == MONS_HYDRA
-             || mons_species(mi.base_type) == MONS_SERPENT_OF_HELL)
-            && i == 0)
-        {
+        if ((mons_genus(mi.base_type) == MONS_HYDRA) && i == 0)
             di.attack_counts[attack_info] = mi.num_heads;
-        }
         else
             ++di.attack_counts[attack_info];
 
@@ -5302,7 +5363,7 @@ static void _attacks_table_row(const monster_info &mi, mon_attack_desc_info &di,
     // Display the max damage from the attack (including any weapon)
     // and additionally display max brand damage separately
 
-    const int flav_dam = flavour_damage(attack.flavour, mi.hd, false);
+    int flav_dam = flavour_damage(attack.flavour, mi.hd, false);
 
     int dam = attack.damage;
     int slaying = _monster_slaying(mi);
@@ -5311,6 +5372,8 @@ static void _attacks_table_row(const monster_info &mi, mon_attack_desc_info &di,
         dam = flav_dam;
     else if (attack.flavour == AF_CRUSH)
         dam = 0;
+    else if (attack.flavour == AF_PAIN)
+        flav_dam = (mi.props.exists(NECROMANCER_KEY)) ? mi.hd * 2 : mi.hd/ 2;
     else if (wpn)
     {
         // From attack::calc_damage
@@ -5397,14 +5460,17 @@ static void _attacks_table_row(const monster_info &mi, mon_attack_desc_info &di,
         if (di.flavour_without_dam
             && !bonus_desc.empty()
             && !flavour_triggers_damageless(attack.flavour)
-            && !flavour_has_mobility(attack.flavour))
+            && !flavour_has_mobility(attack.flavour)
+            && !(attack.flavour == AF_REACH_CLEAVE_UGLY))
         {
             bonus_desc += " (if damage dealt)";
         }
 
         if (flavour_has_reach(attack.flavour))
         {
-            bonus_desc += (bonus_desc.empty() ? "Reaches" : "; reaches");
+            bonus_desc += (bonus_desc.empty() ? "Reaches"
+                           : (attack.flavour == AF_REACH_CLEAVE_UGLY) ? "; cleaves"
+                           : "; reaches");
             bonus_desc += (attack.flavour == AF_RIFT ? " very far"
                                                      : " from afar");
         }
@@ -7071,7 +7137,12 @@ string get_ghost_description(const monster_info &mi, bool concise)
          << skill_title_by_rank(mi.i_ghost.best_skill,
                         mi.i_ghost.best_skill_rank,
                         gspecies,
-                        species::has_low_str(gspecies), mi.i_ghost.religion)
+                        get_species_def(gspecies).d,
+                        get_species_def(gspecies).s,
+                        get_species_def(gspecies).i,
+                        mi.i_ghost.religion,
+                        10 + mi.i_ghost.xl_rank * 27,
+                        transformation::none)
          << ", " << _xl_rank_name(mi.i_ghost.xl_rank) << " ";
 
     if (concise)
@@ -7154,26 +7225,28 @@ static void _maybe_note_armour_modifier(vector<vector<string>>& items,
                                         const Form& form,
                                         const int skill[3])
 {
-    int penalty[2][3];
+    int mult[3];
     for (int i = 0; i < 3; ++i)
-        penalty[0][i] = form.get_base_ac_penalty(100, skill[i]);
+        mult[i] = form.get_body_ac_mult(skill[i]);
 
-    if (penalty[0][0] == 0 && penalty[0][1] == 0 && penalty[0][2] == 0)
+    if (mult[0] == 0 && mult[1] == 0 && mult[2] == 0)
         return;
 
     const item_def *body_armour = you.body_armour();
-    const int base_ac = body_armour ? property(*body_armour, PARM_AC) : 0;
+    const int base_ac = body_armour ? you.base_ac_from(*body_armour, 100, false)
+                                    : 0;
 
+    float change[3];
     for (int i = 0; i < 3; ++i)
-        penalty[1][i] = form.get_base_ac_penalty(base_ac, skill[i]);
+        change[i] = (float)(base_ac * mult[i]) / 100 / 100.0;
 
     vector<string> labels;
     labels.push_back("Body Armour AC");
 
     for (int i = 0; i < 3; ++i)
     {
-        if (penalty[0][i] != 0)
-            labels.push_back(make_stringf("%+d (%+d%%)", -penalty[1][i], -penalty[0][i]));
+        if (mult[i] != 0)
+            labels.push_back(make_stringf("%+.1f (%+d%%)", change[i], mult[i]));
         else
             labels.push_back("0");
     }
@@ -7287,7 +7360,7 @@ static int _get_scroll_skill_boost(int skill)
     return 5 + skill * 5;
 }
 
-static string _describe_talisman_form(transformation form_type, const item_def* item)
+static string _describe_talisman_form(transformation form_type)
 {
     const Form* form = get_form(form_type);
 
@@ -7472,22 +7545,6 @@ static string _describe_talisman_form(transformation form_type, const item_def* 
 
     description << string(60, '_') << "\n";
 
-    // Include info about setting skill targets, if this is a real item.
-    if (item)
-    {
-        const int target_skill = _item_training_target(*item);
-        const bool can_set_target = _is_below_training_target(*item, true) && in_inventory(*item)
-                                    && !you.has_mutation(MUT_DISTRIBUTED_TRAINING);
-        if (can_set_target)
-        {
-            description << "\n" << _your_skill_desc(SK_SHAPESHIFTING, can_set_target,
-                target_skill, "   ");
-            string desc;
-            _append_skill_target_desc(desc, SK_SHAPESHIFTING, target_skill);
-            description << desc << "\n";
-        }
-    }
-
     return description.str();
 }
 
@@ -7496,19 +7553,26 @@ static string _describe_talisman(const item_def &item, bool verbose)
     ostringstream description;
 
     if (verbose && !is_useless_item(item, false) && item.sub_type != TALISMAN_PROTEAN)
-        description << "\n" << _describe_talisman_form(form_for_talisman(item), &item);
+        description << "\n" << _describe_talisman_form(form_for_talisman(item));
 
     // Artefact properties.
     string art_desc = _artefact_descrip(item);
     if (!art_desc.empty())
-        description << "\n" << art_desc;
+        description << "\n" << art_desc << "\n";
 
     if (verbose)
     {
+        string desc;
+        _append_skill_needed(desc, item, false, "   ");
+        description << desc;
+
         if (is_useless_item(item, false))
             _uselessness_desc(description, item);
         else if (item.sub_type != TALISMAN_PROTEAN)
         {
+            if (crawl_state.need_save && item.is_identified())
+                description << _equipment_property_change(item);
+
             description << "\n\nA period of sustained concentration is needed to "
                         "enter or leave forms. To leave this form, evoke the "
                         "talisman again.";

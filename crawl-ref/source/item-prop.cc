@@ -2037,7 +2037,7 @@ bool item_skills(const item_def &item, set<skill_type> &skills)
     if (is_shield(item))
         skills.insert(SK_SHIELDS);
 
-    if (item.base_type == OBJ_TALISMANS)
+    if (item.base_type == OBJ_TALISMANS || item.base_type == OBJ_BAUBLES)
         skills.insert(SK_SHAPESHIFTING);
 
     // Artefacts with evokable abilities, wands and similar unwielded
@@ -2045,6 +2045,7 @@ bool item_skills(const item_def &item, set<skill_type> &skills)
     // an artefact with, say, +Blink).
     if (item_ever_evokable(item) && !item.is_type(OBJ_MISCELLANY, MISC_ZIGGURAT)
                                  && item.base_type != OBJ_TALISMANS
+                                 && item.base_type != OBJ_BAUBLES
         || gives_ability(item)
         || _staff_uses_evocations(item))
     {
@@ -2972,7 +2973,7 @@ vector<equipment_slot> get_all_item_slots(const item_def& item)
     case OBJ_WEAPONS:
     case OBJ_STAVES:
         if (you.hands_reqd(item) == HANDS_TWO)
-            return {SLOT_WEAPON_STRICT, SLOT_OFFHAND};
+            return {SLOT_WEAPON_STRICT, SLOT_TWOHANDER_OFFHAND};
         else
             return {SLOT_WEAPON};
 
@@ -3109,7 +3110,7 @@ string talisman_type_name(int type)
     case TALISMAN_WEREWOLF: return "lupine talisman";
     case TALISMAN_FORTRESS: return "fortress talisman";
     case TALISMAN_STATUE:   return "granite talisman";
-    case TALISMAN_HIVE:     return "honeycomb talisman";
+    case TALISMAN_HIVE:     return "hive talisman";
     case TALISMAN_DRAGON:   return "dragon-coil talisman";
     case TALISMAN_SPHINX:   return "riddle talisman";
     case TALISMAN_VAMPIRE:  return "sanguine talisman";
@@ -3626,6 +3627,17 @@ bool is_equippable_item(const item_def& item)
         default:
             return false;
     }
+}
+
+bool is_usable_talisman(const item_def& item)
+{
+    if (item.base_type != OBJ_TALISMANS)
+        return false;
+
+    if (item.sub_type == TALISMAN_PROTEAN)
+        return false;
+
+    return cannot_evoke_item_reason(&item, false, false).empty();
 }
 
 bool ring_plusses_matter(int ring_subtype)

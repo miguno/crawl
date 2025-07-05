@@ -62,6 +62,7 @@ public:
 
     int hit_points;
     int max_hit_points;
+    int exp;
     int speed;
     int speed_increment;
 
@@ -184,7 +185,6 @@ public:
     // Has a hydra-like variable number of attacks based on num_heads.
     bool has_hydra_multi_attack() const;
     int  heads() const override;
-    bool has_multitargeting() const;
 
     // Has the 'priest' flag.
     bool is_priest() const;

@@ -35,7 +35,8 @@ NSUBST:  ' = 7:S / 2:# / 6 = S:3 .:2 / *:.
 SUBST:   & : a:45 c:8 vb x:2, a : c:15 vb
 MARKER:  ^ = lua:props_marker { portal=1 }
 :    if you.where() == dgn.level_name(dgn.br_entrance("Zot")) then
-KMONS:   = = draconian annihilator / draconian knight / draconian monk
+KMONS:   = = draconian annihilator band / draconian knight band / \
+             draconian monk band
 KITEM:   - = midnight gem
 KFEAT:   = = enter_zot
 SUBST:   ) = =, >]} = .
@@ -338,7 +339,7 @@ NSUBST:   | = 1:R / 1:O
 : _G.set_random_mon_list("place:" .. you.where() .. " w:170 / " ..
 :   "arcanist / shapeshifter / ugly thing band")
 : else
-MONS:     tengu conjurer / deep elf elementalist / occultist w:2 / \
+MONS:     tengu conjurer / kobold fleshcrafter / occultist w:2 / \
           hell knight / rakshasa w:5 ; robe . wand of iceblast charges:1 | \
                         any beam wand . trident ego:freezing | trident ego:flaming
 MONS:     fire dragon w:5 / fire dragon perm_ench:shapeshifter w:5 / \

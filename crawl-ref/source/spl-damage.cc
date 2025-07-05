@@ -1079,6 +1079,7 @@ static ai_action::goodness _fire_permafrost_at(const actor &agent, int pow,
 
     zappy(ZAP_PERMAFROST_ERUPTION_COLD, pow, mon, beam);
     beam.ex_size       = 1;
+    beam.ac_rule       = ac_type::none;
     beam.apply_beam_conducts();
     beam.refine_for_explosion();
     if (is_tracer)
@@ -1251,6 +1252,7 @@ static const map<monster_type, monster_frag> fraggable_monsters = {
     { MONS_GARGOYLE,          { "rock", BROWN } },
     { MONS_VV,                { "rock", BROWN } },
     { MONS_HELLFIRE_MORTAR,   { "rock", BROWN } },
+    { MONS_CRAWLING_FLESH_CAGE, { "metal", CYAN, frag_damage_type::metal } },
     { MONS_IRON_ELEMENTAL,    { "metal", CYAN, frag_damage_type::metal } },
     { MONS_IRON_GOLEM,        { "metal", CYAN, frag_damage_type::metal } },
     { MONS_PEACEKEEPER,       { "metal", CYAN, frag_damage_type::metal } },
@@ -1281,6 +1283,11 @@ static const map<monster_type, monster_frag> fraggable_monsters = {
                                 frag_damage_type::crystal } },
     { MONS_ROXANNE,           { "sapphire", BLUE, frag_damage_type::crystal } },
 };
+
+bool monster_type_is_fraggable(monster_type mc)
+{
+    return fraggable_monsters.find(mc) != fraggable_monsters.end();
+}
 
 // Initializes the provided frag_effect with the appropriate Lee's Rapid
 // Deconstruction explosion for blowing up the given monster. Return true iff
@@ -2145,6 +2152,7 @@ static int _ignite_poison_bog(coord_def where, int pow, actor *agent)
     if (!one_chance_in(4))
         return false;
 
+    flash_tile(where, RED, 0, TILE_BOLT_IGNITE_POISON_TERRAIN);
     place_cloud(CLOUD_FIRE, where, 2 + random2(1 + div_rand_round(pow, 30)), agent);
 
     return true;
@@ -2182,6 +2190,7 @@ static int _ignite_poison_clouds(coord_def where, int pow, actor *agent)
         return agent && agent->is_player() ? sgn(value) : value;
     }
 
+    flash_tile(where, RED, 0, TILE_BOLT_IGNITE_POISON_TERRAIN);
     cloud->type = CLOUD_FIRE;
     cloud->decay = 30 + random2(20 + pow); // from 3-5 turns to 3-15 turns
     cloud->whose = agent->kill_alignment();
@@ -2247,6 +2256,7 @@ static int _ignite_poison_monsters(coord_def where, int pow, actor *agent)
         return mons_aligned(mon, agent) ? -1 * damage : damage;
     }
 
+    flash_tile(where, RED, 0, TILE_BOLT_IGNITE_POISON_TARGET);
     if (you.see_cell(mon->pos()))
     {
         mprf("%s seems to burn from within%s",
@@ -2306,6 +2316,7 @@ static int _ignite_poison_player(coord_def where, int pow, actor *agent)
     if (tracer)
         return mons_aligned(&you, agent) ? -1 * damage : damage;
 
+    flash_tile(where, RED, 0, TILE_BOLT_IGNITE_POISON_TARGET);
     const int resist = player_res_fire();
     if (resist > 0)
         mpr("You feel like your blood is boiling!");
@@ -2437,11 +2448,6 @@ spret cast_ignite_poison(actor* agent, int pow, bool fail, bool tracer)
     }
 
     targeter_radius hitfunc(agent, LOS_NO_TRANS);
-    flash_view_delay(
-        agent->is_player()
-            ? UA_PLAYER
-            : UA_MONSTER,
-        RED, 100, &hitfunc);
 
     mprf("%s %s the poison in %s surroundings!", agent->name(DESC_THE).c_str(),
          agent->conj_verb("ignite").c_str(),
@@ -2458,6 +2464,8 @@ spret cast_ignite_poison(actor* agent, int pow, bool fail, bool tracer)
         _ignite_poison_player(where, pow, agent);
         return 0; // ignored
     }, agent->pos());
+
+    animation_delay(200, true);
 
     return spret::success;
 }
@@ -3267,7 +3275,6 @@ spret cast_thunderbolt(actor *caster, int pow, coord_def aim, bool fail)
     beam.colour            = LIGHTCYAN;
     beam.range             = 1;
     beam.hit               = AUTOMATIC_HIT;
-    beam.ac_rule           = ac_type::half;
     beam.loudness          = spell_effect_noise(SPELL_THUNDERBOLT);
     beam.set_agent(caster);
     beam.draw_delay = 0;
@@ -3829,17 +3836,17 @@ spret cast_inner_flame(coord_def target, int pow, bool fail)
     return zapping(ZAP_INNER_FLAME, pow, beam, false, nullptr, fail);
 }
 
-int get_mercury_weaken_chance(int victim_hd, int pow)
+int get_mercury_weaken_chance(int victim_hd)
 {
-    return max(0, 100 - max(0, (victim_hd * 12 - pow * 3 / 2 - 17) * 115 / 100));
+    return max(0, 100 - max(0, victim_hd - 4) * 12);
 }
 
 dice_def poisonous_vapours_damage(int pow, bool random)
 {
     if (random)
-        return dice_def(1, 2 + div_rand_round(pow, 8));
+        return dice_def(1, 1 + div_rand_round(pow, 8));
     else
-        return dice_def(1, 2 + pow / 8);
+        return dice_def(1, 1 + pow / 8);
 }
 
 spret cast_poisonous_vapours(const actor& agent, int pow, const coord_def target, bool fail)
@@ -4234,6 +4241,12 @@ spret cast_starburst(int pow, bool fail, bool is_tracer)
     return spret::success;
 }
 
+
+dice_def jinxbite_damage(int pow, bool random)
+{
+    return dice_def(2, random ? 2 + div_rand_round(pow, 25) : 2 + pow / 25);
+}
+
 static string _get_jinxsprite_message(const monster& victim)
 {
     string msg;
@@ -4306,8 +4319,7 @@ void attempt_jinxbite_hit(actor& victim)
     // player that this is a Will check, also.)
     flash_tile(victim.pos(), LIGHTBLUE);
 
-    // XXX TODO: move this out and display it
-    const int dmg = roll_dice(2, 2 + div_rand_round(pow, 25));
+    const int dmg = jinxbite_damage(pow, true).roll();
 
     monster* mons = victim.as_monster();
     const int drain_dur = random_range(3 * BASELINE_DELAY, 5 * BASELINE_DELAY);

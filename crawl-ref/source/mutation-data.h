@@ -28,7 +28,7 @@ struct mutation_category_def
 static const mutation_def mut_data[] =
 {
 
-{ MUT_IRON_FUSED_SCALES, 0, 1, mutflag::good | mutflag::anatomy,
+{ MUT_IRON_FUSED_SCALES, 0, 1, mutflag::good | mutflag::anatomy | mutflag::substance,
   "iron-fused scales",
 
   {"Your scales are fused with iron. (AC + 5)", "", ""},
@@ -257,6 +257,19 @@ static const mutation_def mut_data[] =
 
   TILEG_MUT_INHIBITED_REGENERATION,
 },
+
+{ MUT_FEED_OFF_SUFFERING, 4, 2, mutflag::good,
+   "feed off suffering",
+
+   {"You can sometimes gain power from killing poisoned or drained foes.",
+    "You can regularly gain power from killing poisoned or drained foes.", ""},
+   {"Vile energies swirl pleasantly through your soul.",
+    "The vile energy whirl more vigorously through your soul.", ""},
+   {"The vile energy swirling through your soul dissipates.",
+    "The vile energy whirling through your soul weakens.", ""},
+    TILEG_MUT_FEED_OFF_SUFFERING,
+ },
+
 #if TAG_MAJOR_VERSION == 34
 
 { MUT_FAST_METABOLISM, 0, 3, mutflag::bad,
@@ -661,6 +674,15 @@ static const mutation_def mut_data[] =
   TILEG_MUT_GENERIC_BAD_MUTATION,
 },
 
+{ MUT_PROTEAN_GRACE, 2, 1, mutflag::good,
+   "protean grace",
+
+   {"You are empowered by your non-innate mutations. (+", "", ""},
+   {"Mutagenic power surges through your limbs.", "", ""},
+   {"The mutagenic power surging through your limbs dissipates.", "", ""},
+   TILEG_MUT_PROTEAN_GRACE,
+ },
+
 { MUT_FRAIL, 10, 3, mutflag::bad,
   "frail",
 
@@ -841,7 +863,7 @@ static const mutation_def mut_data[] =
 },
 
 // body-slot facets
-{ MUT_HORNS, 7, 3, mutflag::good | mutflag::anatomy | mutflag::need_bones,
+{ MUT_HORNS, 7, 3, mutflag::good | mutflag::anatomy,
   "horns",
 
   {"You have a pair of small horns on your head.",
@@ -1008,7 +1030,7 @@ static const mutation_def mut_data[] =
   {"The barb on your tail disappears.",
    "The barb on your tail seems less sharp.",
    "The barb on your tail seems less sharp."},
-  TILEG_MUT_GENERIC_GOOD_MUTATION,
+  TILEG_MUT_STINGER,
 },
 
 // Draconian/gargoyle only
@@ -1287,20 +1309,17 @@ static const mutation_def mut_data[] =
 },
 #endif
 
-{ MUT_PASSIVE_MAPPING, 3, 3, mutflag::good,
+{ MUT_PASSIVE_MAPPING, 3, 2, mutflag::good,
   "sense surroundings",
 
-  {"You passively map a small area around you.",
-   "You passively map the area around you.",
-   "You passively map a large area around you."},
+  {"You passively map the area around you.",
+   "You passively map a large area around you.", ""},
 
   {"You feel a strange attunement to the structure of the dungeons.",
-   "Your attunement to dungeon structure grows.",
-   "Your attunement to dungeon structure grows further."},
+   "Your attunement to dungeon structure grows further.", ""},
 
   {"You feel slightly disoriented.",
-   "You feel slightly disoriented.",
-   "You feel slightly disoriented."},
+   "You feel slightly disoriented.", ""},
 
   TILEG_MUT_PASSIVE_MAPPING,
 },
@@ -1563,7 +1582,7 @@ static const mutation_def mut_data[] =
   {"A fragile, slimy shroud covers you, deflecting attacks.", "", ""},
   {"A thin film of slime covers your body.", "", ""},
   {"Your film of slime dries up.", "", ""},
-  TILEG_MUT_GENERIC_JIYVA_MUTATION,
+  TILEG_MUT_SLIME_SHROUD,
 },
 
 { MUT_ANTIMAGIC_BITE, 0, 1, mutflag::good | mutflag::anatomy,
@@ -1574,6 +1593,15 @@ static const mutation_def mut_data[] =
   {"Your magical appetite wanes.", "", ""},
   TILEG_MUT_ANTIMAGIC_BITE,
 },
+
+{ MUT_EFFICIENT_METABOLISM, 3, 1, mutflag::good,
+   "efficient metabolism",
+
+   {"Your metabolism doubles the duration of potion status effects.", "", ""},
+   {"Your body churns, leaving you strangely parched.", "", ""},
+   {"Your body churns, leaving you strangely quenched.", "", ""},
+   TILEG_MUT_EFFICIENT_METABOLISM,
+ },
 
 { MUT_NO_POTION_HEAL, 3, 2, mutflag::bad,
   "no potion heal",
@@ -2055,7 +2083,7 @@ static const mutation_def mut_data[] =
    "Your stinger grows larger and begins to produce weakening toxins."},
 
   {"", "", ""},
-  TILEG_MUT_GENERIC_DEMONSPAWN_MUTATION,
+  TILEG_MUT_WEAKNESS_STINGER,
 },
 
 { MUT_DEMONIC_TOUCH, 0, 3, mutflag::good | mutflag::anatomy | mutflag::need_hands,

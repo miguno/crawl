@@ -1423,7 +1423,7 @@ static void _BATTLE_world_reacts(item_def */*item*/)
 {
     if (!find_battlesphere(&you)
         && there_are_monsters_nearby(true, true, false)
-        && stop_summoning_reason(MR_RES_POISON, M_FLIES).empty())
+        && you_can_see_habitable_spot_near(HT_FLYER, 2))
     {
         const int pow = div_rand_round(15 + you.skill(SK_CONJURATIONS, 15), 3);
         cast_battlesphere(&you, pow, false);
@@ -1655,7 +1655,7 @@ static void _AUTUMN_KATANA_melee_effects(item_def* /*weapon*/, actor* attacker,
     // HACK: yes this is in a header but it's only included once
     static bool _slicing = false;
 
-    if (!one_chance_in(5) || _slicing || !defender)
+    if (!one_chance_in(8) || _slicing || !defender)
         return;
 
     unwind_bool nonrecursive_space(_slicing, true);
@@ -1669,7 +1669,7 @@ static void _AUTUMN_KATANA_melee_effects(item_def* /*weapon*/, actor* attacker,
          attacker->name(DESC_THE).c_str(),
          attacker->is_player() ? "" : "s");
 
-    // Casting with 100 power = up to 4 targets hit
+    // Casting with 100 power = up to 8 targets hit
     cast_manifold_assault(*attacker, 100, false, true, defender);
 }
 
@@ -1875,7 +1875,7 @@ static void _FISTICLOAK_world_reacts(item_def */*item*/)
     vector<monster*> targs;
     for (adjacent_iterator ai(you.pos()); ai; ++ai)
         if (monster* mon = monster_at(*ai))
-            if (you.can_see(*mon) && !mon->wont_attack() && !mon->is_firewood())
+            if (you.can_see(*mon) && mon->temp_attitude() == ATT_HOSTILE && !mon->is_firewood())
                 targs.push_back(mon);
 
     if (targs.empty())

@@ -33,12 +33,12 @@
     Jan Anders Bremer (underhound.eu)
     Rax E. Dillon (crawl.akrasiac.org)
     dplusplus (lazy-life.ddo.jp)
-    floraline (crawl.kelbi.org)
-    Wongi Hong (webzook.net / kr.dobrazupa.org)
-    Alex Jurkiewicz (crawl.project357.org)
+    mcursa (crawl.project357.org)
     Marc H. Thoben (crawl.develz.org)
-    Namanix (crawl.xtahua.com)
+    melvinkitnick (crawl.xtahua.com)
     ZureaL (cbro.berotato.org)
+    ASCIIPhilia (crawl.nemelex.cards)
+    gammafunk (crawl.dcss.io)
   and past:
     Jan Anders Bremer (crawl.lantea.net)
     John Boyle (crawl.berotato.org)
@@ -49,6 +49,10 @@
     phunktion (crawl.somatika.net)
     sd1989 (kr.dobrazupa.org)
     ZiBuDo (crawl.jorgrun.rocks)
+    floraline (crawl.kelbi.org)
+    Wongi Hong (webzook.net / kr.dobrazupa.org)
+    Alex Jurkiewicz (crawl.project357.org)
+    Namanix (crawl.xtahua.com)
 
 * The members of various usability testing teams from the department of
   Information Processing Science in Oulu University:
@@ -285,6 +289,7 @@
     mgdelmonte
     Midn8
     mikee
+    MikeJHeg
     Nathan Mills
     Andrew Minton
     Mintice
@@ -323,6 +328,7 @@
     Malwyn P
     palyth
     panicbit
+    Paperbell
     Anders Papitto
     William Parker
     Christopher Partin
@@ -415,6 +421,7 @@
     Jonathan Klabunde Tomer
     Tommy
     Sean VanMeter
+    Vaskritaya
     Mikko Vepsäläinen
     vla22
     WanderingBlade
@@ -427,6 +434,7 @@
     Evan Williams
     Mara Williamson
     Jeremey Wilson
+    Nicholas Wilson
     wjchen
     ximxim
     Yelve Yakut

@@ -5129,8 +5129,6 @@ confused Ijyb
 
 @The_monster@ screams @at_foe@, "Wand still stronger! You very nasty!"
 
-@The_monster@ wonders, "Where me metal friend go?"
-
 w:5
 @The_monster@ screams, "Science deserve better than this!"
 
@@ -7141,6 +7139,59 @@ VISUAL:@The_monster@ applauds @reflexive@.
 @The_monster@ says, "Show's over."
 ## END Sonja ##
 %%%%
+############ SPROZZ ### A coglin tinkerer with big plans about bees
+Sprozz
+{{
+  if spells.memorised("launch clockwork bee") then
+    return '@_Sprozz_thief_@'
+  else
+    return '@_Sprozz_common_@'
+  end
+}} @player_only@
+%%%%
+_Sprozz_thief_
+
+@The_monster@ shouts, "Patent thief! You won\'t get away with this!"
+
+@The_monster@ yells, "I thought of it first! Give it back!"
+
+@The_monster@ grumbles, "I\'ll bet your bee is still using copper gearwork!"
+
+@The_monster@ shouts, "Who\'s been selling my blueprints? Tell me!"
+%%%%
+_Sprozz_common_
+
+@The_monster@ says, "Allow me to demonstrate the bee of the future!"
+
+@The_monster@ says, "It makes honey *and* kills pests. Ingenious!"
+
+@The_monster@ says, "Clockwork honey contains at least 35% more iron! Nutritious."
+
+@The_monster@ says, "Chitin is about to be a thing of the past!"
+
+@The_monster@ grins. "Soon, every apiary\'s gonna want a piece of Sprozz!"
+
+@The_monster@ says, "I need a test subject for my new stingers. I volunteer you."
+
+@The_monster@ says, "Tell me how much this hurts, okay? I need more data."
+
+@The_monster@ mumbles, "Perhaps it could use a bit more zinc in the wings...."
+
+@The_monster@ mutters, "Next time I\'m using spur gears. Less buzzing."
+
+@The_monster@ mumbles, "Pollen collection still 41% less efficient. Must improve."
+
+@The_monster@ mumbles, "Nectar collection still 37% less efficient. Must improve."
+%%%%
+Sprozz triumphant
+{{
+  if spells.memorised("launch clockwork bee") then
+    return '@The_monster@ shouts, "I *knew* mine was better!"'
+  else
+    return '@The_monster@ says, "Progress like this can\'t be stopped by anyone!"'
+  end
+}}
+%%%%
 ############ TERENCE ### A retired veteran who hates being disturbed
 Terence
 
@@ -7367,7 +7418,7 @@ _Wiglaf_common_
 
 @The_monster@ says @to_foe@, "I'll gie ye a proper bath in magma."
 
-@The_monster@ shouts @at@ @foe@, "By thae beards o' ma forefathars, ye wilnae live tae see tha morn'!"
+@The_monster@ shouts @at_foe@, "By thae beards o' ma forefathars, ye wilnae live tae see tha morn'!"
 
 @The_monster@ says, "I got whit I came for, but wha passes up a proper rammy?"
 
@@ -7654,6 +7705,47 @@ VISUAL:@The_monster@ rams the @surface@ with @possessive@ head heavily.
 @The_monster@ breathes in.
 
 @The_monster@ snuffles in challenge.
+%%%%
+################## Cognitogaunt ############################
+# Any new lines shouldn't actually try to transcribe their speech.
+cognitogaunt
+
+VISUAL:@The_monster@ shines with the incandescence of long-dead nights.
+
+w:20
+@The_monster@ grumbles constantly over the stars not yet being right.
+
+@The_monster@ mumbles about the follies of mortal constellations.
+
+@The_monster@ mutters ill rumours of the current state of the heavens.
+
+@The_monster@ muses over how flesh is wasted on mortals.
+
+@The_monster@ marvels to itself over the thinness of mortal minds.
+
+@The_monster@ mocks the topics of the next astral concord.
+
+w:1
+@The_monster@ writhes with frustration over not yet finding solutions for supernovas.
+
+@The_monster@ growls that the stars belong to nobody but the stars.
+
+@The_monster@ gripes about being made of rot and starlight.
+
+# Douglas Adams
+@The_monster@ grouses that life is wasted on the living.
+%%%%
+silenced cognitogaunt
+
+VISUAL:@The_monster@ shines with the incandescence of long-dead nights.
+%%%%
+friendly cognitogaunt
+
+@cognitogaunt@
+%%%%
+confused cognitogaunt
+
+__NONE
 %%%%
 ################## Crystal guardian ###########################
 crystal guardian
@@ -7943,6 +8035,7 @@ friendly protean progenitor
 
 w:30
 __NONE
+%%%%
 ################## Reaper ##################################
 # The reaper has come for you!
 reaper
@@ -9095,6 +9188,9 @@ w:5
 
 w:5
 @The_monster@ fumbles a card and drops it. "Whoops!"
+
+w:1
+@The_monster@ says, "I wanted to be a wyvern-rider, but @my_God@ had other plans!"
 %%%%
 # Cards not from any Nemelex deck
 _misplaced_card_

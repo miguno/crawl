@@ -3971,6 +3971,10 @@ mons_list::mons_spec_slot mons_list::parse_mons_spec(string spec)
         if (mspec.hd == TAG_UNFOUND)
             mspec.hd = 0;
 
+        mspec.exp = strip_number_tag(mon_str, "exp:");
+        if (mspec.exp == TAG_UNFOUND)
+            mspec.exp = 0;
+
         mspec.hp = strip_number_tag(mon_str, "hp:");
         if (mspec.hp == TAG_UNFOUND)
             mspec.hp = 0;
@@ -4401,7 +4405,7 @@ void mons_list::get_zombie_type(string s, mons_spec &spec) const
             return;
         break;
     case MONS_SKELETON:
-        if (!mons_skeleton(spec.monbase))
+        if (!mons_has_skeleton(spec.monbase))
             break;
         // fallthrough to MONS_ZOMBIE
     case MONS_ZOMBIE:
@@ -4636,6 +4640,7 @@ static int _mutant_beast_xl(const string &tier)
 
 mons_spec mons_list::mons_by_name(string name) const
 {
+    name = lowercase(name);
     name = replace_all_of(name, "_", " ");
     name = replace_all(name, "random", "any");
 
@@ -5120,7 +5125,7 @@ int item_list::parse_acquirement_source(const string &source)
 
 bool item_list::monster_corpse_is_valid(monster_type *mons,
                                         const string &name,
-                                        bool skeleton)
+                                        bool need_skeleton)
 {
     if (*mons == RANDOM_NONBASE_DRACONIAN)
     {
@@ -5141,7 +5146,7 @@ bool item_list::monster_corpse_is_valid(monster_type *mons,
         return false;
     }
 
-    if (skeleton && !mons_skeleton(*mons))
+    if (need_skeleton && !mons_has_skeleton(*mons))
     {
         error = make_stringf("'%s' has no skeleton", name.c_str());
         return false;

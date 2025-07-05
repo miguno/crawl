@@ -90,11 +90,6 @@ static monster* _place_pghost_aux(const mgen_data &mg, const monster *leader,
 
 static int _fill_apostle_band(monster& mons, monster_type* band);
 
-static bool _hab_requires_mon_flight(dungeon_feature_type g)
-{
-    return g == DNGN_LAVA || g == DNGN_DEEP_WATER;
-}
-
 static bool _habitable_feat(habitat_type ht, dungeon_feature_type feat)
 {
     if ((ht & HT_MALIGN_GATEWAY) && feat == DNGN_MALIGN_GATEWAY)
@@ -122,6 +117,24 @@ static bool _habitable_feat(habitat_type ht, dungeon_feature_type feat)
 }
 
 /**
+* What dungoen features can have it least one of the monster types on them?
+*
+* @param mon_types the list of monster types to check.
+* @return the set of dungeon features that can hold at least one of the
+*         moster types.
+*/
+habitat_type habitat_for_any(const vector<monster_type>& mon_types)
+{
+    habitat_type features = HT_NONE;
+    for (std::size_t i = 0; i < mon_types.size(); ++i)
+    {
+        habitat_type feat = mons_class_habitat(mon_types[i]);
+        features = (habitat_type)(features | feat);
+    }
+    return features;
+}
+
+/**
  * Can this monster survive on a given feature?
  *
  * @param mon         the monster to be checked.
@@ -131,10 +144,7 @@ static bool _habitable_feat(habitat_type ht, dungeon_feature_type feat)
  */
 bool monster_habitable_feat(const monster* mon, dungeon_feature_type feat)
 {
-    habitat_type ht = mons_habitat(*mon);
-
-    bool type_safe = _habitable_feat(ht, feat);
-    return type_safe || (_hab_requires_mon_flight(feat) && mon->airborne());
+    return _habitable_feat(mons_habitat(*mon), feat);
 }
 
 /**
@@ -145,11 +155,7 @@ bool monster_habitable_feat(const monster* mon, dungeon_feature_type feat)
  */
 bool monster_habitable_feat(monster_type mt, dungeon_feature_type feat)
 {
-    habitat_type ht = mons_class_habitat(mt);
-    if (mons_class_flag(mt, M_FLIES))
-        ht = (habitat_type)(ht | HT_FLYER);
-
-    return _habitable_feat(ht, feat);
+    return _habitable_feat(mons_class_habitat(mt), feat);
 }
 
 bool monster_habitable_grid(const monster* mon, const coord_def& pos)
@@ -264,7 +270,8 @@ void spawn_random_monsters()
 
     // Orb spawns. Don't generate orb spawns in Abyss to show some mercy to
     // players that get banished there on the orb run.
-    if (player_on_orb_run() && !player_in_branch(BRANCH_ABYSS))
+    if (player_on_orb_run() && !player_in_branch(BRANCH_ABYSS)
+        && !player_in_branch(BRANCH_ARENA))
     {
         mg.proximity = PROX_CLOSE_TO_PLAYER;
         mg.foe = MHITYOU;
@@ -462,6 +469,11 @@ monster_type resolve_monster_type(monster_type mon_type,
 monster_type fixup_zombie_type(const monster_type cls,
                                const monster_type base_type)
 {
+    // Don't let spectral kraken leave the water. (But flying ones are allowed
+    // to fly free.)
+    if (base_type == MONS_KRAKEN && cls == MONS_SIMULACRUM)
+        return base_type;
+
     // Yredelemnul's bound souls and spectrals can fly - they aren't bound by
     // their old flesh. Simulacra naturally float. Other zombies have the same
     // habitat they had in life.
@@ -474,7 +486,7 @@ monster_type fixup_zombie_type(const monster_type cls,
     }
     // For generation purposes, don't treat simulacra of lava enemies as
     // being able to place on lava.
-    if (mons_class_habitat(base_type) & HT_LAVA)
+    if (mons_class_habitat(base_type, true) & HT_LAVA)
         return cls;
     return base_type;
 }
@@ -981,6 +993,11 @@ static monster* _place_monster_aux(const mgen_data &mg, const monster *leader,
             ztype = pick_local_zombifiable_monster(place, mg.cls, fpos);
 
         define_zombie(mon, ztype, mg.cls);
+
+        if (!mg.mname.empty())
+            name_zombie(*mon, ztype, mg.mname);
+        else if (mons_is_unique(ztype))
+            name_zombie(*mon, ztype, mons_type_name(ztype, DESC_THE));
     }
     else
         define_monster(*mon, mg.behaviour == BEH_FRIENDLY
@@ -1076,6 +1093,9 @@ static monster* _place_monster_aux(const mgen_data &mg, const monster *leader,
         mon->hit_points = mg.hp;
         mon->props[KNOWN_MAX_HP_KEY] = mg.hp;
     }
+
+    if (mg.exp != 0)
+        mon->exp = mg.exp;
 
     if (!crawl_state.game_is_arena())
     {
@@ -1464,22 +1484,19 @@ static monster* _place_pghost_aux(const mgen_data &mg, const monster *leader,
 static bool _good_zombie(monster_type base, monster_type cs,
                          const coord_def& pos)
 {
+    // If skeleton, monster must have a skeleton.
+    if (cs == MONS_SKELETON && !mons_has_skeleton(base))
+        return false;
+
+    // If zombie, monster must have a corpse.
+    if (cs == MONS_ZOMBIE && !mons_class_can_be_zombified(base))
+        return false;
+
     base = fixup_zombie_type(cs, base);
 
     // Actually pick a monster that is happy where we want to put it.
     // Fish zombies on land are helpless and uncool.
     if (in_bounds(pos) && !monster_habitable_grid(base, pos))
-        return false;
-
-    if (cs == MONS_NO_MONSTER)
-        return true;
-
-    // If skeleton, monster must have a skeleton.
-    if (cs == MONS_SKELETON && !mons_skeleton(base))
-        return false;
-
-    // If zombie, monster must have a corpse.
-    if (cs == MONS_ZOMBIE && !mons_class_can_be_zombified(base))
         return false;
 
     return true;
@@ -1593,17 +1610,6 @@ void roll_zombie_hp(monster* mon)
 
 void define_zombie(monster* mon, monster_type ztype, monster_type cs)
 {
-#if TAG_MAJOR_VERSION == 34
-    // Upgrading monster enums is a losing battle, they sneak through too many
-    // channels, like env props, etc. So convert them on placement, too.
-    if (cs == MONS_ZOMBIE_SMALL || cs == MONS_ZOMBIE_LARGE)
-        cs = MONS_ZOMBIE;
-    if (cs == MONS_SKELETON_SMALL || cs == MONS_SKELETON_LARGE)
-        cs = MONS_SKELETON;
-    if (cs == MONS_SIMULACRUM_SMALL || cs == MONS_SIMULACRUM_LARGE)
-        cs = MONS_SIMULACRUM;
-#endif
-
     ASSERT(ztype != MONS_NO_MONSTER);
     ASSERT(!invalid_monster_type(ztype));
     ASSERT(mons_class_is_zombified(cs));
@@ -1735,6 +1741,7 @@ static const map<monster_type, band_set> bands_by_leader = {
     { MONS_YAK,             { {}, {{ BAND_YAKS, {2, 6} }}}},
     { MONS_VERY_UGLY_THING, { {0, 19}, {{ BAND_VERY_UGLY_THINGS, {2, 6} }}}},
     { MONS_UGLY_THING,      { {0, 13}, {{ BAND_UGLY_THINGS, {2, 6} }}}},
+    { MONS_KOBOLD_FLESHCRAFTER, { {}, {{ BAND_FLESHCRAFT, {3, 4} }}}},
     { MONS_HELL_HOUND,      { {}, {{ BAND_HELL_HOUNDS, {2, 5} }}}},
     { MONS_JACKAL,          { {}, {{ BAND_JACKALS, {1, 4} }}}},
     { MONS_HELL_KNIGHT,     { {}, {{ BAND_HELL_KNIGHTS, {4, 8} }}}},
@@ -1805,6 +1812,7 @@ static const map<monster_type, band_set> bands_by_leader = {
                                   {{ BAND_JELLYFISH, {1, 3} }}}},
     { MONS_POLYPHEMUS,      { {}, {{ BAND_POLYPHEMUS, {3, 6}, true }}}},
     { MONS_HARPY,           { {}, {{ BAND_HARPIES, {2, 5} }}}},
+    { MONS_CHONCHON,        { {2}, {{ BAND_CHONCHON, {2, 3} }}}},
     { MONS_SALTLING,        { {}, {{ BAND_SALTLINGS, {2, 4} }}}},
     { MONS_PEACEKEEPER,     { { 0, 0, []() {
         return player_in_branch(BRANCH_VAULTS); }},
@@ -1841,8 +1849,6 @@ static const map<monster_type, band_set> bands_by_leader = {
     { MONS_ELEPHANT,        { {}, {{ BAND_ELEPHANT, {2, 6} }}}},
     { MONS_REDBACK,         { {}, {{ BAND_REDBACK, {1, 5} }}}},
     { MONS_CULICIVORA,      { {}, {{ BAND_MIXED_SPIDERS, {1, 4} }}}},
-    { MONS_ENTROPY_WEAVER,  { {0, 0, [](){ return !player_in_branch(BRANCH_PANDEMONIUM); }},
-                                         {{ BAND_REDBACK, {1, 4} }}}},
     { MONS_PHARAOH_ANT,     { {}, {{ BAND_MIXED_SPIDERS, {1, 3} }}}},
     { MONS_JOROGUMO,        { {0, 0, [](){ return !player_in_branch(BRANCH_PANDEMONIUM); }},
                                          {{ BAND_MIXED_SPIDERS, {1, 3}, true }}}},
@@ -1913,7 +1919,7 @@ static const map<monster_type, band_set> bands_by_leader = {
     }},                            {{ BAND_DIRE_ELEPHANTS, {2, 4} }}}},
     { MONS_ARCANIST,  { {0, 0, []() {
         return player_in_branch(BRANCH_VAULTS);
-    }},                            {{ BAND_UGLY_THINGS, {2, 4}, true }}}},
+    }},                            {{ BAND_CAGES, {1, 3}, true }}}},
     { MONS_WENDIGO, { {}, {{ BAND_SIMULACRA, {2, 6} }}}},
     { MONS_JOSEPHINA, { {}, {{ BAND_SIMULACRA, {4, 6}, true }}}},
     { MONS_BONE_DRAGON, { {0, 0, []() { return player_in_hell(); }},
@@ -2018,8 +2024,7 @@ static band_type _choose_band(monster_type mon_type, int *band_size_p,
 
     case MONS_SAINT_ROKA:
         if (player_in_branch(BRANCH_VAULTS) ||
-            player_in_branch(BRANCH_DEPTHS) ||
-            player_in_branch(BRANCH_CRYPT))
+            player_in_branch(BRANCH_DEPTHS))
         {
             band = BAND_LATE_ROKA;
             band_size = random_range(5, 7);
@@ -2110,6 +2115,19 @@ static band_type _choose_band(monster_type mon_type, int *band_size_p,
          }
          break;
 
+    case MONS_ENTROPY_WEAVER:
+        if (player_in_branch(BRANCH_VAULTS))
+        {
+            band = BAND_IRONBOUND_MECHANISTS;
+            band_size = 1 + x_chance_in_y(you.depth, 8);
+        }
+        else if (!player_in_branch(BRANCH_PANDEMONIUM))
+        {
+            band = BAND_REDBACK;
+            band_size = random_range(1, 4);
+        }
+        break;
+
     case MONS_PROTEAN_PROGENITOR:
     case MONS_THERMIC_DYNAMO:
         if (x_chance_in_y(2, 3))
@@ -2151,6 +2169,7 @@ typedef vector<pair<monster_type, int>> member_possibilities;
 static const map<band_type, vector<member_possibilities>> band_membership = {
     { BAND_HOGS,                {{{MONS_HOG, 1}}}},
     { BAND_YAKS,                {{{MONS_YAK, 1}}}},
+    { BAND_CAGES,               {{{MONS_CRAWLING_FLESH_CAGE, 1}}}},
     { BAND_FAUNS,               {{{MONS_FAUN, 1}}}},
     { BAND_OGRES,               {{{MONS_OGRE, 1}}}},
     { BAND_WOLVES,              {{{MONS_WOLF, 1}}}},
@@ -2169,6 +2188,7 @@ static const map<band_type, vector<member_possibilities>> band_membership = {
     { BAND_YAKTAURS,            {{{MONS_YAKTAUR, 1}}}},
     { BAND_MERFOLK_IMPALER,     {{{MONS_MERFOLK, 1}}}},
     { BAND_MERFOLK_JAVELINEER,  {{{MONS_MERFOLK, 1}}}},
+    { BAND_CHONCHON,            {{{MONS_CHONCHON, 1}}}},
     { BAND_ELEPHANT,            {{{MONS_ELEPHANT, 1}}}},
     { BAND_SPHINXES,            {{{MONS_GUARDIAN_SPHINX, 1}}}},
     { BAND_FIRE_BATS,           {{{MONS_FIRE_BAT, 1}}}},
@@ -2247,6 +2267,14 @@ static const map<band_type, vector<member_possibilities>> band_membership = {
                                   {MONS_SIMULACRUM, 1}}}},
     { BAND_HELL_KNIGHTS,        {{{MONS_HELL_KNIGHT, 3},
                                   {MONS_NECROMANCER, 1}}}},
+
+    { BAND_FLESHCRAFT,          {{{MONS_KOBOLD_FLESHCRAFTER, 1},
+                                  {MONS_VERY_UGLY_THING, 2}},
+
+                                 {{MONS_UGLY_THING, 1},
+                                  {MONS_VERY_UGLY_THING, 1}},
+
+                                 {{MONS_VERY_UGLY_THING, 1}}}},
 
     { BAND_MARGERY,             {{{MONS_HELLEPHANT, 4},
                                   {MONS_SEARING_WRETCH, 3}},
@@ -2368,6 +2396,8 @@ static const map<band_type, vector<member_possibilities>> band_membership = {
                                  {MONS_VAULT_GUARD, 4}},
 
                                 {{MONS_VAULT_GUARD, 1}}}},
+
+    { BAND_IRONBOUND_MECHANISTS, {{{MONS_IRONBOUND_MECHANIST, 1}}}},
 
     { BAND_FAUN_PARTY,          {{{MONS_MERFOLK_SIREN, 1}},
 
@@ -2978,6 +3008,16 @@ monster* create_monster(mgen_data mg, bool fail_msg)
 {
     ASSERT(in_bounds(mg.pos)); // otherwise it's a guaranteed fail
 
+    // Resolve random monster types immediately, so that when we search for a
+    // tile to put them on, we know their actual habitat.
+    if (_is_random_monster(mg.cls))
+    {
+        mg.flags |= MG_PERMIT_BANDS;
+        mg.cls = resolve_monster_type(mg.cls, mg.base_type, mg.proximity,
+                                      &mg.pos, mg.map_mask, &mg.place,
+                                      nullptr, false);
+    }
+
     const monster_type montype = fixup_zombie_type(mg.cls, mg.base_type);
 
     monster *summd = 0;
@@ -3055,6 +3095,38 @@ bool find_habitable_spot_near(const coord_def& where, monster_type mon_type,
     }
 
     return good_count > 0;
+}
+
+bool you_can_see_habitable_spot_near(habitat_type habitat, int max_radius,
+                                     int exclude_radius)
+{
+    return you_can_see_habitable_spot_near(you.pos(), habitat, max_radius,
+                                           exclude_radius);
+}
+
+bool you_can_see_habitable_spot_near(coord_def pos, habitat_type habitat,
+                                     int max_radius, int exclude_radius)
+{
+    for (radius_iterator ri(pos, max_radius, C_SQUARE, exclude_radius >= 0);
+        ri; ++ri)
+    {
+        if (exclude_radius > 0 && grid_distance(pos, *ri) <= exclude_radius)
+            continue;
+
+        actor* blocking_actor = actor_at(*ri);
+        if (blocking_actor && blocking_actor->visible_to(&you))
+            continue;
+
+        if (!cell_see_cell(pos, *ri, LOS_NO_TRANS))
+            continue;
+
+        if (!_habitable_feat(habitat, env.grid(*ri)))
+            continue;
+
+        return true;
+    }
+
+    return false;
 }
 
 static void _get_vault_mon_list(vector<mons_spec> &list);

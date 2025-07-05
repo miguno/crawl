@@ -686,7 +686,7 @@ static colour_t _feat_default_map_colour(dungeon_feature_type feat)
 // Returns true if it succeeded.
 bool magic_mapping(int map_radius, int proportion, bool suppress_msg,
                    bool force, bool deterministic, bool full_info,
-                   bool range_falloff, coord_def origin)
+                   bool range_falloff, coord_def origin, bool respect_no_automap)
 {
     if (!force && !is_map_persistent())
     {
@@ -715,6 +715,10 @@ bool magic_mapping(int map_radius, int proportion, bool suppress_msg,
          ri; ++ri)
     {
         coord_def pos = *ri;
+
+        if (respect_no_automap && env.pgrid(pos) & FPROP_NO_AUTOMAP)
+            continue;
+
         if (range_falloff)
         {
             int threshold = proportion;
@@ -1721,7 +1725,7 @@ void draw_cell(screen_cell_t *cell, const coord_def &gc,
     {
         _draw_player(cell, gc, ep, anim_updates);
     }
-    else if (you.see_cell(gc) && you.on_current_level)
+    else if (you.see_cell(gc))
         _draw_los(cell, gc, ep, anim_updates);
     else
         _draw_outside_los(cell, gc, ep); // in los bounds but not visible

@@ -502,6 +502,7 @@ fountain_xom DNGN_FOUNTAIN_NOVELTY_XOM
 ##
 stone_smooth_beogh_0 STONE_SMOOTH_WALL_BEOGH
 stone_smooth_beogh_1
+gilded_reliquary DNGN_GILDED_RELIQUARY
 
 %sdir dngn/wall
 spike_launcher DNGN_SPIKE_LAUNCHER
@@ -681,6 +682,7 @@ volcano_portal DNGN_PORTAL_VOLCANO
 volcano_gone DNGN_PORTAL_VOLCANO_GONE
 volcano_exit DNGN_EXIT_VOLCANO
 sewer_portal DNGN_PORTAL_SEWER
+sewer_exit DNGN_EXIT_SEWER
 sewer_portal_rusted DNGN_PORTAL_SEWER_RUSTED
 ice_cave_portal DNGN_PORTAL_ICE_CAVE
 ice_cave_gone DNGN_PORTAL_ICE_CAVE_GONE
@@ -822,6 +824,8 @@ dry_fountain DNGN_DRY_FOUNTAIN
 %lum 0 45
 %repeat DNGN_DRY_FOUNTAIN DNGN_DRY_FOUNTAIN_WHITE
 %resetcol
+
+decorative_floor DNGN_DECORATIVE_FLOOR
 
 %weight 8
 cache_of_fruit_0 DNGN_CACHE_OF_FRUIT

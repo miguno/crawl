@@ -130,8 +130,11 @@ struct monsterentry
     monclass_flags_t bitfields;
     resists_t resists;
 
-    // Multiplier for calculated monster XP value; see exper_value() for use.
-    int8_t exp_mod;
+    // The monster's XP value.
+    int exp;
+    // If true, exp is a multiplier used to calculate their XP; see
+    // exp_value().
+    bool exp_is_mult;
 
     monster_type genus,         // "team" the monster plays for
                  species;       // corpse type of the monster
@@ -235,7 +238,7 @@ int mutant_beast_tier(int xl);
 
 int mons_avg_hp(monster_type mc, int scale = 1);
 int mons_max_hp(monster_type mc);
-int exper_value(const monster& mon, bool real = true, bool legacy = false);
+int exp_value(const monster& mon, bool real = true, bool legacy = false);
 
 int hit_points(int avg_hp, int scale = 10);
 
@@ -290,11 +293,11 @@ mon_intel_type mons_intel(const monster& mon);
 // Use mons_habitat() wherever possible, since the class variants do not
 // handle zombies correctly.
 habitat_type mons_habitat_type(monster_type t, monster_type base_t,
-                               bool real_amphibious = false);
-habitat_type mons_class_habitat(monster_type t, bool real_amphibious = false);
-habitat_type mons_habitat(const monster& mon, bool real_amphibious = false);
+                               bool core_only = false);
+habitat_type mons_class_habitat(monster_type t, bool core_only = false);
+habitat_type mons_habitat(const monster& mon, bool core_only = false);
 
-bool mons_skeleton(monster_type mc);
+bool mons_has_skeleton(monster_type mc);
 
 int max_corpse_chunks(monster_type mc);
 int mons_class_base_speed(monster_type mc);
@@ -418,6 +421,7 @@ bool mons_class_is_stationary(monster_type mc);
 bool mons_class_is_firewood(monster_type mc);
 bool mons_class_is_peripheral(monster_type mc);
 bool mons_class_is_test(monster_type mc);
+bool mons_class_angered_by_attacks(monster_type mc);
 bool mons_is_active_ballisto(const monster& mon);
 bool mons_has_body(const monster& mon);
 bool mons_is_abyssal_only(monster_type mc);

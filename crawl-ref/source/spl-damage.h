@@ -63,7 +63,7 @@ spret cast_ignite_poison(actor *agent, int pow, bool fail,
 spret cast_unravelling(coord_def target, int pow, bool fail);
 string mons_inner_flame_immune_reason(const monster *mons);
 spret cast_inner_flame(coord_def target, int pow, bool fail);
-int get_mercury_weaken_chance(int victim_hd, int pow);
+int get_mercury_weaken_chance(int victim_hd);
 dice_def poisonous_vapours_damage(int pow, bool random);
 spret cast_poisonous_vapours(const actor& agent, int pow, const coord_def target, bool fail);
 bool safe_discharge(coord_def where, bool check_only = false,
@@ -82,6 +82,7 @@ spret cast_plasma_beam(int pow, const actor &agent, bool fail);
 vector<coord_def> plasma_beam_targets(const actor &agent, int pow, bool actual);
 vector<coord_def> plasma_beam_paths(coord_def source, const vector<coord_def> &targets);
 dice_def base_fragmentation_damage(int pow, bool random);
+bool monster_type_is_fraggable(monster_type mc);
 bool setup_fragmentation_beam(bolt &beam, int pow, const actor *caster,
                               const coord_def target, bool quiet,
                               const char **what, bool &hole);
@@ -160,6 +161,7 @@ vector<coord_def> find_near_hostiles(int range, bool affect_invis,
 int siphon_essence_range();
 bool siphon_essence_affects(const monster &m);
 
+dice_def jinxbite_damage(int pow, bool random);
 void attempt_jinxbite_hit(actor& victim);
 dice_def boulder_damage(int pow, bool random);
 void do_boulder_impact(monster& boulder, actor& victim, bool quiet = false);

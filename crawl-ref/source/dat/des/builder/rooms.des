@@ -118,7 +118,7 @@ function sroom_beehive(e)
 
     e.kitem('1 = black bear skeleton / \
                  potion of ambrosia pre_id / nothing w:20')
-    e.kitem('2M = potion of ambrosia pre_id / nothing w:25')
+    e.kitem('2M = potion of ambrosia pre_id / hive talisman / nothing w:15')
     -- FIXME: layout_roguey's special room placements ignore vault definitions
     -- decorative_floor(e, '2M', "flower patch")
 end
@@ -256,15 +256,15 @@ function sroom_mythical_zoo(e)
     if you.in_branch("Elf") then
         Z = Z + 5
     elseif you.in_branch("Lair") then
-        Z = Z - 2
+        Z = Z - 4
     end
 
     local mons = {}
-    mons[1] = "rime drake w:" .. math.max(38 - Z * 2, 1)
-    mons[2] = "basilisk w:" .. math.max(38 - Z * 2, 1)
-    mons[3] = "wyvern w:" .. math.max(44 - Z * 2, 1)
-    mons[4] = "hell rat w:" .. math.max(44 - Z * 2, 1)
-    mons[5] = "hell hound w:" .. math.max(Z - 11, 1)
+    mons[1] = "wyvern w:" .. math.max(40 - Z * 2, 1)
+    mons[3] = "basilisk w:" .. math.max(40 - Z * 2, 1)
+    mons[2] = "rime drake w:" .. math.max(44 - Z * 2, 1)
+    mons[5] = "hell hound w:" .. math.max(Z - 10, 1)
+    mons[4] = "hippogriff w:" .. math.max(Z - 12, 1)
     mons[6] = "hydra w:" .. math.max(Z * 2 - 26, 1)
 
     if Z >= 16 then
@@ -273,7 +273,7 @@ function sroom_mythical_zoo(e)
     end
     if Z >= 19 then
         mons[9] = "fire dragon w:" .. (Z * 2 - 37)
-        mons[10] = "sphinx marauder w:" .. (Z - 16)
+        mons[10] = "sphinx marauder w:" .. (Z - 18)
     end
 
     if Z >= 21 then
@@ -286,8 +286,16 @@ function sroom_mythical_zoo(e)
 
     fill_special_room(e, mons, lord_mon, true)
 
-    e.kitem('2 = gold good_item w:' .. Z - 7 .. ' / gold w:' .. Z + 7 .. ', ' ..
-            'box of beasts w:3 / nothing w:17')
+    it = 'gold good_item w:' .. Z - 7 .. ' / gold w:' .. Z + 7 .. ', ' ..
+         'lupine talisman w:6 / animal skin randart w:7'
+
+    if items.pickable("box of beasts") then
+        it = it .. " / box of beasts w:6"
+    end
+
+    e.kitem('2 = ' .. it)
+    e.kitem('? = mundane animal skin')
+    e.nsubst('. = 2:?')
 end
 
 function sroom_magic_class(e)
@@ -296,7 +304,7 @@ function sroom_magic_class(e)
     if e.is_validating() then return end
 
     local mons = {}
-    mons[1] = "ogre mage w:7"
+    mons[1] = "kobold fleshcrafter w:6"
     mons[2] = "deep elf annihilator w:6"
     mons[3] = "deep troll earth mage w:5"
     mons[4] = "vampire knight w:5"
@@ -309,10 +317,11 @@ function sroom_magic_class(e)
     mons[11] = "deep elf demonologist w:2"
     mons[12] = "deep elf elementalist w:1"
     mons[13] = "vampire mage w:1"
+    mons[14] = "chonchon w:1"
 
     local absdepth = you.absdepth()
     if absdepth == 27 then
-        mons[14] = "draconian annihilator w:5"
+        mons[15] = "draconian annihilator w:5"
         lord_mon = "draconian shifter / ancient lich / Jory w:1 / " ..
                    "Frederick w:1 / Boris w:1, draconian shifter / " ..
                    "ancient lich / dread lich"
@@ -325,7 +334,7 @@ function sroom_magic_class(e)
 
     fill_special_room(e, mons, lord_mon, true)
 
-    e.kitem('2 = any randbook')
+    e.kitem('2 = any randbook, any randbook / any magical staff randart')
 
 end
 

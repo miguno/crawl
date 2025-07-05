@@ -2711,7 +2711,7 @@ void beogh_blood_for_blood_tick(int delay)
     if (count * 3 <= max)
         rate *= 2;
 
-    int num_to_summon = div_rand_round(rate, delay * 5);
+    int num_to_summon = div_rand_round(rate * delay, 500);
 
     for (int i = 0; i < num_to_summon; ++i)
         _place_orcish_reinforcement();
@@ -2841,6 +2841,14 @@ void beogh_increase_orcification()
 
         case SP_MUMMY:
             msg += "A small pair of tusks begins to pierce through your wrappings.";
+            break;
+
+        case SP_POLTERGEIST:
+            msg += "A small pair of spectral tusks begins to grow in your mouth.";
+            break;
+
+        case SP_REVENANT:
+            msg += "A small pair of tusks begins to sprout from your jawbone.";
             break;
 
         case SP_BARACHI:
@@ -6527,8 +6535,6 @@ spret wu_jian_wall_jump_ability()
         return spret::abort;
     }
 
-    you.stop_being_constricted(false, "jump");
-
     // query for location:
     dist beam;
 
@@ -6569,6 +6575,8 @@ spret wu_jian_wall_jump_ability()
 
     if (!wu_jian_do_wall_jump(beam.target))
         return spret::abort;
+
+    you.stop_being_constricted(false, "jump");
 
     crawl_state.cancel_cmd_again();
     crawl_state.cancel_cmd_repeat();
@@ -7200,6 +7208,9 @@ spret makhleb_infernal_legion(bool fail)
         mpr("You are already unleashing the legions of chaos!");
         return spret::abort;
     }
+
+    if (stop_summoning_prompt())
+        return spret::abort;
 
     fail_check();
     mpr("You carve a gateway into yourself and beckon forth the legions of chaos!");

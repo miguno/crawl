@@ -583,7 +583,8 @@ public:
     string shout_verb(bool directed = false) const;
     int shout_volume() const;
 
-    int base_ac_from(const item_def &armour, int scale = 1) const;
+    int base_ac_from(const item_def &armour, int scale = 1,
+                     bool include_penalties = true) const;
 
     int corrosion_amount() const;
 
@@ -872,6 +873,9 @@ public:
     void preview_stats_without_specific_item(int scale, const item_def& item_to_remove,
                                              int *ac, int *ev, int *sh,
                                              FixedVector<int, MAX_KNOWN_SPELLS> *fail);
+    void preview_stats_in_specific_form(int scale, const item_def& talisman,
+                                        int *ac, int *ev, int *sh,
+                                        FixedVector<int, MAX_KNOWN_SPELLS> *fail);
 
     bool wearing_light_armour(bool with_skill = false) const;
     int  skill(skill_type skill, int scale = 1, bool real = false,
@@ -989,6 +993,8 @@ bool check_moveto_exclusion(const coord_def& p,
                             bool *prompted = nullptr);
 bool check_moveto_trap(const coord_def& p, const string &move_verb = "step",
         bool *prompted = nullptr);
+
+bool check_move_over(coord_def p, const string& move_verb);
 
 bool swap_check(monster* mons, coord_def &loc, bool quiet = false);
 

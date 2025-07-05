@@ -51,7 +51,6 @@
 
 using namespace ui;
 
-static bool _delete_single_mutation_level(mutation_type mutat, const string &reason, bool transient);
 static string _future_mutation_description(mutation_type mut, int levels);
 
 struct body_facet_def
@@ -664,13 +663,12 @@ static vector<pair<string,string>> _get_form_fakemuts()
     if (you.form == transformation::blade_hands
         && you_can_wear(SLOT_BODY_ARMOUR, false) != false)
     {
-        const int penalty_percent = form->get_base_ac_penalty(100);
+        const int penalty_percent = form->get_body_ac_mult();
         if (penalty_percent)
         {
             result.push_back({"blade armour",
                     _badmut(make_stringf("Your body armour is %s at protecting you.",
-                          penalty_percent == 100 ? "completely ineffective"
-                        : penalty_percent >=  70 ? "much less effective"
+                          penalty_percent >=  60 ? "much less effective"
                         : penalty_percent >=  30 ? "less effective"
                                                  : "slightly less effective"
             ))});
@@ -1084,9 +1082,9 @@ private:
         string extra = "";
         // TODO: also handle suppressed fakemuts
         if (_has_suppressed_muts())
-            extra += "<darkgrey>(())</darkgrey>: Completely suppressed.\n";
+            extra += "<darkgrey>()</darkgrey>: Suppressed.\n";
         if (_has_transient_muts())
-            extra += "<magenta>[]</magenta>   : Transient mutations.\n";
+            extra += "<magenta>[]</magenta>: Transient mutations.\n";
         if (has_future_muts)
             extra += "<darkgrey>[]</darkgrey>: Gained at a future XL.\n";
         set_more(extra);
@@ -1611,6 +1609,10 @@ bool mut_is_compatible(mutation_type mut, bool base_only)
             return false;
         }
 
+        // Only species that have innate fur can mutate more.
+        if (mut == MUT_SHAGGY_FUR && !you.has_innate_mutation(MUT_SHAGGY_FUR))
+            return false;
+
         // Formicids have stasis and so prevent mutations that would do nothing.
         if ((mut == MUT_BERSERK || mut == MUT_TELEPORT) && you.stasis())
             return false;
@@ -2077,9 +2079,9 @@ mutation_type concretize_mut(mutation_type mut,
  *
  * @return whether a mutation was deleted.
  */
-static bool _delete_single_mutation_level(mutation_type mutat,
-                                          const string &reason,
-                                          bool transient)
+bool _delete_single_mutation_level(mutation_type mutat,
+                                   const string &reason,
+                                   bool transient)
 {
     // are there some non-innate mutations to delete?
     if (you.get_base_mutation_level(mutat, false, true, true) == 0)
@@ -2590,6 +2592,13 @@ string mutation_desc(mutation_type mut, int level, bool colour,
         ostr << mdef.have[0] << stone_body_armour_bonus() / 100 << ")";
         result = ostr.str();
     }
+    else if (mut == MUT_PROTEAN_GRACE)
+    {
+        ostringstream ostr;
+        int num = protean_grace_amount();
+        ostr << mdef.have[0] << num << " EV, Slay +" << num << ")";
+        result = ostr.str();
+    }
     else if (mut == MUT_MP_WANDS && you.has_mutation(MUT_HP_CASTING))
         result = "You expend health (3 HP) to strengthen your wands.";
     else if (!ignore_player && mut == MUT_TENTACLE_ARMS)
@@ -2605,7 +2614,7 @@ string mutation_desc(mutation_type mut, int level, bool colour,
         result = mdef.have[level - 1];
 
     if (!ignore_player && !active)
-        result = "((" + result + "))";
+        result = "(" + result + ")";
 
     if (temporary)
         result = "[" + result + "]";
@@ -3225,4 +3234,16 @@ void set_evolution_mut_xp(bool malignant)
     // too quickly in the early game after big XP gains.
     you.attribute[ATTR_EVOL_XP] = _evolution_mut_xp(malignant);
     dprf("setting evol XP to %d", you.attribute[ATTR_EVOL_XP]);
+}
+
+int protean_grace_amount()
+{
+    int amount = you.how_mutated(false, false, true);
+
+    // A soft cap for Xom, Jiyva, and Demonspawn.
+    // XXX: rewrite _player_base_evasion_modifiers() to allow +0.5 EV bonuses?
+    if (amount > 7)
+        amount = 7 + floor((amount - 7) / 2);
+
+    return amount;
 }

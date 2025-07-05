@@ -2521,7 +2521,7 @@ struct coord_feat
         mask = env.level_map_mask(c) & ~(MMT_MIMIC);
         // Only copy "static" properties.
         prop = env.pgrid(c) & (FPROP_NO_CLOUD_GEN | FPROP_NO_TELE_INTO
-                               | FPROP_NO_TIDE);
+                               | FPROP_NO_TIDE | FPROP_NO_AUTOMAP);
     }
 };
 
@@ -3781,7 +3781,7 @@ static bool _place_vault_by_tag(const string &tag)
     return _build_secondary_vault(vault);
 }
 
-static bool _in_descent_parent(branch_type branch)
+bool in_descent_parent(branch_type branch)
 {
     vector<branch_type> parents = descent_parents(branch);
     for (branch_type parent : parents)
@@ -3850,7 +3850,7 @@ static void _place_branch_entrances(bool use_vaults)
         if (crawl_state.game_is_descent())
         {
             brentry_allowed = it->entry_stairs != NUM_FEATURES
-                && _in_descent_parent(it->id)
+                && in_descent_parent(it->id)
                 && it->id != you.props[DESCENT_WATER_BRANCH_KEY].get_int()
                 && it->id != you.props[DESCENT_POIS_BRANCH_KEY].get_int()
                 && at_branch_bottom();
@@ -4022,7 +4022,7 @@ static void _place_aquatic_in(vector<coord_def> &places, const vector<pop_entry>
             && mons_class_can_be_zombified(mg.cls))
         {
             mg.base_type = mg.cls;
-            const int skel_chance = mons_skeleton(mg.cls) ? 2 : 0;
+            const int skel_chance = mons_has_skeleton(mg.cls) ? 2 : 0;
             mg.cls = random_choose_weighted(skel_chance, MONS_SKELETON,
                                             8,           MONS_ZOMBIE,
                                             1,           MONS_SIMULACRUM);
@@ -4106,7 +4106,7 @@ static void _place_assorted_zombies()
         {
             z_base = zombifiable[random2(zombifiable.size())];
         }
-        while (skel && !mons_skeleton(z_base));
+        while (skel && !mons_has_skeleton(z_base));
 
         mgen_data mg;
         mg.cls = (skel ? MONS_SKELETON : MONS_ZOMBIE);
@@ -5257,6 +5257,7 @@ monster* dgn_place_monster(mons_spec &mspec, coord_def where,
     mg.mname     = mspec.monname;
     mg.hd        = mspec.hd;
     mg.hp        = mspec.hp;
+    mg.exp       = mspec.exp;
     mg.props     = mspec.props;
 
     if (mg.props.exists(MAP_KEY))

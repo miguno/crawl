@@ -324,6 +324,8 @@ int check_your_resists(int hurted, beam_type flavour, string source,
         {
             if (you.is_insubstantial() || you.is_amorphous())
                 mpr("The bolas passes through you!");
+            else if (you.unrand_equipped(UNRAND_SLICK_SLIPPERS))
+                mpr("You slip free of the bolas.");
             else
             {
                 you.set_duration(DUR_NO_MOMENTUM, random_range(4, 8), 0,
@@ -378,8 +380,7 @@ void expose_player_to_element(beam_type flavour, int strength, bool slow_cold_bl
     }
 
     if (you.form == transformation::aqua
-        && flavour == BEAM_COLD || flavour == BEAM_ICE
-        && coinflip())
+        && get_beam_resist_type(flavour) == BEAM_COLD && coinflip())
     {
         if (!you.duration[DUR_FROZEN])
             mpr("Your body starts to freeze solid!");

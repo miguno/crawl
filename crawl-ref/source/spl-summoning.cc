@@ -110,9 +110,83 @@ static mgen_data _pal_data(monster_type pal, int dur, spell_type spell,
     return _summon_data(you, pal, dur, spell, abjurable);
 }
 
+static bool _can_summon_any_of(const vector<monster_type>& mon_types,
+                               int max_radius = 2,
+                               int exclude_radius = 0,
+                               coord_def pos = you.pos())
+{
+    habitat_type habitat = habitat_for_any(mon_types);
+    return you_can_see_habitable_spot_near(pos, habitat, max_radius,
+                                           exclude_radius);
+}
+
+static bool _maybe_stop_summoning_prompt(const vector<monster_type>& types)
+{
+    // To save time, first check if there is any reason *any* monster might not
+    // want to be summoned right now.
+    if (stop_summoning_reason(MR_NO_FLAGS, M_NO_FLAGS).empty())
+        return false;
+
+    // There is, so let's check if any of *these* monsters might care.
+    // (We start by assuming the most well-insulated result, and subtract it
+    // by the resist/flying of any monster that can get angry.)
+    bool mon_cares = false;
+    resists_t resists = MR_RES_POISON;
+    monclass_flags_t flags = M_FLIES;
+    for (monster_type type : types)
+    {
+        if (mons_class_angered_by_attacks(type))
+        {
+            mon_cares = true;
+            if (get_resist(get_mons_class_resists(type), MR_RES_POISON) <= 0)
+                resists &= 0;
+            if (!monster_class_flies(type))
+                flags &= M_NO_FLAGS;
+        }
+    }
+
+    if (!mon_cares)
+        return false;
+
+    if (mon_cares)
+        return stop_summoning_prompt(resists, flags);
+    else
+        return false;
+}
+
+// Check whether there is room to summon one of the given types of monsters,
+// within the given placement range, and also whether the player actually wants
+// to do that if they're maintaining a damage aura that could abjure a monster
+// created.
+//
+// Returns true if the action should be aborted.
+bool player_summon_check(const vector<monster_type>& types, int max_range,
+                         int exclude_range, coord_def pos)
+{
+    // First, make sure there's enough room to place at least one of the types of
+    // monsters we've been given.
+    if (!_can_summon_any_of(types, max_range, exclude_range, pos.origin() ? you.pos() : pos))
+    {
+        mpr("There is no available space!");
+        return false;
+    }
+
+    // Then check if any of these monsters could care about being damaged by
+    // the player and abort if the player says so.
+    if (_maybe_stop_summoning_prompt(types))
+        return false;
+
+    return true;
+}
+
+bool player_summon_check(monster_type type, int max_range, int exclude_range, coord_def pos)
+{
+    return player_summon_check(vector<monster_type>{type}, max_range, exclude_range, pos);
+}
+
 spret cast_summon_small_mammal(int pow, bool fail)
 {
-    if (stop_summoning_prompt())
+    if (!player_summon_check({MONS_BAT, MONS_RAT, MONS_QUOKKA}))
         return spret::abort;
 
     fail_check();
@@ -124,7 +198,12 @@ spret cast_summon_small_mammal(int pow, bool fail)
     else
         mon = MONS_QUOKKA;
 
-    if (!create_monster(_pal_data(mon, summ_dur(3), SPELL_SUMMON_SMALL_MAMMAL)))
+    if (monster* mons = create_monster(_pal_data(mon, summ_dur(3), SPELL_SUMMON_SMALL_MAMMAL)))
+    {
+        if (you.can_see(*mons))
+            mprf("%s appears in a puff of smoke.", mons->name(DESC_A).c_str());
+    }
+    else
         canned_msg(MSG_NOTHING_HAPPENS);
 
     return spret::success;
@@ -153,7 +232,7 @@ spret cast_call_canine_familiar(int pow, bool fail)
     // been summoned.
     monster *old_dog = find_canine_familiar();
 
-    if (!old_dog && stop_summoning_prompt())
+    if (!old_dog && !player_summon_check(MONS_INUGAMI))
         return spret::abort;
 
     if (old_dog && !you.can_see(*old_dog))
@@ -212,14 +291,20 @@ spret cast_call_canine_familiar(int pow, bool fail)
 
 spret cast_summon_cactus(int pow, bool fail)
 {
-    if (stop_summoning_prompt(MR_RES_POISON))
+    if (!player_summon_check(MONS_CACTUS_GIANT))
         return spret::abort;
 
     fail_check();
 
     mgen_data mg = _pal_data(MONS_CACTUS_GIANT, summ_dur(3), SPELL_SUMMON_CACTUS);
     mg.hp = hit_points(pow + 27, 1);
-    if (!create_monster(mg))
+    if (monster* mons = create_monster(mg))
+    {
+        if (you.can_see(*mons))
+            mpr("A prickly colossus appears in a rush of desert wind.");
+    }
+
+    else
         canned_msg(MSG_NOTHING_HAPPENS);
 
     return spret::success;
@@ -234,6 +319,9 @@ spret cast_awaken_armour(int pow, bool fail)
         mpr("You aren't wearing any armour!");
         return spret::abort;
     }
+
+    if (!player_summon_check(MONS_ARMOUR_ECHO))
+        return spret::abort;
 
     int mitm_slot = get_mitm_slot(10);
     if (mitm_slot == NON_ITEM)
@@ -267,11 +355,9 @@ spret cast_awaken_armour(int pow, bool fail)
     return spret::success;
 }
 
-
-
 spret cast_summon_ice_beast(int pow, bool fail)
 {
-    if (stop_summoning_prompt(MR_RES_POISON))
+    if (!player_summon_check(MONS_ICE_BEAST))
         return spret::abort;
 
     fail_check();
@@ -287,16 +373,12 @@ spret cast_summon_ice_beast(int pow, bool fail)
     return spret::success;
 }
 
-spret cast_monstrous_menagerie(actor* caster, int pow, bool fail)
+spret cast_monstrous_menagerie(monster* caster, int pow)
 {
-    if (caster->is_player() && stop_summoning_prompt())
-        return spret::abort;
-
-    fail_check();
     monster_type type = MONS_PROGRAM_BUG;
 
     if (random2(pow) > 60 && coinflip())
-        type = MONS_GUARDIAN_SPHINX;
+        type = MONS_SPHINX_MARAUDER;
     else
         type = coinflip() ? MONS_MANTICORE : MONS_LINDWURM;
 
@@ -323,9 +405,55 @@ spret cast_monstrous_menagerie(actor* caster, int pow, bool fail)
     return spret::success;
 }
 
+spret cast_sphinx_sisters(const actor& caster, int pow, bool fail)
+{
+    if (caster.is_player()
+        && !player_summon_check({MONS_GUARDIAN_SPHINX, MONS_SPHINX_MARAUDER}))
+    {
+        return spret::abort;
+    }
+
+    fail_check();
+
+    // Remove old sphinxes first, so that we can ensure getting one of each type.
+    for (monster_iterator mi; mi; ++mi)
+        if (mi->was_created_by(caster, SPELL_SPHINX_SISTERS))
+            monster_die(**mi, KILL_TIMEOUT, NON_MONSTER);
+
+    int dur = summ_dur(3);
+
+    mgen_data mdata = _summon_data(caster, MONS_SPHINX_MARAUDER, dur,
+                                                            SPELL_SPHINX_SISTERS);
+    if (caster.is_player())
+        mdata.hd = 11 + div_rand_round(pow, 25);
+
+    monster* marauder = create_monster(mdata);
+
+    mdata.cls = MONS_GUARDIAN_SPHINX;
+    if (caster.is_player())
+        mdata.hd += 5;
+    monster* guardian = create_monster(mdata);
+
+    if (marauder && guardian && you.can_see(*marauder) && you.can_see(*guardian))
+    {
+        mprf("A pair of sphinxes answers %s call!",
+                    caster.name(DESC_ITS).c_str());
+    }
+    else if (marauder && you.can_see(*marauder) || guardian && you.can_see(*guardian))
+    {
+        const monster* sphinx = marauder ? marauder : guardian;
+        mprf("%s answers %s call!", sphinx->name(DESC_A).c_str(),
+                                    caster.name(DESC_ITS).c_str());
+    }
+    else if (you.can_see(caster))
+        canned_msg(MSG_NOTHING_HAPPENS);
+
+    return spret::success;
+}
+
 spret cast_summon_hydra(actor *caster, int pow, bool fail)
 {
-    if (caster->is_player() && stop_summoning_prompt(MR_RES_POISON))
+    if (caster->is_player() && !player_summon_check(MONS_HYDRA))
         return spret::abort;
 
     fail_check();
@@ -370,7 +498,7 @@ static monster_type _choose_dragon_type(int pow, bool player)
 
 spret cast_dragon_call(int pow, bool fail)
 {
-    if (stop_summoning_prompt(MR_NO_FLAGS, M_FLIES, "call dragons"))
+    if (stop_summoning_prompt(MR_NO_FLAGS, M_FLIES))
         return spret::abort;
 
     fail_check();
@@ -544,7 +672,7 @@ spret cast_summon_dragon(actor *caster, int pow, bool fail)
 
 spret cast_summon_mana_viper(int pow, bool fail)
 {
-    if (stop_summoning_prompt(MR_RES_POISON))
+    if (!player_summon_check(MONS_MANA_VIPER))
         return spret::abort;
 
     fail_check();
@@ -634,6 +762,26 @@ bool summon_berserker(int pow, actor *caster, monster_type override_mons)
     return true;
 }
 
+spret cast_summon_berserker(int pow, bool fail)
+{
+    static const vector<monster_type> types = { MONS_BLACK_BEAR,
+                                                MONS_POLAR_BEAR,
+                                                MONS_TWO_HEADED_OGRE,
+                                                MONS_OGRE,
+                                                MONS_TROLL,
+                                                MONS_DEEP_TROLL,
+                                                MONS_IRON_TROLL,
+                                                MONS_CYCLOPS,
+                                                MONS_STONE_GIANT };
+    if (!player_summon_check(types))
+        return spret::abort;
+
+    fail_check();
+
+    summon_berserker(pow, &you);
+    return spret::success;
+}
+
 // Not a spell. Rather, this is TSO's doing.
 bool summon_holy_warrior(int pow, bool punish)
 {
@@ -660,6 +808,17 @@ bool summon_holy_warrior(int pow, bool punish)
         mpr("You are momentarily dazzled by a brilliant light.");
 
     return true;
+}
+
+spret cast_summon_holy_warrior(int pow, bool fail)
+{
+    if (!player_summon_check({MONS_ANGEL, MONS_DAEVA}))
+        return spret::abort;
+
+    fail_check();
+
+    summon_holy_warrior(pow, false);
+    return spret::success;
 }
 
 /**
@@ -835,6 +994,9 @@ int mons_ball_lightning_hd(int pow, bool random)
 
 spret cast_conjure_ball_lightning(int pow, bool fail)
 {
+    if (!player_summon_check(MONS_BALL_LIGHTNING))
+        return spret::abort;
+
     fail_check();
     bool success = false;
 
@@ -879,6 +1041,9 @@ dice_def lightning_spire_damage(int pow)
 
 spret cast_forge_lightning_spire(int pow, bool fail)
 {
+    if (!player_summon_check(MONS_LIGHTNING_SPIRE))
+        return spret::abort;
+
     fail_check();
 
     mgen_data spire = _pal_data(MONS_LIGHTNING_SPIRE, summ_dur(2),
@@ -897,6 +1062,9 @@ spret cast_forge_lightning_spire(int pow, bool fail)
 
 spret cast_forge_blazeheart_golem(int pow, bool fail)
 {
+    if (!player_summon_check(MONS_BLAZEHEART_GOLEM))
+        return spret::abort;
+
     fail_check();
 
     mgen_data golem = _pal_data(MONS_BLAZEHEART_GOLEM, summ_dur(3),
@@ -927,7 +1095,7 @@ spret cast_forge_blazeheart_golem(int pow, bool fail)
  */
 spret cast_call_imp(int pow, bool fail)
 {
-    if (stop_summoning_prompt(MR_RES_POISON, M_FLIES))
+    if (!player_summon_check(MONS_CERULEAN_IMP))
         return spret::abort;
 
     fail_check();
@@ -1020,6 +1188,14 @@ spret summon_butterflies()
 
 spret summon_shadow_creatures()
 {
+    // A small number of the monsters summoned by shadow creatures can fly,
+    // so it is technically still usable above water or lava
+    if (!you_can_see_habitable_spot_near(HT_FLYER, 2))
+    {
+        mpr("There is no available space!");
+        return spret::abort;
+    }
+
     // Hard to predict what resistances might come from this.
     if (stop_summoning_prompt())
         return spret::abort;
@@ -1225,7 +1401,7 @@ spret cast_malign_gateway(actor * caster, int pow, bool fail, bool test)
 
 spret cast_summon_horrible_things(int pow, bool fail)
 {
-    if (stop_summoning_prompt(MR_RES_POISON))
+    if (!player_summon_check({MONS_ABOMINATION_LARGE, MONS_TENTACLED_MONSTROSITY}))
         return spret::abort;
 
     fail_check();
@@ -1264,6 +1440,8 @@ spret cast_summon_horrible_things(int pow, bool fail)
 
     if (!count)
         canned_msg(MSG_NOTHING_HAPPENS);
+    else
+        mpr("You open a gateway and unleash terrible monstrosities upon the world.");
 
     return spret::success;
 }
@@ -1311,7 +1489,7 @@ spret cast_summon_forest(actor* caster, int pow, bool fail, bool test)
                                       200 + div_rand_round(pow * 3, 2));
 
     // Hm, should dryads have rPois?
-    if (stop_summoning_prompt(MR_NO_FLAGS, M_NO_FLAGS, "summon a forest"))
+    if (stop_summoning_prompt(MR_NO_FLAGS, M_NO_FLAGS))
         return spret::abort;
 
     fail_check();
@@ -1321,6 +1499,7 @@ spret cast_summon_forest(actor* caster, int pow, bool fail, bool test)
                               LOS_DEFAULT_RANGE); di; ++di)
     {
         if ((feat_is_wall(env.grid(*di)) && !feat_is_permarock(env.grid(*di))
+             && !feat_is_endless(env.grid(*di))
              && x_chance_in_y(pow, 150))
             || (env.grid(*di) == DNGN_FLOOR && x_chance_in_y(pow, 1250)
                 && !actor_at(*di) && !plant_forbidden_at(*di, true)))
@@ -1392,7 +1571,11 @@ monster_type pick_random_wraith()
 
 spret cast_haunt(int pow, const coord_def& where, bool fail)
 {
-    if (stop_summoning_prompt(MR_RES_POISON, M_FLIES, "haunt your foe"))
+    static const vector<monster_type> types = { MONS_SHADOW_WRAITH,
+                                                MONS_WRAITH,
+                                                MONS_FREEZING_WRAITH,
+                                                MONS_PHANTASMAL_WARRIOR };
+    if (!player_summon_check(types, 2, 0, where))
         return spret::abort;
 
     monster* m = monster_at(where);
@@ -1456,7 +1639,7 @@ spret cast_haunt(int pow, const coord_def& where, bool fail)
 
 spret cast_martyrs_knell(const actor* caster, int pow, bool fail)
 {
-    if (caster->is_player() && stop_summoning_prompt(MR_RES_POISON, M_FLIES))
+    if (caster->is_player() && !player_summon_check(MONS_MARTYRED_SHADE))
         return spret::abort;
 
     fail_check();
@@ -1614,7 +1797,7 @@ void init_servitor(monster* servitor, actor* caster, int pow)
 
 spret cast_spellspark_servitor(int pow, bool fail)
 {
-    if (stop_summoning_prompt(MR_RES_POISON, M_FLIES))
+    if (!player_summon_check(MONS_SPELLSPARK_SERVITOR))
         return spret::abort;
 
     fail_check();
@@ -1674,10 +1857,20 @@ dice_def battlesphere_damage_from_hd(int hd)
 
 spret cast_battlesphere(actor* agent, int pow, bool fail)
 {
+    monster* battlesphere = nullptr;
+    if (agent->is_player())
+    {
+        battlesphere = find_battlesphere(&you);
+
+        // You do get a message when your battle sphere ends, even if its out
+        // of sight, so this shouldn't leak any information.
+        if (!battlesphere && !player_summon_check(MONS_BATTLESPHERE))
+            return spret::abort;
+    }
+
     fail_check();
 
-    monster* battlesphere;
-    if (agent->is_player() && (battlesphere = find_battlesphere(&you)))
+    if (agent->is_player() && battlesphere)
     {
         bool recalled = false;
         if (!you.can_see(*battlesphere))
@@ -2260,6 +2453,7 @@ static const map<spell_type, summon_cap> summonsdata =
     { SPELL_SUMMON_MANA_VIPER,        { 1, 3 } },
     { SPELL_CALL_IMP,                 { 1, 3 } },
     { SPELL_MONSTROUS_MENAGERIE,      { 2, 3 } },
+    { SPELL_SPHINX_SISTERS,           { 2, 2 } },
     { SPELL_SUMMON_HORRIBLE_THINGS,   { 8, 8 } },
     { SPELL_FORGE_LIGHTNING_SPIRE,    { 1, 1 } },
     { SPELL_FORGE_BLAZEHEART_GOLEM,   { 1, 1 } },
@@ -2315,6 +2509,7 @@ static const map<spell_type, summon_cap> summonsdata =
     { SPELL_SHEZAS_DANCE,             { 0, 6 } },
     { SPELL_DIVINE_ARMAMENT,          { 0, 1 } },
     { SPELL_FLASHING_BALESTRA,        { 0, 2 } },
+    { SPELL_BOLT_OF_FLESH,            { 0, 4 } },
     { SPELL_PHANTOM_BLITZ,            { 0, 2 } },
     { SPELL_SHADOW_PUPPET,            { 3, 3 } },
     { SPELL_SHADOW_TURRET,            { 2, 2 } },
@@ -2663,8 +2858,18 @@ spret fedhas_grow_oklob(const coord_def& target, bool fail)
     return spret::success;
 }
 
-void kiku_unearth_wretches()
+spret kiku_unearth_wretches(bool fail)
 {
+    // A small number of the monsters kiku gives can fly, so the ability is
+    // technically still usable above water or lava
+    if (!you_can_see_habitable_spot_near(HT_FLYER, 4))
+    {
+        mpr("There is no available space!");
+        return spret::abort;
+    }
+
+    fail_check();
+
     const int pow = you.skill(SK_NECROMANCY, 5);
     const int min_wretches = 1 + random2(2);
     const int max_wretches = min_wretches + div_rand_round(pow, 27); // 7 max
@@ -2708,6 +2913,8 @@ void kiku_unearth_wretches()
         simple_god_message(" has no space to call forth the wretched!");
     else
         simple_god_message(" calls piteous wretches from the earth!");
+
+    return spret::success;
 }
 
 static bool _create_foxfire(const actor &agent, coord_def pos, int pow,
@@ -2895,14 +3102,8 @@ bool summon_spider(const actor &agent, coord_def pos,
     return false;
 }
 
-spret summon_spiders(actor &agent, int pow, bool fail)
+spret summon_spiders(monster &agent, int pow)
 {
-    // Can't happen at present, but why not check just to be sure.
-    if (agent.is_player() && stop_summoning_prompt())
-        return spret::abort;
-
-    fail_check();
-
     int created = 0;
 
     for (int i = 0; i < 1 + div_rand_round(random2(pow), 80); i++)
@@ -2918,8 +3119,6 @@ spret summon_spiders(actor &agent, int pow, bool fail)
              agent.conj_verb("summon").c_str(),
              created > 1 ? "spiders" : "a spider");
     }
-    else if (agent.is_player())
-        canned_msg(MSG_NOTHING_HAPPENS);
 
     return spret::success;
 }
@@ -3065,6 +3264,10 @@ dice_def hoarfrost_cannonade_damage(int pow, bool finale)
 
 spret cast_hoarfrost_cannonade(const actor& agent, int pow, bool fail)
 {
+    // XXX: it would be nice to abort if there isn't space for the cannons,
+    // however recasting will remove old cannons *first*, and so may create
+    // space that didn't exist before casting. Possibly we should check....
+
     fail_check();
 
     // Remove any existing cannons we may have first
@@ -3138,7 +3341,9 @@ dice_def hellfire_mortar_damage(int pow)
 static bool _hellfire_stops_here(bolt& beam, coord_def pos)
 {
     return actor_at(pos) && !beam.ignores_monster(monster_at(pos))
-           || cell_is_solid(pos) && !beam.can_affect_wall(pos);
+           || cell_is_solid(pos)
+              && ((is_temp_terrain(pos) && !feat_is_diggable(orig_terrain(pos)))
+                  || !beam.can_affect_wall(pos));
 }
 
 spret cast_hellfire_mortar(const actor& agent, bolt& beam, int pow, bool fail)
@@ -3186,7 +3391,7 @@ spret cast_hellfire_mortar(const actor& agent, bolt& beam, int pow, bool fail)
 
     // Make the lava
     int dur = random_range(15, 19) * BASELINE_DELAY;
-    for (unsigned int i = 0; i < beam.path_taken.size(); ++i)
+    for (int i = 0; i < len; ++i)
     {
         const coord_def pos = beam.path_taken[i];
 
@@ -3306,15 +3511,19 @@ bool make_soul_wisp(const actor& agent, actor& victim)
     return false;
 }
 
-static monster* _get_clockwork_bee_target(const monster* bee = nullptr)
+static actor* _get_clockwork_bee_target(const actor* agent = nullptr,
+                                        const monster* bee = nullptr)
 {
     // Try to resume targeting the last thing we were targeting before going
     // dormant (if it's still around and valid).
     if (bee && bee->props.exists(CLOCKWORK_BEE_TARGET))
     {
-        monster* targ = monster_by_mid(bee->props[CLOCKWORK_BEE_TARGET].get_int());
-        if (targ && targ->alive() && !targ->wont_attack() && you.can_see(*targ))
+        actor* targ = actor_by_mid(bee->props[CLOCKWORK_BEE_TARGET].get_int());
+        if (targ && targ->alive() && !mons_aligned(bee, targ)
+            && (!agent || !agent->is_player() || you.can_see(*targ)))
+        {
             return targ;
+        }
     }
 
     monster* targ = nullptr;
@@ -3341,17 +3550,25 @@ void handle_clockwork_bee_spell(int turn)
 
     stop_channelling_spells(true);
 
-    // Try to find what we targeted when we started casting.
-    monster* targ = monster_by_mid(you.props[CLOCKWORK_BEE_TARGET].get_int());
+    launch_clockwork_bee(you);
+}
+
+void launch_clockwork_bee(const actor& agent)
+{
+    // Try to find what was targeted when this was first cast.
+    actor* targ = actor_by_mid(agent.props[CLOCKWORK_BEE_TARGET].get_int());
 
     // If the original target is not available, pick another suitable one at random.
-    if (!targ || !targ->alive() || !targ->visible_to(&you)
-        || !you.see_cell(targ->pos()))
+    // Players need to maintain line of sight on the target, but monsters are
+    // allowed to cheat (so the player can't just run away during the spellcast).
+    if (!targ || !targ->alive()
+        || agent.is_player() && (!targ->visible_to(&you) || !you.see_cell(targ->pos())))
     {
-        monster* new_targ = _get_clockwork_bee_target();
+        actor* new_targ = _get_clockwork_bee_target(&agent);
 
-        // Couldn't find anything, so just deposit an inert bee near us
-        if (!new_targ)
+        // Couldn't find anything, so just deposit an inert bee near the player.
+        // (Don't bother for monsters.)
+        if (!new_targ && agent.is_player())
         {
             mgen_data mg = _pal_data(MONS_CLOCKWORK_BEE_INACTIVE,
                                         random_range(80, 120),
@@ -3386,27 +3603,37 @@ void handle_clockwork_bee_spell(int turn)
             }
             return;
         }
+        // Don't bother placing an inert bee for failed monster casts, but you
+        // can't launch a real one without a proper target either.
+        else if (!new_targ)
+            return;
 
         targ = new_targ;
     }
 
-    mgen_data mg = _pal_data(MONS_CLOCKWORK_BEE, random_range(400, 500),
-                             SPELL_CLOCKWORK_BEE, false).set_range(1, 2);
+    mgen_data mg = _summon_data(agent, MONS_CLOCKWORK_BEE, random_range(400, 500),
+                                SPELL_CLOCKWORK_BEE, false).set_range(1, 2);
     mg.hd = 5 + div_rand_round(calc_spell_power(SPELL_CLOCKWORK_BEE), 20);
 
     monster* bee = create_monster(mg);
     if (bee)
     {
-        bee->number = 3 + div_rand_round(calc_spell_power(SPELL_CLOCKWORK_BEE), 15);
+        const int pow = agent.is_player() ? calc_spell_power(SPELL_CLOCKWORK_BEE)
+                                          : mons_spellpower(*agent.as_monster(), SPELL_CLOCKWORK_BEE);
+        bee->number = 3 + div_rand_round(pow, 15);
         bee->add_ench(mon_enchant(ENCH_HAUNTING, 1, targ, INFINITE_DURATION));
 
-        mprf("With a metallic buzz, your clockwork bee launches itself at %s.",
-             targ->name(DESC_THE).c_str());
+        if (you.can_see(*bee))
+        {
+            mprf("With a metallic buzz, %s clockwork bee launches itself at %s.",
+                 agent.name(DESC_ITS).c_str(),
+                 targ->name(DESC_THE).c_str());
+        }
 
         bee->speed_increment = 80;
         bee->props[CLOCKWORK_BEE_TARGET].get_int() = targ->mid;
     }
-    else
+    else if (agent.is_player())
         mpr("Your bee fails to deploy!");
 }
 
@@ -3448,7 +3675,11 @@ spret cast_clockwork_bee(coord_def target, bool fail)
 
 void clockwork_bee_go_dormant(monster& bee)
 {
-    mpr("Your clockwork bee winds down and falls to the ground.");
+    if (you.can_see(bee))
+    {
+        mprf("%s clockwork bee winds down and falls to the ground.",
+             bee.summoner == MID_PLAYER ? "Your" : "The");
+    }
 
     int old_hd = bee.get_experience_level();
     int old_max_hp = bee.max_hit_points;
@@ -3471,34 +3702,43 @@ void clockwork_bee_go_dormant(monster& bee)
 
 // Attempts to repair and rewind a clockwork bee.
 // Returns false if we lacked the MP to do so or there was no valid target for it.
-bool clockwork_bee_recharge(monster& bee)
+bool clockwork_bee_recharge(actor& agent, monster& bee)
 {
-    if (you.berserk())
+    if (agent.berserk())
     {
-        mpr("If you tried to rewind gears in your present state, you'd only break them.");
+        if (agent.is_player())
+            mpr("If you tried to rewind gears in your present state, you'd only break them.");
         return false;
     }
 
-    monster* targ = _get_clockwork_bee_target(&bee);
+    actor* targ = _get_clockwork_bee_target(&agent, &bee);
 
     // Nothing around for it to attack.
     if (!targ)
     {
-        mpr("You need a visible target to rewind your bee! "
-            "(Use ctrl+direction or * direction to deconstruct it instead.)");
+        if (agent.is_player())
+        {
+            mpr("You need a visible target to rewind your bee! "
+                "(Use ctrl+direction or * direction to deconstruct it instead.)");
+        }
         return false;
     }
 
-    if (!enough_mp(1, true))
+    if (agent.is_player())
     {
-        mpr("You lack sufficient magical power to recharge your bee.");
-        return false;
+        if (!enough_mp(1, true))
+        {
+            mpr("You lack sufficient magical power to recharge your bee.");
+            return false;
+        }
+        pay_mp(1);
+        finalize_mp_cost();
     }
 
-    pay_mp(1);
-    finalize_mp_cost();
-
-    mprf("You wind your clockwork bee back up and it locks its sights upon %s!",
+    mprf("%s wind%s %s clockwork bee back up and it locks its sights upon %s!",
+         agent.name(DESC_THE).c_str(),
+         agent.is_player() ? "" : "s",
+         agent.pronoun(PRONOUN_POSSESSIVE).c_str(),
          targ->name(DESC_THE).c_str());
     int old_max_hp = bee.max_hit_points;
     int old_hp = bee.hit_points;
@@ -3508,9 +3748,11 @@ bool clockwork_bee_recharge(monster& bee)
     bee.max_hit_points = old_max_hp;
     bee.hit_points = old_hp;
     bee.heal(roll_dice(3, 5));
-    bee.add_ench(mon_enchant(ENCH_SUMMON_TIMER, 0, &you, random_range(400, 500)));
+    bee.add_ench(mon_enchant(ENCH_SUMMON_TIMER, 0, &agent, random_range(400, 500)));
     bee.add_ench(mon_enchant(ENCH_HAUNTING, 0, targ, INFINITE_DURATION));
-    bee.number = 3 + div_rand_round(calc_spell_power(SPELL_CLOCKWORK_BEE), 15);
+    const int pow = agent.is_player() ? calc_spell_power(SPELL_CLOCKWORK_BEE)
+                                      : mons_spellpower(*agent.as_monster(), SPELL_CLOCKWORK_BEE);
+    bee.number = 3 + div_rand_round(pow, 15);
     bee.speed_increment = 80;
 
     return true;
@@ -3518,14 +3760,17 @@ bool clockwork_bee_recharge(monster& bee)
 
 void clockwork_bee_pick_new_target(monster& bee)
 {
-    monster* targ = _get_clockwork_bee_target();
+    const actor* agent = actor_by_mid(bee.summoner);
+    actor* targ = _get_clockwork_bee_target(agent, &bee);
 
     // Nothing around for it to attack
     if (!targ)
        clockwork_bee_go_dormant(bee);
     else
     {
-        mprf("Your clockwork bee locks its sights upon %s.", targ->name(DESC_THE).c_str());
+        mprf("%s clockwork bee locks its sights upon %s.",
+                agent ? agent->pronoun(PRONOUN_POSSESSIVE).c_str() : "Someone's",
+                targ->name(DESC_THE).c_str());
         bee.add_ench(mon_enchant(ENCH_HAUNTING, 0, targ, INFINITE_DURATION));
         bee.props[CLOCKWORK_BEE_TARGET].get_int() = targ->mid;
     }
@@ -3996,6 +4241,9 @@ bool paragon_defense_bonus_active()
 
 spret cast_walking_alembic(const actor& agent, int pow, bool fail)
 {
+    if (agent.is_player() && !player_summon_check(MONS_WALKING_ALEMBIC))
+        return spret::abort;
+
     fail_check();
 
     mgen_data mg = _summon_data(agent, MONS_WALKING_ALEMBIC, summ_dur(3),
@@ -4144,10 +4392,13 @@ void alembic_brew_potion(monster& mons)
 
 spret cast_monarch_bomb(const actor& agent, int pow, bool fail)
 {
-    fail_check();
-
     if (count_summons(&agent, SPELL_MONARCH_BOMB))
-        return monarch_detonation(agent, pow);
+        return monarch_detonation(agent, pow, fail);
+
+    if (agent.is_player() && !player_summon_check(MONS_MONARCH_BOMB))
+        return spret::abort;
+
+    fail_check();
 
     mgen_data mg = _summon_data(agent, MONS_MONARCH_BOMB, summ_dur(3),
                                 SPELL_MONARCH_BOMB, false);
@@ -4213,7 +4464,7 @@ vector<coord_def> get_monarch_detonation_spots(const actor& agent)
     return spots;
 }
 
-spret monarch_detonation(const actor& agent, int pow)
+spret monarch_detonation(const actor& agent, int pow, bool fail)
 {
     vector<coord_def> spots = get_monarch_detonation_spots(agent);
     if (agent.is_player()
@@ -4223,6 +4474,8 @@ spret monarch_detonation(const actor& agent, int pow)
     {
         return spret::abort;
     }
+
+    fail_check();
 
     if (you.can_see(agent))
     {
@@ -4425,6 +4678,9 @@ bool splinterfrost_block_fragment(monster& block, const coord_def& aim)
 
 spret cast_summon_seismosaurus_egg(const actor& agent, int pow, bool fail)
 {
+    if (agent.is_player() && !player_summon_check(MONS_SEISMOSAURUS_EGG, 3, 1))
+        return spret::abort;
+
     fail_check();
 
     mgen_data egg = _summon_data(agent, MONS_SEISMOSAURUS_EGG, summ_dur(3),
@@ -4436,6 +4692,10 @@ spret cast_summon_seismosaurus_egg(const actor& agent, int pow, bool fail)
     {
         mpr("A rock-encrusted egg appears nearby and begins to stir.");
         mons->add_ench(mon_enchant(ENCH_HATCHING, 0, &agent, random_range(6, 9)));
+
+        // Mark all terrain in range.
+        for (distance_iterator di(mons->pos(), false, false, 4); di; ++di)
+            env.pgrid(*di) |= FPROP_SEISMOROCK;
     }
     else
         canned_msg(MSG_NOTHING_HAPPENS);
@@ -4445,6 +4705,9 @@ spret cast_summon_seismosaurus_egg(const actor& agent, int pow, bool fail)
 
 spret cast_phalanx_beetle(const actor& agent, int pow, bool fail)
 {
+    if (agent.is_player() && !player_summon_check(MONS_PHALANX_BEETLE))
+        return spret::abort;
+
     fail_check();
 
     mgen_data beetle = _summon_data(agent, MONS_PHALANX_BEETLE, summ_dur(4),
@@ -4454,11 +4717,19 @@ spret cast_phalanx_beetle(const actor& agent, int pow, bool fail)
 
     if (monster* mons = create_monster(beetle))
     {
-        mpr("You forge a skittering defender to stand by your side.");
-        you.props[PHALANX_BARRIER_POWER_KEY] = 400 + pow * 3;
+        if (agent.is_player())
+        {
+            mpr("You forge a skittering defender to stand by your side.");
+            you.props[PHALANX_BARRIER_POWER_KEY] = 400 + pow * 3;
+        }
+        else if (you.can_see(agent))
+        {
+            mprf("%s forges a skittering defender to stand by %s side.",
+                 agent.name(DESC_THE).c_str(), agent.pronoun(PRONOUN_POSSESSIVE).c_str());
+        }
         mons_update_aura(*mons);
     }
-    else
+    else if (agent.is_player())
         canned_msg(MSG_NOTHING_HAPPENS);
 
     return spret::success;
@@ -4468,7 +4739,7 @@ static int _rending_blade_power(int base_power)
 {
     const int mp_spent = max(0, you.magic_points - spell_difficulty(SPELL_RENDING_BLADE));
     const int mp_bonus = stepdown(mp_spent, 10);
-    return base_power * (100 + mp_bonus * 3) / 100;
+    return base_power * (100 + mp_bonus * 5) / 100;
 }
 
 dice_def rending_blade_damage(int power, bool include_mp)
@@ -4479,10 +4750,13 @@ dice_def rending_blade_damage(int power, bool include_mp)
 
 spret cast_rending_blade(int pow, bool fail)
 {
+    if (!player_summon_check(MONS_RENDING_BLADE))
+        return spret::abort;
+
     fail_check();
 
     mgen_data blade = _pal_data(MONS_RENDING_BLADE, random_range(7, 10) * BASELINE_DELAY,
-                                SPELL_RENDING_BLADE, false);
+                                SPELL_RENDING_BLADE, false).set_range(1, 2);
 
     if (monster* mon = create_monster(blade))
     {
@@ -4505,9 +4779,7 @@ void trigger_rending_blade()
     {
         if (mi->type == MONS_RENDING_BLADE && mi->summoner == MID_PLAYER)
         {
-            // Only save up to 3 charges at once, so that axes aren't overly
-            // ridiclous and that you can't bank too many charges while the
-            // blade isn't positioned to act.
+            // Trigger at most 3 times per round, so that axes aren't overly ridiclous.
             mi->number = min((unsigned int)3, mi->number + 1);
             mi->speed_increment = 100;
             return;

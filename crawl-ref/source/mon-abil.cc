@@ -942,6 +942,10 @@ static void _seismosaurus_egg_hatch(monster* mons)
         mons->speed_increment = 80;
         try_mons_cast(*mons, SPELL_SEISMIC_STOMP);
 
+        // Clean up range indicator
+        for (distance_iterator di(mons->pos(), false, false, 4); di; ++di)
+            env.pgrid(*di) &= ~FPROP_SEISMOROCK;
+
         return;
     }
 
@@ -1192,6 +1196,19 @@ bool mon_special_ability(monster* mons)
         }
         break;
 
+    case MONS_CLOCKWORK_BEE_INACTIVE:
+    {
+        // Note: the player is not a monster, so this will never happen to them.
+        monster* summ = monster_by_mid(mons->summoner);
+        if (summ && adjacent(summ->pos(), mons->pos()) && !summ->incapacitated()
+            && summ->has_action_energy() && !one_chance_in(4))
+        {
+            if (clockwork_bee_recharge(*summ, *mons))
+                summ->lose_energy(EUT_MOVE);
+        }
+        break;
+    }
+
     case MONS_NAMELESS_REVENANT:
         // If we are engaging the player and have full memories, burn one fairly
         // immediately.
@@ -1234,13 +1251,12 @@ bool egg_is_incubating(const monster& egg)
     if (!parent || !adjacent(parent->pos(), egg.pos()))
         return false;
 
-    // Finally, check that there are foes sufficiently nearby (and also in the
+    // Finally, check that there are foes sufficiently nearby (and in the
     // parent's LoS)
-    for (monster_near_iterator mi(&egg, LOS_NO_TRANS); mi; ++mi)
+    for (monster_near_iterator mi(parent, LOS_NO_TRANS); mi; ++mi)
     {
         if (!mons_aligned(*mi, &egg) && !mi->is_firewood()
-            && grid_distance(egg.pos(), mi->pos()) <= 4
-            && parent->see_cell(mi->pos()))
+            && grid_distance(egg.pos(), mi->pos()) <= 4)
         {
             return true;
         }
@@ -1398,7 +1414,7 @@ void solar_ember_blast()
     if (!ember->has_ench(ENCH_SPELL_CHARGED))
     {
         simple_monster_message(*ember, " glows brighter.");
-        ember->add_ench(mon_enchant(ENCH_SPELL_CHARGED, 0, ember, random_range(50, 70)));
+        ember->add_ench(mon_enchant(ENCH_SPELL_CHARGED, 0, ember, random_range(70, 90)));
         return;
     }
 

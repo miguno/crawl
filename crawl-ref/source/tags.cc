@@ -1569,7 +1569,7 @@ void tag_read(reader &inf, tag_type tag_id)
         // because they might cause you to lose flight. That will check
         // the terrain below you and crash if the map hasn't loaded yet.
         {
-            vector<item_def*> to_remove = you.equipment.get_forced_removal_list(true);
+            vector<item_def*> to_remove = you.equipment.get_forced_removal_list(true, true);
             for (item_def* item : to_remove)
                 unequip_item(*item);
         }
@@ -2628,6 +2628,9 @@ static spell_type _fixup_removed_spells(spell_type s)
 
         case SPELL_STING:
             return SPELL_POISONOUS_VAPOURS;
+
+        case SPELL_MONSTROUS_MENAGERIE:
+            return SPELL_SPHINX_SISTERS;
 
         default:
             return s;
@@ -3847,6 +3850,12 @@ static void _tag_read_you(reader &th)
         _fixup_species_mutations(MUT_AWKWARD_TONGUE);
     }
 
+    if (th.getMinorVersion() < TAG_MINOR_COMPRESS_MAPPING)
+    {
+        if (you.mutation[MUT_PASSIVE_MAPPING] > 2)
+            you.mutation[MUT_PASSIVE_MAPPING] = 2;
+    }
+
     // fully clean up any removed mutations
     for (auto m : get_removed_mutations())
         _clear_mutation(m);
@@ -4091,7 +4100,7 @@ static void _tag_read_you(reader &th)
             }
             else
 #endif
-            die("Timer %d next trigger in the past [%d < %d]",
+            mprf(MSGCH_ERROR, "Timer %d next trigger in the past [%d < %d]",
                 j, you.next_timer_effect[j], you.elapsed_time);
         }
     }
@@ -4599,7 +4608,7 @@ static void _cleanup_book_ids(reader &th, int n_subtypes)
 // hopefully 'just work' in basically all normal cases.
 static void _convert_old_player_equipment()
 {
-    vector<vector<item_def*>> dummy;
+    bool dummy;
     // Calculate current player slots first.
     you.equipment.update();
     for (int i = 0; i < (int)old_eq.size(); ++i)
@@ -6365,6 +6374,7 @@ void marshallMonster(writer &th, const monster& m)
 
     marshallShort(th, min(m.hit_points, MAX_MONSTER_HP));
     marshallShort(th, min(m.max_hit_points, MAX_MONSTER_HP));
+    marshallInt(th, m.exp);
     marshallInt(th, m.number);
     marshallMonType(th, m.base_monster);
     marshallShort(th, m.colour);
@@ -7323,10 +7333,26 @@ void unmarshallMonster(reader &th, monster& m)
         m.enchantments[me.ench] = me;
         m.ench_cache.set(me.ench, true);
     }
+
+#if TAG_MAJOR_VERSION == 34
+    if (th.getMinorVersion() < TAG_MINOR_FRENZY_FIXUP
+        && m.has_ench(ENCH_FRENZIED))
+    {
+        m.del_ench(ENCH_HASTE);
+        m.del_ench(ENCH_MIGHT);
+    }
+#endif
+
     m.ench_countdown = unmarshallByte(th);
 
     m.hit_points     = unmarshallShort(th);
     m.max_hit_points = unmarshallShort(th);
+#if TAG_MAJOR_VERSION == 34
+    if (th.getMinorVersion() < TAG_MINOR_SPECIFY_EXP)
+        m.exp = 0;
+    else
+#endif
+    m.exp            = unmarshallInt(th);
     m.number         = unmarshallInt(th);
     m.base_monster   = unmarshallMonType(th);
     m.colour         = unmarshallShort(th);
@@ -8173,6 +8199,7 @@ static void _marshallGhost(writer &th, const ghost_demon &ghost)
     marshallShort(th, ghost.max_hp);
     marshallShort(th, ghost.ev);
     marshallShort(th, ghost.ac);
+    marshallShort(th, ghost.willpower);
     marshallShort(th, ghost.damage);
     marshallShort(th, ghost.speed);
     marshallShort(th, ghost.move_energy);
@@ -8205,6 +8232,12 @@ static ghost_demon _unmarshallGhost(reader &th)
     if (ghost.ev > MAX_GHOST_EVASION)
         ghost.ev = MAX_GHOST_EVASION;
     ghost.ac               = unmarshallShort(th);
+#if TAG_MAJOR_VERSION == 34
+    if (th.getMinorVersion() < TAG_MINOR_GHOST_WILLPOWER)
+        ghost.willpower  = -1;
+    else
+#endif
+    ghost.willpower        = unmarshallShort(th);
     ghost.damage           = unmarshallShort(th);
     ghost.speed            = unmarshallShort(th);
 #if TAG_MAJOR_VERSION == 34
@@ -8218,6 +8251,20 @@ static ghost_demon _unmarshallGhost(reader &th)
         ghost.move_energy = FASTEST_PLAYER_MOVE_SPEED;
     else if (ghost.move_energy > 30)
         ghost.move_energy = 30;
+#if TAG_MAJOR_VERSION == 34
+    // If loading a ghost from back when all species had normal move speed,
+    // apply default move speed of their species.
+    if (ghost.move_energy == 10
+        && th.getMinorVersion() < TAG_MINOR_GHOST_MOVE_SPEED_FIX)
+    {
+        if (ghost.species == SP_SPRIGGAN)
+            ghost.move_energy = 6;
+        else if (ghost.species == SP_BARACHI)
+            ghost.move_energy = 12;
+        else if (ghost.species == SP_NAGA)
+            ghost.move_energy = 14;
+    }
+#endif
 
     ghost.see_invis        = unmarshallByte(th);
     ghost.brand            = static_cast<brand_type>(unmarshallShort(th));

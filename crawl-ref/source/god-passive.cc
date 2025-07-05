@@ -423,7 +423,10 @@ void ash_check_bondage()
         if (j == SLOT_GIZMO)
             continue;
 
-        num_slots += you.equipment.num_slots[j];
+        // Count melded slot-giving unrands here, since any melded items held
+        // in those slots will be counted below, which can otherwise result in
+        // having more cursed items than the game thinks we have slots.
+        num_slots += get_player_equip_slot_count(static_cast<equipment_slot>(j), nullptr, true);
     }
 
     // Find what percentage of available slots have a cursed item in them.
@@ -766,10 +769,9 @@ void qazlal_element_adapt(beam_type flavour, int strength)
     beam_type what = BEAM_NONE;
     duration_type dur = NUM_DURATIONS;
     string descript = "";
-    switch (flavour)
+    switch (get_beam_resist_type(flavour))
     {
         case BEAM_FIRE:
-        case BEAM_LAVA:
         case BEAM_STICKY_FLAME:
         case BEAM_STEAM:
             what = BEAM_FIRE;
@@ -777,20 +779,16 @@ void qazlal_element_adapt(beam_type flavour, int strength)
             descript = "fire";
             break;
         case BEAM_COLD:
-        case BEAM_ICE:
             what = BEAM_COLD;
             dur = DUR_QAZLAL_COLD_RES;
             descript = "cold";
             break;
         case BEAM_ELECTRICITY:
-        case BEAM_THUNDER:
             what = BEAM_ELECTRICITY;
             dur = DUR_QAZLAL_ELEC_RES;
             descript = "electricity";
             break;
-        case BEAM_MMISSILE: // for LCS, iron shot
         case BEAM_MISSILE:
-        case BEAM_FRAG:
             what = BEAM_MISSILE;
             dur = DUR_QAZLAL_AC;
             descript = "physical attacks";

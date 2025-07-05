@@ -40,6 +40,8 @@
 --
 -- XXX: Zin is overpowered.
 
+crawl_require('dlua/vault.lua')
+
 function arena_sprint_is_boss_round(round_id)
     return (round_id < 27 and round_id % 5 == 0) or (round_id > 27 and round_id % 3 == 0)
 end
@@ -208,9 +210,10 @@ end
 function arena_sprint_get_monster_set(round, boss)
     if not boss then
         if round == 27 then
-            return {"place:Zot:$ / orb guardian w:70 / tiamat / " ..
-                       "orb of fire / electric golem / killer klown / " ..
-                       "ancient lich / moth of wrath"}
+            return {"place:Zot:$ / orb guardian w:60 / tiamat / " ..
+                    "orb of fire / electric golem / killer klown / " ..
+                    "ancient lich / dread lich / protean progenitor / " ..
+                    "ghost moth / moth of wrath"}
         end
 
         local mon_set = {}
@@ -228,7 +231,7 @@ function arena_sprint_get_monster_set(round, boss)
                 "gnoll w:35 / hound w:5 / gnoll sergeant / gnoll bouda / crazy yiuf",
                 "lesser demon w:30 / grinder w:3 / w:2 eustachio",
                 "zombie w:15 / skeleton / wight w:5 / phantom",
-                "scorpion / water moccasin w:2 / redback w:1 / killer bee w:2",
+                "scorpion / scorpion simulacrum w:2 / redback w:1 / bombardier beetle w:2",
                 "endoplasm / w:5 jelly",
                 "giant cockroach w:20 / scorpion / ribbon worm"
             }
@@ -243,7 +246,7 @@ function arena_sprint_get_monster_set(round, boss)
                 "w:2 place:Elf / w:12 deep elf pyromancer / w:12 deep elf zephyrmancer",
                 "place:Lair / w:5 yak / w:3 komodo dragon / w:3 basilisk /\
                     w:1 death yak / river rat / hell rat / w:2 dream sheep",
-                "w:20 merfolk / w:5 merfolk siren / wyvern w:15 / centaur /\
+                "w:20 merfolk / w:5 merfolk siren / hippogriff w:15 / centaur /\
                     w:1 harpy / w:5 cyclops / w:1 snapping turtle",
                 "w:5 bog body / w:5 tyrant leech / will-o-the-wisp w:2 /\
                     w:5 swamp drake / bullfrog / w:2 cane toad / w:2 hydra /\
@@ -261,8 +264,8 @@ function arena_sprint_get_monster_set(round, boss)
                 "w:20 mummy / w:5 guardian mummy / w:5 menkaure",
                 -- Fire, Air, Earth, Water, Death
                 "w:20 fire bat / fire elemental",
-                "steam dragon / w:5 air elemental / w:1 wind drake / w:5 lightning spire /\
-                    w:30 sky beast",
+                "steam dragon / goblin rider w:5 / hippogriff w:5 /\
+                    lightning spire w:5 / sky beast w:25",
                 "w:15 earth elemental / w:5 gargoyle / w:5 boulder beetle /\
                     w:15 rust devil / w:15 iron imp",
                 "w:20 ice beast / w:20 simulacrum / rime drake / w:5 water elemental",
@@ -303,8 +306,8 @@ function arena_sprint_get_monster_set(round, boss)
                 -- Fire, Air, Earth, Water, Death
                 "fire bat / fire elemental /\
                     w:5 sun demon / w:2 efreet / hell hound",
-                "steam dragon / air elemental / w:3 wind drake / lightning spire /\
-                    w:20 sky beast",
+                "steam dragon w:5 / air elemental w:5 / wind drake w:5 /\
+                    lightning spire / sky beast w:20",
                 "earth elemental w:15 / gargoyle w:5 / boulder beetle /\
                     rust devil / iron imp / w:5 iron troll",
                 "ice beast / rime drake / ogre simulacrum / water elemental",
@@ -320,7 +323,7 @@ function arena_sprint_get_monster_set(round, boss)
                 "shapeshifter hd:7",
                 "polar bear",
                 -- Gimmicks
-                "brain worm",
+                "brain worm", "marrowcuda",
                 "kobold name:flame-cult_kobold n_rpl n_noc n_des perm_ench:inner_flame",
                 "dwarf name:drunken n_adj n_des n_noc perm_ench:confusion"
             }
@@ -346,7 +349,8 @@ function arena_sprint_get_monster_set(round, boss)
                 "w:5 fire bat / fire elemental /\
                     sun demon / efreet / hell hound /\
                     hell hog / w:5 fire crab",
-                "w:1 storm dragon / air elemental / w:5 wind drake / w:17 sky beast",
+                "w:1 storm dragon / air elemental / wind drake w:5 /\
+                    hippogriff w:5 / goblin rider w:5",
                 "earth elemental w:20 / boulder beetle /\
                     rust devil / w:5 iron troll / w:1 roxanne /\
                     w:2 iron dragon / w:3 iron elemental",
@@ -362,7 +366,7 @@ function arena_sprint_get_monster_set(round, boss)
                 "rime drake w:5 / swamp drake / swamp dragon /\
                     acid dragon w:5 / komodo dragon w:5 / lindwurm w:5 /\
                     fire dragon w:5 / ice dragon w:5 / storm dragon w:1",
-                "ghoul / bog body w:20",
+                "ghoul / bog body w:15 / cognitogaunt w:5",
                 "shapeshifter",
                 -- Gimmicks
                 "neqoxec", "obsidian bat",
@@ -411,7 +415,9 @@ function arena_sprint_get_monster_set(round, boss)
                 -- Misc
                 "centaur / centaur warrior",
                 "yaktaur w:15 / yaktaur captain w:5",
-                "ugly thing w:14 / w:1 very ugly thing / w:1 wretched star",
+                "ugly thing / crawling flesh cage w:4 /\
+                 very ugly thing w:1 / wretched star w:1",
+                "kobold fleshcrafter / large abomination w:5",
                 "ogre mage / w:2 deep elf pyromancer / w:2 deep elf zephyrmancer / vampire mage / naga mage /\
                     lich / w:5 ancient lich / w:1 frederick",
                 "cyclops / stone giant / w:5 frost giant / w:5 fire giant /\
@@ -479,7 +485,7 @@ function arena_sprint_get_monster_set(round, boss)
                 "daeva / angel / cherub / pearl dragon / ophan / apis w:2",
                 -- Misc
                 "kobold blastminer / yaktaur captain",
-                "very ugly thing",
+                "very ugly thing / crawling flesh cage w:4 / wretched star w:1",
                 "lich / w:5 ancient lich / w:2 boris",
                 "stone giant / frost giant / fire giant / titan / w:1 chuck",
                 "fire dragon / ice dragon / storm dragon / shadow dragon /\
@@ -498,14 +504,14 @@ function arena_sprint_get_monster_set(round, boss)
                 -- Gimmicks
                 "neqoxec", "smoke demon", "catoblepas",
                 "moth of wrath / w:20 ettin", "orb spider", "fire crab",
-                "boulder beetle",
+                "chonchon",
                 "shining eye", "tormentor", "tentacled monstrosity",
                 "skeletal warrior / skeletal warrior ; dart ego:atropa",
                 "unseen horror / shadow wraith w:15 / ghost moth",
                 "curse toe / w:20 wandering mushroom / w:4 murray",
                 "reaper / sin beast / geryon w:1",
                 "mana viper / spriggan berserker ; war axe ego:antimagic . animal skin /\
-                   w:20 void ooze / ghost moth",
+                 void ooze w:15 / cognitogaunt w:5 / ghost moth",
                 "glass eye w:5 / ettin",
                 "executioner / w:1 ignacio",
                 "ghost moth / moth of wrath / w:30 vampire mosquito"
@@ -532,8 +538,8 @@ function arena_sprint_get_monster_set(round, boss)
                 "place:Slime:$ / w:30 acid blob / azure jelly / glass eye /\
                     void ooze",
                 "dancing weapon ; bardiche",
-                "spriggan defender / spriggan air mage / spriggan druid /\
-                    spriggan berserker / alderking",
+                "chonchon w:2 / spriggan defender / spriggan air mage /\
+                    spriggan druid / spriggan berserker / alderking",
                 "lich / w:5 ancient lich / w:1 curse skull / w:5 curse toe",
                 "any demon w:20 / pandemonium lord",
                 "place:Tomb:$ w:30 / guardian sphinx w:20 / royal mummy",
@@ -567,13 +573,14 @@ function arena_sprint_get_monster_set(round, boss)
                 "profane servitor w:25 / angel / daeva / fravashi w:5 /\
                     cherub / seraph",
                 -- Gimmicks
-                "neqoxec", "smoke demon", "catoblepas",
+                "neqoxec", "chonchon", "catoblepas",
                 "moth of wrath / w:20 ettin", "orb spider", "nekomata",
                 "shining eye", "tormentor",
                 "unseen horror / shadow wraith / ghost moth",
                 "reaper / sin beast / geryon w:1",
                 "spriggan berserker ; war axe ego:antimagic . animal skin /\
-                   w:20 void ooze / ghost moth / w:5 demonspawn warmonger",
+                 void ooze / cognitogaunt w:5 / ghost moth /\
+                 demonspawn warmonger w:5",
                 "glass eye w:5 / tentacled monstrosity",
                 "executioner / w:1 ignacio / w:5 death drake",
                 "ghost moth / moth of wrath / sun moth",
@@ -581,7 +588,7 @@ function arena_sprint_get_monster_set(round, boss)
                 "daeva / w:15 angel",
                 "royal mummy / mummy priest / guardian mummy",
                 "air elemental name:greater n_adj perm_ench:polar_vortex col:lightcyan / air elemental w:20",
-                "iron golem hd:20 col:magenta name:orb_golem n_rpl n_des n_spe spells:orb_of_destruction.70.natural",
+                "iron golem hd:20 exp:2074 col:magenta name:orb_golem n_rpl n_des n_spe spells:orb_of_destruction.70.natural",
                 "brimstone fiend / ice fiend / tzitzimitl / executioner / hell sentinel",
                 "titan / spriggan air mage / blizzard demon / w:20 air elemental",
                 "guardian sphinx / place:Tomb:$",
@@ -607,7 +614,7 @@ function arena_sprint_get_monster_set(round, boss)
                 "nagaraja w:20 / guardian serpent / salamander tyrant",
                 "acid blob w:30 / rockslime / glass eye / void ooze",
                 "dancing weapon ; bardiche ego:speed",
-                "spriggan air mage / alderking",
+                "chonchon w:2 / spriggan air mage / alderking",
                 "ancient lich / w:6 curse skull",
                 "demonspawn warmonger / demonspawn soul scholar /\
                     demonspawn corrupter / demonspawn blood saint /\
@@ -649,16 +656,16 @@ function arena_sprint_get_monster_set(round, boss)
                 "guardian sphinx / walking divine tome", "tormentor",
                 "unseen horror / shadow wraith / ghost moth w:15",
                 "reaper / sin beast / geryon w:1",
-                "ghost moth / void ooze / demonspawn warmonger",
+                "ghost moth / cognitogaunt / demonspawn warmonger",
                 "glass eye w:5 / tentacled monstrosity",
                 "executioner / w:1 ignacio / w:5 death drake",
                 -- Just die already!
                 "daeva",
-                "nekomata",
+                "nekomata ; triple crossbow good_item . triple sword good_item . robe",
                 "antique champion ; shadow dragon scales . kite shield . double sword",
                 "royal mummy / mummy priest",
                 "air elemental name:greater n_adj perm_ench:polar_vortex col:lightcyan",
-                "iron golem hd:20 col:magenta name:orb_golem n_rpl n_des n_spe spells:orb_of_destruction.70.natural",
+                "iron golem hd:20 exp:2074 col:magenta name:orb_golem n_rpl n_des n_spe spells:orb_of_destruction.70.natural",
                 "brimstone fiend / ice fiend / tzitzimitl w:5 / hell sentinel",
                 "titan / spriggan air mage / blizzard demon",
                 "orb of fire / orb of fire name:orb_of_ice n_rpl n_des spells:glaciate.80.magical col:lightblue tile:mons_orb_of_ice / " ..
@@ -694,13 +701,13 @@ function arena_sprint_init_boss_table()
 
     local bs = {}
     if crawl.coinflip() then
-        bs[1] = {"place:Snake", "aizul hd:7 hp:120 / " ..
-                 "naga warrior name:naga_warlord n_rpl n_des n_noc col:cyan hp:130 / " ..
-                 "anaconda name:giant n_adj n_noc hp:130 col:lightred",
+        bs[1] = {"place:Snake", "aizul hd:7 hp:120 exp:791 / " ..
+                 "naga warrior name:naga_warlord n_rpl n_des n_noc col:cyan hp:130 exp:890 / " ..
+                 "anaconda name:giant n_adj n_noc hp:130 exp:1026 col:lightred",
                  "serpentine rune of zot"}
     else
         bs[1] = {"place:Swamp", "the lernaean hydra / " ..
-                 "arcanist name:witch n_rpl n_des n_noc col:green hp:130 " ..
+                 "arcanist name:witch n_rpl n_des n_noc col:green hp:130 exp:982 " ..
                    "spells:mephitic_cloud.15.wizard;" ..
                           "summon_hydra.15.wizard;" ..
                           "invisibility.15.wizard;" ..
@@ -709,15 +716,15 @@ function arena_sprint_init_boss_table()
     end
 
     if crawl.coinflip() then
-        bs[2] = {"place:Spider", "arachne hp:250 / " ..
-                 "wolf spider name:dire n_adj n_noc col:blue hp:300 / " ..
+        bs[2] = {"place:Spider", "arachne hp:250 exp:4586 / " ..
+                 "wolf spider name:dire n_adj n_noc col:blue hp:300 exp:1030 / " ..
                  "jumping spider name:phase_spider n_rpl n_des never_corpse " ..
-                    "col:lightgreen spells:blink_away.58.natural hp:300",
+                    "col:lightgreen spells:blink_away.58.natural hp:300 exp:856",
                  "gossamer rune of zot"}
     else
-        bs[2] = {"place:Shoals", "polyphemus hp:350 / ilsuiw hp:250 / " ..
+        bs[2] = {"place:Shoals", "polyphemus hp:350 exp:2584 / ilsuiw hp:250 exp:1735 / " ..
                  "merfolk avatar name:dimme tile:mons_dimme n_rpl n_des n_spe " ..
-                    "col:lightmagenta hp:300 spells:avatar_song.160.natural;" ..
+                    "col:lightmagenta hp:300 exp:1343 spells:avatar_song.160.natural;" ..
                                                    "malign_gateway.40.natural",
                  "barnacled rune of zot"}
     end
@@ -726,25 +733,21 @@ function arena_sprint_init_boss_table()
         -- Elementalist boss is from mu_elemental_laboratory
         bs[3] = {"place:Elf w:300 / deep elf sorcerer / deep elf blademaster / " ..
                  "deep elf master archer / deep elf annihilator / deep elf high priest",
-                 "fannar hp:400 hd:14 / " ..
-                 "deep elf elementalist hp:400 " ..
-                    "; robe ego:fire_resistance | " ..
-                    "robe ego:cold_resistance | " ..
-                    "robe ego:resistance . dagger ego:freezing | " ..
-                    "dagger ego:flaming | dagger ego:electrocution",
+                 "fannar hp:400 hd:14 exp:2748 / " ..
+                 master_elementalist_setup(_G, true),
                  "elven rune of zot"}
     else
         bs[3] = {"place:Forest:$ w:50 / spriggan druid w:2 / spriggan air mage w:5 / " ..
-                 "spriggan berserker w:5", "agnes hp:335",
+                 "spriggan berserker w:5", "agnes hp:335 exp:3113",
                  "mossy rune of zot"}
     end
 
-    bs[4] = {"place:Slime", "dissolution hp:430 / " ..
-             "acid blob name:sulphuric n_adj col:white hp:450 / " ..
-             "great orb of eyes name:greater_orb_of_eyes n_rpl n_des n_noc col:green hp:600",
+    bs[4] = {"place:Slime", "dissolution hp:430 exp:16041/ " ..
+             "acid blob name:sulphuric n_adj col:white hp:450 exp:4488/ " ..
+             "great orb of eyes name:greater_orb_of_eyes n_rpl n_des n_noc col:green hp:600 exp:2502",
              "slimy rune of zot"}
-    bs[5] = {"vault guard / place:Vaults", "mennas hp:250 / mara hp:300 / " ..
-             "vault guard name:captain n_suf n_noc col:lightcyan hp:800 hd:26",
+    bs[5] = {"vault guard / place:Vaults", "mennas hp:250 exp:6462/ mara hp:300 exp:8019 / " ..
+             "vault guard name:captain n_suf n_noc col:lightcyan hp:800 hd:26 exp:9592",
              "silver rune of zot"}
     if crawl.coinflip() then
         bs[5], bs[4] = bs[4], bs[5]
@@ -767,7 +770,7 @@ function arena_sprint_init_boss_table()
     bs[13] = {"soul eater / reaper / executioner / curse skull",
               "gloorx vloq", "dark rune of zot"}
     bs[14] = {"guardian mummy w:15 / mummy priest w:3 / royal mummy w:2",
-               "khufu hp:500", "golden rune of zot"}
+               "khufu hp:500 exp:8988", "golden rune of zot"}
     -- Shuffle the above 9. We only wind up using 6 through 9
     for i = 14, 7, -1 do
         local r = crawl.random_range(6, i)
@@ -776,7 +779,7 @@ function arena_sprint_init_boss_table()
 
     -- Final (and tenth) boss
     bs[10] = {"pandemonium lord",
-              "ancient lich name:Master_Blaster n_rpl hd:30 hp:1500 col:lightmagenta " ..
+              "ancient lich name:Master_Blaster n_rpl hd:30 hp:1500 exp:62027 col:lightmagenta " ..
               "spells:fire_storm.32.wizard;glaciate.16.wizard;miasma_breath.16.wizard;blink_away.16.wizard.emergency", "demonic rune of zot"}
     return bs
 end
@@ -1084,10 +1087,13 @@ KFEAT:  L = armour shop count:17 greed:12 type:Basic suffix:Armour use_all ; \
             mundane plate armour | mundane barding |\
             mundane cloak | mundane buckler |\
             mundane pair of gloves | mundane helmet
-KFEAT:  M = jewellery shop type:Timeless suffix:Talismans count:9 greed:7 use_all ; \
-            quill talisman | maw talisman | serpent talisman |\
-            blade talisman | sanguine talisman | dragon-coil talisman |\
-            granite talisman | storm talisman | talisman of death
+KFEAT:  M = jewellery shop type:Timeless suffix:Talismans count:19 greed:7 use_all ; \
+            quill talisman | inkwell talisman | rimehorn talisman |\
+            scarab talisman | medusa talisman | maw talisman | blade talisman |\
+            serpent talisman | spider talisman | lupine talisman |\
+            wellspring talisman | fortress talisman | sanguine talisman |\
+            dragon-coil talisman | granite talisman | riddle talisman |\
+            hive talisman | storm talisman | talisman of death
 KFEAT:  N = weapon shop type:Staff suffix:Store count:9 use_all greed:30 ; \
             staff of fire | staff of air | staff of earth | staff of cold |\
             staff of alchemy | staff of death | staff of conjuration

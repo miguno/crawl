@@ -79,7 +79,7 @@
 #include "xom.h"
 
 monster::monster()
-    : hit_points(0), max_hit_points(0),
+    : hit_points(0), max_hit_points(0), exp(0),
       speed(0), speed_increment(0), target(), firing_pos(),
       patrol_point(), travel_target(MTRAV_NONE), inv(NON_ITEM), spells(),
       attitude(ATT_HOSTILE), behaviour(BEH_WANDER), foe(MHITYOU),
@@ -136,6 +136,7 @@ void monster::reset()
     base_monster    = MONS_NO_MONSTER;
     hit_points      = 0;
     max_hit_points  = 0;
+    exp             = 0;
     hit_dice        = 0;
     speed_increment = 0;
     attitude        = ATT_HOSTILE;
@@ -298,7 +299,7 @@ bool monster::floundering_at(const coord_def p) const
     const dungeon_feature_type grid = env.grid(p);
     return (liquefied(p)
             || (feat_is_water(grid)
-                // Use real_amphibious to detect giant non-water monsters in
+                // Use core_only to detect giant non-water monsters in
                 // deep water, who flounder despite being treated as amphibious.
                 && !(mons_habitat(*this, true) & HT_DEEP_WATER)
                 && !extra_balanced_at(p)))
@@ -1537,6 +1538,10 @@ bool monster::wants_armour(const item_def &item) const
 
 bool monster::wants_jewellery(const item_def &item) const
 {
+    // No jewellery for coglins.
+    if (type == MONS_IRONBOUND_MECHANIST || type == MONS_SPROZZ)
+        return false;
+
     // Arcane spellcasters don't want -Cast.
     if (is_actual_spellcaster()
         && is_artefact(item)
@@ -2670,8 +2675,6 @@ bool monster::go_frenzy(actor *source)
     const int duration = 16 + random2avg(13, 2);
 
     add_ench(mon_enchant(ENCH_FRENZIED, 0, source, duration * BASELINE_DELAY));
-    add_ench(mon_enchant(ENCH_HASTE, 0, source, duration * BASELINE_DELAY));
-    add_ench(mon_enchant(ENCH_MIGHT, 0, source, duration * BASELINE_DELAY));
 
     mons_att_changed(this);
 
@@ -3257,6 +3260,9 @@ int monster::armour_class() const
     if (has_ench(ENCH_CORROSION))
         ac -= 8;
 
+    if (has_ench(ENCH_PHALANX_BARRIER))
+        ac += 10;
+
     return max(ac, 0);
 }
 
@@ -3438,6 +3444,7 @@ bool monster::evil() const
         return true;
     if (has_attack_flavour(AF_DRAIN)
         || has_attack_flavour(AF_VAMPIRIC)
+        || has_attack_flavour(AF_HELL_HUNT)
         || has_attack_flavour(AF_FOUL_FLAME))
     {
         return true;
@@ -3529,10 +3536,12 @@ int monster::known_chaos(bool check_spells_god) const
 
     if (type == MONS_UGLY_THING
         || type == MONS_VERY_UGLY_THING
+        || type == MONS_CRAWLING_FLESH_CAGE
         || type == MONS_ABOMINATION_SMALL
         || type == MONS_ABOMINATION_LARGE
         || type == MONS_MUTANT_BEAST
         || type == MONS_WRETCHED_STAR
+        || type == MONS_KOBOLD_FLESHCRAFTER // Mutated tentacles!
         || type == MONS_KILLER_KLOWN      // For their random attacks.
         || type == MONS_TIAMAT            // For her colour-changing.
         || type == MONS_BAI_SUZHEN
@@ -3968,6 +3977,10 @@ int monster::willpower() const
     if (mons_is_hepliaklqana_ancestor(type))
         u = get_experience_level() * get_experience_level() / 2; // 0-160ish
 
+    // ghost demon struct overrides the monster values if it is non-negative
+    if (mons_is_ghost_demon(type) && ghost->willpower >= 0)
+        u = ghost->willpower;
+
     // Draining/malmutation reduce monster base WL proportionately.
     const int HD = get_hit_dice();
     if (HD < get_experience_level())
@@ -4085,7 +4098,7 @@ int monster::skill(skill_type sk, int scale, bool /*real*/, bool /*temp*/) const
         return hd;
 
     case SK_NECROMANCY:
-        return (has_spell_of_type(spschool::necromancy)) ? hd : hd/2;
+        return (has_spell_of_type(spschool::necromancy)) ? hd * 2 : hd/2;
 
     case SK_CONJURATIONS:
     case SK_ALCHEMY:
@@ -4797,8 +4810,7 @@ void monster::load_ghost_spells()
 
 bool monster::has_hydra_multi_attack() const
 {
-    return mons_genus(mons_base_type(*this)) == MONS_HYDRA
-        || mons_species(true) == MONS_SERPENT_OF_HELL;
+    return mons_genus(mons_base_type(*this)) == MONS_HYDRA;
 }
 
 int monster::heads() const
@@ -4811,11 +4823,6 @@ int monster::heads() const
     // here doesn't actually matter for non-hydra-type monsters.
     else
         return 1;
-}
-
-bool monster::has_multitargeting() const
-{
-    return has_hydra_multi_attack() && !mons_is_zombified(*this);
 }
 
 bool monster::is_priest() const
@@ -4892,7 +4899,7 @@ void monster::calc_speed()
 {
     speed = mons_base_speed(*this);
 
-    if (has_ench(ENCH_BERSERK))
+    if (this->berserk_or_frenzied())
         speed = berserk_mul(speed);
     else if (has_ench(ENCH_HASTE))
         speed = haste_mul(speed);
@@ -5138,7 +5145,7 @@ bool monster::has_blood(bool /*temp*/) const
 
 bool monster::has_bones(bool /*temp*/) const
 {
-    return mons_skeleton(type);
+    return mons_has_skeleton(type);
 }
 
 bool monster::is_stationary() const
@@ -5348,7 +5355,7 @@ void monster::apply_location_effects(const coord_def &oldpos,
         dungeon_events.fire_position_event(DET_MONSTER_MOVED, pos());
 
     if (alive()
-        && (mons_habitat(*this) == HT_WATER || mons_habitat(*this) == HT_LAVA)
+        && !(mons_habitat(*this) & HT_DRY_LAND)
         && !monster_habitable_grid(this, pos())
         && type != MONS_HELLFIRE_MORTAR
         && !has_ench(ENCH_AQUATIC_LAND))
@@ -5846,7 +5853,7 @@ void monster::react_to_damage(const actor *oppressor, int damage,
     {
         place_cloud(CLOUD_FIRE, pos(), 20 + random2(15), oppressor, 5);
     }
-    else if (type == MONS_SPRIGGAN_RIDER)
+    else if (type == MONS_SPRIGGAN_RIDER || type == MONS_GOBLIN_RIDER)
     {
         if (hit_points + damage > max_hit_points / 2)
             damage = max_hit_points / 2 - hit_points;
@@ -5854,6 +5861,7 @@ void monster::react_to_damage(const actor *oppressor, int damage,
             && flavour != BEAM_TORMENT_DAMAGE)
         {
             bool fly_died = coinflip();
+            monster_type dead_mon     = MONS_PROGRAM_BUG;
             int old_hp                = hit_points;
             auto old_flags            = flags;
             mon_enchant_list old_ench = enchantments;
@@ -5864,7 +5872,17 @@ void monster::react_to_damage(const actor *oppressor, int damage,
             if (!fly_died)
                 monster_drop_things(this, mons_aligned(oppressor, &you));
 
-            type = fly_died ? MONS_SPRIGGAN : MONS_HORNET;
+            if (type == MONS_SPRIGGAN_RIDER)
+            {
+                type = fly_died ? MONS_SPRIGGAN : MONS_HORNET;
+                dead_mon = fly_died ? MONS_HORNET : MONS_SPRIGGAN;
+            }
+            else if (type == MONS_GOBLIN_RIDER)
+            {
+                type = fly_died ? MONS_GOBLIN : MONS_WYVERN;
+                dead_mon = fly_died ? MONS_WYVERN : MONS_GOBLIN;
+            }
+
             define_monster(*this);
             hit_points = min(old_hp, hit_points);
             flags          = old_flags;
@@ -5875,7 +5893,7 @@ void monster::react_to_damage(const actor *oppressor, int damage,
             if (!old_name.empty())
                 mname = old_name;
 
-            mounted_kill(this, fly_died ? MONS_HORNET : MONS_SPRIGGAN,
+            mounted_kill(this, dead_mon,
                 !oppressor ? KILL_NON_ACTOR
                 : (oppressor->is_player())
                   ? KILL_YOU : KILL_MON,
@@ -5991,6 +6009,9 @@ int monster::reach_range() const
     const item_def *wpn = primary_weapon();
     if (wpn)
         range = max(range, weapon_reach(*wpn));
+
+    if (type == MONS_PLAYER_SHADOW && you.form == transformation::aqua)
+        range += 2;
 
     return range;
 }

@@ -1053,9 +1053,13 @@ void bolt::affect_wall()
         if (!in_bounds(pos()) || !can_affect_wall(pos(), true))
             finish_beam();
 
-        // The only thing that doesn't stop at walls.
-        if (flavour != BEAM_DIGGING)
+        // Digging is the only thing that doesn't stop at walls,
+        // (and even it needs to stop if an underlying feature isn't diggable).
+        if (flavour != BEAM_DIGGING
+            || is_temp_terrain(pos()) && !feat_is_diggable(orig_terrain(pos())))
+        {
             finish_beam();
+        }
         return;
     }
     if (in_bounds(pos()))
@@ -1594,7 +1598,7 @@ int mons_adjust_flavoured(monster* mons, bolt &pbolt, int hurted,
         hurted = resist_adjust_damage(mons, pbolt.flavour, hurted);
         if (doFlavouredEffects)
         {
-            int chance = get_mercury_weaken_chance(mons->get_hit_dice(), pbolt.ench_power);
+            int chance = get_mercury_weaken_chance(mons->get_hit_dice());
             if (x_chance_in_y(chance, 100))
                 mons->weaken(pbolt.agent(), 5);
 
@@ -1617,7 +1621,7 @@ int mons_adjust_flavoured(monster* mons, bolt &pbolt, int hurted,
                         did_splash_msg = true;
                     }
 
-                    chance = get_mercury_weaken_chance(act->get_hit_dice(), pbolt.ench_power);
+                    chance = get_mercury_weaken_chance(act->get_hit_dice());
                     if (x_chance_in_y(chance, 100))
                         act->weaken(pbolt.agent(), 5);
                 }
@@ -2766,6 +2770,19 @@ void bolt::affect_endpoint()
     }
     break;
 
+    case SPELL_BOLT_OF_FLESH:
+    {
+        if (!agent(true) || !agent(true)->alive())
+            break;
+
+        create_monster(mgen_data(MONS_PILE_OF_FLESH,
+                       SAME_ATTITUDE(agent(true)->as_monster()),
+                       pos(), agent(true)->as_monster()->foe)
+                       .set_summoned(agent(true), SPELL_BOLT_OF_FLESH, summ_dur(3), false)
+                       .set_range(1));
+    }
+    break;
+
     case SPELL_PHANTOM_BLITZ:
     {
         if (!agent(true) || !agent(true)->alive())
@@ -2917,7 +2934,7 @@ void bolt::affect_ground()
 
 bool bolt::is_fiery() const
 {
-    return flavour == BEAM_FIRE || flavour == BEAM_LAVA;
+    return get_beam_resist_type(flavour) == BEAM_FIRE;
 }
 
 /// Can this bolt burn trees it hits?
@@ -3372,10 +3389,8 @@ bool bolt::harmless_to_player() const
     case BEAM_PETRIFY:
         return you.res_petrify() || you.petrified();
 
-#if TAG_MAJOR_VERSION == 34
     case BEAM_COLD:
-        return is_big_cloud() && you.has_mutation(MUT_FREEZING_CLOUD_IMMUNITY);
-#endif
+        return is_big_cloud() && actor_cloud_immune(you, CLOUD_COLD);
 
     case BEAM_VIRULENCE:
         return player_res_poison(false) >= 3;
@@ -4427,7 +4442,9 @@ void bolt::affect_player()
     if (origin_spell == SPELL_STICKY_FLAME
         || flavour == BEAM_STICKY_FLAME)
     {
-        // ench_power here is equal to 12 * caster HD for monsters, btw
+        // ench_power here is equal to 12 * caster HD for pyre arrow and
+        // 8 * caster HD for sticky flame (mostly since player ghosts tend to
+        // have higher HD)
         const int intensity = 2 + ench_power / 14;
 
         if (!player_res_sticky_flame())
@@ -4543,8 +4560,7 @@ void bolt::affect_player()
     }
 
     if (you.form == transformation::aqua
-        && flavour == BEAM_FIRE || flavour == BEAM_LAVA
-        && x_chance_in_y(final_dam, you.hp_max * 2 / 3))
+        && is_fiery() && x_chance_in_y(final_dam, you.hp_max * 2 / 3))
     {
         const int pow = div_rand_round(final_dam * 100 / you.hp_max, 10);
         mpr("A part of your body evaporates into steam!");
@@ -4622,20 +4638,15 @@ bool bolt::ignores_player() const
 
 int bolt::apply_AC(const actor *victim, int hurted)
 {
-    switch (flavour)
+    // Apply automatic AC rules if ac_rule was not manually specified.
+    if (ac_rule == ac_type::normal)
     {
-    case BEAM_DAMNATION:
-        ac_rule = ac_type::none; break;
-    case BEAM_COLD:
-        if (origin_spell == SPELL_PERMAFROST_ERUPTION)
+        if (flavour == BEAM_DAMNATION)
             ac_rule = ac_type::none;
-        break;
-    case BEAM_ELECTRICITY:
-    case BEAM_THUNDER:
-        ac_rule = ac_type::half; break;
-    case BEAM_FRAG:
-        ac_rule = ac_type::triple; break;
-    default: ;
+        else if (get_beam_resist_type(flavour) == BEAM_ELECTRICITY)
+            ac_rule = ac_type::half;
+        else if (flavour == BEAM_FRAG)
+            ac_rule = ac_type::triple;
     }
 
     // beams don't obey GDR -> max_damage is 0
@@ -4773,28 +4784,44 @@ bool bolt::determine_damage(monster* mon, int& preac, int& postac, int& final)
 
 bool bolt::check_for_friendly_past_target(monster* mon)
 {
-    if (!tracer->should_stop() || is_harmless(mon))
-        return false;
-
     // If prompts for overshooting the target are disabled, instead
     // just let the caller know that there was something there. They
     // should be responsible and keep the player from shooting friends.
     // (We skip this for explosions, since stopping at our target is not
     // guaranteed to spare allies behind the target)
-    if (passed_target && !overshoot_prompt && you.can_see(*mon)
-        && !is_explosion)
+
+    if (!passed_target || overshoot_prompt || is_explosion
+        || !you.can_see(*mon) || !tracer->should_stop() || is_harmless(mon))
     {
-        string adj, suffix;
-        bool penance;
-        if (bad_attack(mon, adj, suffix, penance, target))
-        {
-            finish_beam();
-            friendly_past_target = true;
-            return true;
-        }
+        return false;
     }
 
-    return false;
+    string adj, suffix;
+    bool penance;
+    bool should_stop_at_target = bad_attack(mon, adj, suffix, penance, target);
+
+    if (should_stop_at_target && special_explosion)
+    {
+        targeting_tracer special_tracer;
+        bolt special_explosion_copy = *special_explosion;
+        special_explosion_copy.tracer = &special_tracer;
+        special_explosion_copy.in_explosion_phase = false;
+        special_explosion_copy.target = target;
+        special_explosion_copy.refine_for_explosion();
+        special_explosion_copy.explode();
+
+        // Only stop at our target if it would stop us hitting allies.
+        should_stop_at_target = special_tracer.friend_info.count == 0;
+    }
+
+    if (should_stop_at_target)
+    {
+        finish_beam();
+        friendly_past_target = true;
+        use_target_as_pos = true;
+    }
+
+    return should_stop_at_target;
 }
 
 // Whether or not this non-enchantment effect would have a relevant non-damage
@@ -4831,6 +4858,16 @@ void bolt::tracer_nonenchantment_affect_monster(monster* mon)
     bool has_friendly_past_target = check_for_friendly_past_target(mon);
     if (has_friendly_past_target)
         return;
+
+    // Special explosions (current exploding missiles) aren't
+    // auto-hit, so we need to explode them at every possible
+    // end-point?
+    if (special_explosion)
+    {
+        bolt orig = *special_explosion;
+        affect_endpoint();
+        *special_explosion = orig;
+    }
 
     int preac = 0, post = 0, final = 0;
 
@@ -4913,16 +4950,6 @@ void bolt::tracer_affect_monster(monster* mon)
     {
         finish_beam();
         return;
-    }
-
-    // Special explosions (current exploding missiles) aren't
-    // auto-hit, so we need to explode them at every possible
-    // end-point?
-    if (special_explosion)
-    {
-        bolt orig = *special_explosion;
-        affect_endpoint();
-        *special_explosion = orig;
     }
 
     if (is_enchantment())
@@ -5525,6 +5552,7 @@ bool bolt::at_blocking_monster() const
         return true;
     if (have_passive(passive_t::neutral_slimes)
         && mons_is_slime(*mon)
+        && mon->wont_attack()
         && flavour != BEAM_VILE_CLUTCH)
     {
         return true;
@@ -5544,7 +5572,8 @@ void bolt::affect_monster(monster* mon)
     if (agent()
         && flavour != BEAM_VILE_CLUTCH
         && have_passive(passive_t::neutral_slimes)
-        && mons_is_slime(*mon))
+        && mons_is_slime(*mon)
+        && mon->wont_attack())  // allow attacking slime-shaped shifters
     {
         if (!is_tracer() && you.see_cell(mon->pos()))
         {
@@ -5908,7 +5937,8 @@ bool bolt::ignores_monster(const monster* mon) const
         return true;
 
     if ((origin_spell == SPELL_PERCUSSIVE_TEMPERING
-         || origin_spell == SPELL_FORTRESS_BLAST)
+         || origin_spell == SPELL_FORTRESS_BLAST
+         || origin_spell == SPELL_AWAKEN_FLESH)
         && mons_atts_aligned(attitude, mon->temp_attitude()))
     {
         return true;

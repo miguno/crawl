@@ -1260,7 +1260,7 @@ static const struct spell_desc spelldata[] =
 {
     SPELL_MONSTROUS_MENAGERIE, "Monstrous Menagerie",
     spschool::summoning,
-    spflag::mons_abjure,
+    spflag::mons_abjure | spflag::monster,
     7,
     200,
     -1, -1,
@@ -1304,9 +1304,9 @@ static const struct spell_desc spelldata[] =
 
 {
     SPELL_MINOR_HEALING, "Minor Healing",
-    spschool::necromancy,
+    spschool::none,
     spflag::recovery | spflag::helpful | spflag::monster | spflag::selfench
-        | spflag::utility | spflag::not_evil,
+        | spflag::utility,
     2,
     0,
     LOS_RADIUS, LOS_RADIUS,
@@ -1316,9 +1316,9 @@ static const struct spell_desc spelldata[] =
 
 {
     SPELL_MAJOR_HEALING, "Major Healing",
-    spschool::necromancy,
+    spschool::none,
     spflag::recovery | spflag::helpful | spflag::monster | spflag::selfench
-        | spflag::utility | spflag::not_evil,
+        | spflag::utility,
     6,
     0,
     LOS_RADIUS, LOS_RADIUS,
@@ -1328,9 +1328,9 @@ static const struct spell_desc spelldata[] =
 
 {
     SPELL_WOODWEAL, "Woodweal",
-    spschool::necromancy,
+    spschool::none,
     spflag::recovery | spflag::helpful | spflag::monster | spflag::selfench
-        | spflag::utility | spflag::not_evil,
+        | spflag::utility,
     4,
     0,
     1, 1,
@@ -1907,10 +1907,9 @@ static const struct spell_desc spelldata[] =
 
 {
     SPELL_HEAL_OTHER, "Heal Other",
-    spschool::necromancy,
+    spschool::none,
     spflag::dir_or_target | spflag::not_self | spflag::helpful
-        | spflag::needs_tracer | spflag::utility | spflag::not_evil
-        | spflag::monster,
+        | spflag::needs_tracer | spflag::utility | spflag::monster,
     6,
     200,
     LOS_RADIUS, LOS_RADIUS,
@@ -2117,6 +2116,17 @@ static const struct spell_desc spelldata[] =
     2, 3,
     0,
     TILEG_DAZZLING_FLASH,
+},
+
+{
+    SPELL_BECKONING_GALE, "Beckoning Gale",
+    spschool::air,
+    spflag::target | spflag::not_self | spflag::monster,
+    3,
+    100,
+    2, LOS_RADIUS,
+    0,
+    TILEG_BECKONING_GALE,
 },
 
 {
@@ -2645,6 +2655,29 @@ static const struct spell_desc spelldata[] =
     5, 5,
     0,
     TILEG_BOLT_OF_LIGHT,
+},
+
+{
+    SPELL_BOLT_OF_FLESH, "Bolt of Flesh",
+    spschool::conjuration | spschool::necromancy | spschool::summoning,
+    spflag::dir_or_target | spflag::needs_tracer| spflag::monster
+                          | spflag::chaotic,
+    6,
+    200,
+    5, 5,
+    0,
+    TILEG_BOLT_OF_FLESH,
+},
+
+{
+    SPELL_AWAKEN_FLESH, "Awaken Flesh",
+    spschool::conjuration | spschool::necromancy | spschool::hexes,
+    spflag::area | spflag::chaotic | spflag::monster,
+    6,
+    200,
+    LOS_RADIUS, LOS_RADIUS,
+    0,
+    TILEG_AWAKEN_FLESH,
 },
 
 {
@@ -3785,7 +3818,7 @@ static const struct spell_desc spelldata[] =
 
 {
     SPELL_REGENERATE_OTHER, "Regenerate Other",
-    spschool::necromancy,
+    spschool::none,
     spflag::monster | spflag::not_self | spflag::helpful,
     4,
     0,
@@ -3796,7 +3829,7 @@ static const struct spell_desc spelldata[] =
 
 {
     SPELL_MASS_REGENERATION, "Mass Regeneration",
-    spschool::necromancy,
+    spschool::none,
     spflag::monster  | spflag::helpful,
     7,
     0,
@@ -4317,6 +4350,18 @@ static const struct spell_desc spelldata[] =
 },
 
 {
+    SPELL_ALL_PURPOSE_TEMPERING, "Nazja's All-Purpose Tempering",
+    spschool::forgecraft,
+    spflag::target | spflag::helpful | spflag::not_self | spflag::destructive
+    | spflag::monster,
+    5,
+    200,
+    LOS_RADIUS, LOS_RADIUS,
+    0,
+    TILEG_PERCUSSIVE_TEMPERING,
+},
+
+{
     SPELL_FORTRESS_BLAST, "Fortress Blast",
     spschool::forgecraft,
     spflag::area | spflag::destructive,
@@ -4448,6 +4493,17 @@ static const struct spell_desc spelldata[] =
     5, 5,
     0,
     TILEG_FIRE_BREATH,
+},
+
+{
+    SPELL_SPHINX_SISTERS, "Sphinx Sisters",
+    spschool::summoning | spschool::hexes,
+    spflag::mons_abjure,
+    7,
+    200,
+    -1, -1,
+    0,
+    TILEG_SPHINX_SISTERS,
 },
 
 {

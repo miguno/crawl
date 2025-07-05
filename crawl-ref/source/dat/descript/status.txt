@@ -1015,7 +1015,7 @@ targets and this bonus will reset.
 %%%%
 Slaughter status
 
-You are an instrument of Makhleb's destructive will. Your power and defenses are
+You are an instrument of Makhleb's destructive will. Your power and defences are
 greatly enhanced, but you must endure the Crucible of Flesh once this effect
 ends.
 %%%%
@@ -1137,6 +1137,7 @@ You have an explosive catalyst readied. The catalyst will detonate, dealing fire
 damage to the primary target of each of your melee attacks and any enemy
 adjacent to them, with each hit. Attacking will extend the duration of the
 catalyst even if you miss.
+%%%%
 Shroud status
 
 You are covered by a thin shroud of slime that may deflect a melee attack. When
@@ -1149,7 +1150,7 @@ You are a rime yak, fur encrusted with ice.
 %%%%
 Spider status
 
-You are an agile jumping spider who attacks can web enemies.
+You are an agile jumping spider whose attacks can web enemies.
 %%%%
 Quill status
 
@@ -1161,7 +1162,7 @@ You are a living beehive, abuzz with busy insects.
 %%%%
 -Swarm status
 
-The insects that dwell within you have recently swarmed to your defense. This
+The insects that dwell within you have recently swarmed to your defence. This
 will not happen again until your health fully recovers.
 %%%%
 Aqua status

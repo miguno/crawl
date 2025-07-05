@@ -44,6 +44,9 @@ bool mutate(mutation_type which_mutation, const string &reason,
             bool beneficial = false,
             mutation_permanence_class mutclass = MUTCLASS_NORMAL);
 
+bool _delete_single_mutation_level(mutation_type mutat,
+                                   const string &reason, bool transient);
+
 int mut_check_conflict(mutation_type mut, bool innate_only = false);
 bool mut_is_compatible(mutation_type mut, bool base_only = false);
 
@@ -83,6 +86,7 @@ void check_demonic_guardian();
 void check_monster_detect();
 int augmentation_amount();
 void reset_powered_by_death_duration();
+int protean_grace_amount();
 
 bool delete_all_temp_mutations(const string &reason);
 bool delete_temp_mutation();

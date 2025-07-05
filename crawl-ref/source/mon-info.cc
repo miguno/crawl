@@ -148,6 +148,7 @@ static map<enchant_type, monster_info_flags> trivial_ench_mb_mappings = {
     { ENCH_CHAOS_LACE,      MB_CHAOS_LACE },
     { ENCH_VEXED,           MB_VEXED },
     { ENCH_PYRRHIC_RECOLLECTION, MB_PYRRHIC_RECOLLECTION },
+    { ENCH_CLOCKWORK_BEE_CAST, MB_CLOCKWORK_BEE_CAST },
 };
 
 static monster_info_flags ench_to_mb(const monster& mons, enchant_type ench)
@@ -284,8 +285,7 @@ static void _translate_tentacle_ref(monster_info& mi, const monster* m,
 static bool _has_hydra_multi_attack(const monster_info &mi)
 {
     return mons_genus(mi.type) == MONS_HYDRA
-           || mons_genus(mi.base_type) == MONS_HYDRA
-           || mons_species(mi.base_type) == MONS_SERPENT_OF_HELL;
+           || mons_genus(mi.base_type) == MONS_HYDRA;
 }
 
 monster_info::monster_info(monster_type p_type, monster_type p_base_type)
@@ -864,9 +864,6 @@ monster_info::monster_info(const monster* m, int milev)
             mb.set(MB_PARTIALLY_CHARGED);
     }
 
-    if (m->type == MONS_RENDING_BLADE && m->number > 0)
-        mb.set(MB_FULLY_CHARGED);
-
     if (m->type == MONS_SEISMOSAURUS_EGG && egg_is_incubating(*m))
         mb.set(MB_HATCHING);
 
@@ -1169,8 +1166,7 @@ string monster_info::common_name(description_level_type desc) const
 
     if (_has_hydra_multi_attack(*this)
         && type != MONS_SENSED
-        && !mons_class_is_remnant(type)
-        && mons_species(type) != MONS_SERPENT_OF_HELL)
+        && !mons_class_is_remnant(type))
     {
         ASSERT(num_heads > 0);
         if (num_heads < 11)
@@ -1198,26 +1194,14 @@ string monster_info::common_name(description_level_type desc) const
     switch (type)
     {
     case MONS_ZOMBIE:
-#if TAG_MAJOR_VERSION == 34
-    case MONS_ZOMBIE_SMALL:
-    case MONS_ZOMBIE_LARGE:
-#endif
         if (!is(MB_NAME_ZOMBIE))
             ss << (nocore ? "" : " ") << "zombie";
         break;
     case MONS_SKELETON:
-#if TAG_MAJOR_VERSION == 34
-    case MONS_SKELETON_SMALL:
-    case MONS_SKELETON_LARGE:
-#endif
         if (!is(MB_NAME_ZOMBIE))
             ss << (nocore ? "" : " ") << "skeleton";
         break;
     case MONS_SIMULACRUM:
-#if TAG_MAJOR_VERSION == 34
-    case MONS_SIMULACRUM_SMALL:
-    case MONS_SIMULACRUM_LARGE:
-#endif
         if (!is(MB_NAME_ZOMBIE))
             ss << (nocore ? "" : " ") << "simulacrum";
         break;

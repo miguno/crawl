@@ -139,6 +139,7 @@ malign_gateway MALIGN_GATEWAY
 mass_abjuration MASS_ABJURATION
 monstrous_menagerie MONSTROUS_MENAGERIE
 recall RECALL
+sphinx_sisters SPHINX_SISTERS
 summon_cactus_giant SUMMON_CACTUS_GIANT
 summon_demon SUMMON_DEMON
 summon_dragon SUMMON_DRAGON
@@ -203,14 +204,17 @@ warp_space WARP_SPACE
 generic GENERIC_MONSTER_SPELL
 air_elementals AIR_ELEMENTALS
 avatar_song AVATAR_SONG
+awaken_flesh AWAKEN_FLESH
 awaken_forest AWAKEN_FOREST
 awaken_vines AWAKEN_VINES
 battlecry BATTLECRY
+beckoning_gale BECKONING_GALE
 berserk_other BERSERK_OTHER
 bestow_arms BESTOW_ARMS
 blink_allies_away BLINK_ALLIES_AWAY
 blink_allies_encircling BLINK_ALLIES_ENCIRCLING
 blink_other BLINK_OTHER
+bolt_of_flesh BOLT_OF_FLESH
 brain_bite BRAIN_BITE
 call_of_chaos CALL_OF_CHAOS
 call_down_damnation CALL_DOWN_DAMNATION

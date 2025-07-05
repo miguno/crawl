@@ -237,7 +237,7 @@ static bool _explode_corpse(item_def& corpse, const coord_def& where)
 
 static int _calc_player_experience(const monster* mons)
 {
-    int experience = exper_value(*mons);
+    int experience = exp_value(*mons);
     if (!experience)
         return 0;
 
@@ -770,7 +770,7 @@ static bool _vampire_make_thrall(monster* mons)
     mons->mark_summoned(MON_SUMM_THRALL, 0, false);
     mons->add_ench(mon_enchant(ENCH_SUMMON_TIMER, 0, &you, dur));
     mons_att_changed(mons);
-    gain_exp(exper_value(*mons));
+    gain_exp(exp_value(*mons));
 
     // Cancel fleeing and such.
     mons->behaviour = BEH_SEEK;
@@ -2110,54 +2110,79 @@ static void _player_on_kill_effects(monster& mons, killer_type killer,
                                     bool gives_player_xp, bool pet_kill)
 {
     // Various sources of heal-on-kill
-    if (YOU_KILL(killer) && gives_player_xp)
+    if ((YOU_KILL(killer) || pet_kill) && gives_player_xp)
     {
         int hp_heal = 0, mp_heal = 0;
-        // Chance scales from 30% at 1* to 80% at 6*
-        const bool can_divine_heal =
-            (gives_player_xp
-                || you_worship(GOD_MAKHLEB)
-                   && player_in_branch(BRANCH_CRUCIBLE))
-            && !player_under_penance()
-            && (x_chance_in_y(50 * (min(piety_breakpoint(5), (int)you.piety) - 30)
-                                / (piety_breakpoint(5) - piety_breakpoint(0)) + 30, 100)
-                || mons.props.exists(MAKHLEB_BLOODRITE_KILL_KEY));
-
-        if (can_divine_heal && have_passive(passive_t::restore_hp))
+        bool feed = false;
+        if (YOU_KILL(killer))
         {
-            hp_heal += (1 + mons.get_experience_level()) / 2
-                    + random2(mons.get_experience_level() / 2);
+            // Chance scales from 30% at 1* to 80% at 6*
+            const bool can_divine_heal =
+                (gives_player_xp
+                    || you_worship(GOD_MAKHLEB)
+                       && player_in_branch(BRANCH_CRUCIBLE))
+                && !player_under_penance()
+                && (x_chance_in_y(50 * (min(piety_breakpoint(5), (int)you.piety) - 30)
+                                    / (piety_breakpoint(5) - piety_breakpoint(0)) + 30, 100)
+                    || mons.props.exists(MAKHLEB_BLOODRITE_KILL_KEY));
 
-            if (you.form == transformation::slaughter)
-                hp_heal *= 2;
-        }
-        if (can_divine_heal
-            && have_passive(passive_t::restore_hp_mp_vs_evil)
-            && mons.evil())
-        {
-            hp_heal += random2(1 + 2 * mons.get_experience_level());
-            mp_heal += random2(2 + mons.get_experience_level() / 3);
-        }
-        if (can_divine_heal && have_passive(passive_t::mp_on_kill))
-            mp_heal += 1 + random2(mons.get_experience_level() / 2);
+            if (can_divine_heal && have_passive(passive_t::restore_hp))
+            {
+                hp_heal += (1 + mons.get_experience_level()) / 2
+                        + random2(mons.get_experience_level() / 2);
+
+                if (you.form == transformation::slaughter)
+                    hp_heal *= 2;
+            }
+            if (can_divine_heal
+                && have_passive(passive_t::restore_hp_mp_vs_evil)
+                && mons.evil())
+            {
+                hp_heal += random2(1 + 2 * mons.get_experience_level());
+                mp_heal += random2(2 + mons.get_experience_level() / 3);
+            }
+            if (can_divine_heal && have_passive(passive_t::mp_on_kill))
+                mp_heal += 1 + random2(mons.get_experience_level() / 2);
 
 #if TAG_MAJOR_VERSION == 34
-        if (you.has_mutation(MUT_DEVOUR_ON_KILL)
-            && mons.holiness() & (MH_NATURAL | MH_PLANT)
-            && coinflip())
-        {
-            hp_heal += 1 + random2avg(1 + you.experience_level, 3);
-        }
+            if (you.has_mutation(MUT_DEVOUR_ON_KILL)
+                && mons.holiness() & (MH_NATURAL | MH_PLANT)
+                && coinflip())
+            {
+                hp_heal += 1 + random2avg(1 + you.experience_level, 3);
+            }
 #endif
+        }
 
-        if (hp_heal && you.hp < you.hp_max
-            && !you.duration[DUR_DEATHS_DOOR])
+        if (you.has_mutation(MUT_FEED_OFF_SUFFERING)
+            && (mons.has_ench(ENCH_POISON) || mons.has_ench(ENCH_DRAINED))
+            && x_chance_in_y(1 + you.get_mutation_level(MUT_FEED_OFF_SUFFERING), 4))
+        {
+            feed = true;
+            int min = you.get_mutation_level(MUT_FEED_OFF_SUFFERING);
+            hp_heal += random_range(min, min + mons.get_experience_level() / 3);
+            mp_heal += random_range(min, min + mons.get_experience_level() / 3);
+        }
+
+        bool healing = hp_heal && you.hp < you.hp_max && !you.duration[DUR_DEATHS_DOOR];
+        bool powering = mp_heal && you.magic_points < you.max_magic_points;
+
+        if (feed && (healing || powering))
+        {
+            mprf("You siphon power from %s's fading %s.",
+                  mons.name(DESC_THE).c_str(),
+                  mons.has_ench(ENCH_POISON) && mons.has_ench(ENCH_DRAINED) ?
+                  "poison and negative energy" : (mons.has_ench(ENCH_POISON) ?
+                  "poison" : "negative energy"));
+        }
+
+        if (healing)
         {
             canned_msg(MSG_GAIN_HEALTH);
             inc_hp(hp_heal);
         }
 
-        if (mp_heal && you.magic_points < you.max_magic_points)
+        if (powering)
         {
             canned_msg(MSG_GAIN_MAGIC);
             inc_mp(mp_heal);
@@ -2276,7 +2301,7 @@ static void _player_on_kill_effects(monster& mons, killer_type killer,
  *               documented/coded)
  * @param killer_index The mindex of the killer (TODO: always use an actor*)
  * @param silent whether to print any messages about the death
- * @param mount_death The death of the mount of a mounted monster (spriggan rider).
+ * @param mount_death The death of the mount of a mounted monster (riders).
  * @returns a pointer to the created corpse, possibly null
  */
 item_def* monster_die(monster& mons, killer_type killer,
@@ -2594,9 +2619,6 @@ item_def* monster_die(monster& mons, killer_type killer,
                         mons.get_ench(ENCH_MAGNETISED).agent());
     }
 
-    if (mons.has_ench(ENCH_VENGEANCE_TARGET))
-        beogh_progress_vengeance();
-
     if (leaves_corpse && mons.has_ench(ENCH_RIMEBLIGHT)
         && !silent && !was_banished && !mons_reset
         && mons.props.exists(RIMEBLIGHT_DEATH_KEY))
@@ -2754,6 +2776,9 @@ item_def* monster_die(monster& mons, killer_type killer,
     bool anon = (killer_index == ANON_FRIENDLY_MONSTER);
     const mon_holy_type targ_holy = mons.holiness();
 
+    const bool destroyed = wounded_damaged(targ_holy) ||
+                           mons.type == MONS_CRAWLING_FLESH_CAGE;
+
     // Print standard death messages, handle god conducts and piety gain, and
     // perform other killer_type specific actions (like handling banishment).
     switch (killer)
@@ -2769,16 +2794,16 @@ item_def* monster_die(monster& mons, killer_type killer,
                 {
                     mprf(MSGCH_MONSTER_DAMAGE, MDAM_DEAD, "%s is %s!",
                          mons.name(DESC_THE).c_str(),
-                         exploded                        ? "blown up" :
-                         wounded_damaged(targ_holy)      ? "destroyed"
-                                                         : "killed");
+                         exploded   ? "blown up" :
+                         destroyed  ? "destroyed"
+                                    : "killed");
                 }
                 else
                 {
                     mprf(MSGCH_MONSTER_DAMAGE, MDAM_DEAD, "You %s %s!",
-                         exploded                        ? "blow up" :
-                         wounded_damaged(targ_holy)      ? "destroy"
-                                                         : "kill",
+                         exploded  ? "blow up" :
+                         destroyed ? "destroy"
+                                   : "kill",
                          mons.name(DESC_THE).c_str());
                 }
             }
@@ -2823,9 +2848,9 @@ item_def* monster_die(monster& mons, killer_type killer,
             if (death_message)
             {
                 const char* msg =
-                    exploded                   ? " is blown up!" :
-                    wounded_damaged(targ_holy) ? " is destroyed!"
-                                               : " dies!";
+                    exploded  ? " is blown up!" :
+                    destroyed ? " is destroyed!"
+                              : " dies!";
                 simple_monster_message(mons, msg, false, MSGCH_MONSTER_DAMAGE,
                                        MDAM_DEAD);
             }
@@ -2860,9 +2885,9 @@ item_def* monster_die(monster& mons, killer_type killer,
             if (death_message)
             {
                 const char* msg =
-                    exploded                     ? " is blown up!" :
-                    wounded_damaged(targ_holy)   ? " is destroyed!"
-                                                    : " dies!";
+                    exploded   ? " is blown up!" :
+                    destroyed  ? " is destroyed!"
+                               : " dies!";
                 simple_monster_message(mons, msg, false, MSGCH_MONSTER_DAMAGE,
                                         MDAM_DEAD);
             }
@@ -2955,8 +2980,15 @@ item_def* monster_die(monster& mons, killer_type killer,
             }
             else if (mons.type == MONS_CLOCKWORK_BEE)
                 msg = " runs out of power.";
-            else if (mons.type == MONS_CLOCKWORK_BEE_INACTIVE)
+            else if (mons.type == MONS_ABOMINATION_SMALL
+                     || mons.type == MONS_ABOMINATION_LARGE
+                     || mons.type == MONS_CLOCKWORK_BEE_INACTIVE
+                     || mons.type == MONS_PHALANX_BEETLE
+                     || mons.type == MONS_WALKING_ALEMBIC
+                     || mons.type == MONS_DIAMOND_SAWBLADE)
+            {
                 msg = " falls apart.";
+            }
             else if (mons.type == MONS_PLATINUM_PARAGON)
                 msg = " expends the last of its power.";
             else if (mons.type == MONS_RENDING_BLADE)
@@ -3219,7 +3251,12 @@ item_def* monster_die(monster& mons, killer_type killer,
         // Have to add case for disintegration effect here? {dlb}
         item_def* daddy_corpse = nullptr;
 
-        if (mons.type == MONS_SPRIGGAN_RIDER)
+        if (mons.type == MONS_GOBLIN_RIDER)
+        {
+            daddy_corpse = mounted_kill(&mons, MONS_WYVERN, killer, killer_index);
+            mons.type = MONS_GOBLIN;
+        }
+        else if (mons.type == MONS_SPRIGGAN_RIDER)
         {
             daddy_corpse = mounted_kill(&mons, MONS_HORNET, killer, killer_index);
             mons.type = MONS_SPRIGGAN;
@@ -3243,6 +3280,9 @@ item_def* monster_die(monster& mons, killer_type killer,
 
         return corpse;
     }
+
+    if (mons.has_ench(ENCH_VENGEANCE_TARGET))
+        beogh_progress_vengeance();
 
     // If there are other duel targets alive (due to a slime splitting), don't
     // count this as winning the duel.
@@ -3417,6 +3457,9 @@ void monster_cleanup(monster* mons)
 
     if (mons->type == MONS_PLATINUM_PARAGON)
         you.duration[DUR_PARAGON_ACTIVE] = 0;
+    if (mons->type == MONS_SEISMOSAURUS_EGG)
+        for (distance_iterator di(mons->pos(), false, false, 4); di; ++di)
+            env.pgrid(*di) &= ~FPROP_SEISMOROCK;
 
     // May have been constricting something. No message because that depends
     // on the order in which things are cleaned up: If the constrictee is

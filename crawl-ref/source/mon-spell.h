@@ -228,6 +228,21 @@ static const mon_spellbook mspell_list[] =
       }
     },
 
+    {  MST_IRONBOUND_MECHANIST,
+      {
+       { SPELL_PHALANX_BEETLE, 35, MON_SPELL_WIZARD },
+       { SPELL_ALL_PURPOSE_TEMPERING, 45, MON_SPELL_WIZARD },
+      }
+    },
+
+    {  MST_SPROZZ,
+      {
+       { SPELL_CLOCKWORK_BEE, 70, MON_SPELL_WIZARD },
+       { SPELL_ALL_PURPOSE_TEMPERING, 30, MON_SPELL_WIZARD },
+      }
+    },
+
+
     // ('h') Carnivorous quadrupeds.
     {  MST_BEAR,
       {
@@ -377,6 +392,12 @@ static const mon_spellbook mspell_list[] =
       {
        { SPELL_BOLT_OF_COLD, 28, MON_SPELL_WIZARD },
        { SPELL_SLOW, 28, MON_SPELL_WIZARD },
+      }
+    },
+
+    {  MST_COGNITOGAUNT,
+      {
+       { SPELL_BRAIN_BITE, 64, MON_SPELL_MAGICAL },
       }
     },
 
@@ -709,6 +730,12 @@ static const mon_spellbook mspell_list[] =
       }
     },
 
+    { MST_CHONCHON,
+      {
+        { SPELL_BECKONING_GALE, 26, MON_SPELL_WIZARD },
+      }
+    },
+
     // ('y') Flying insects.
     {  MST_MELIAI,
       {
@@ -1033,7 +1060,6 @@ static const mon_spellbook mspell_list[] =
 
     {  MST_GLOWING_ORANGE_BRAIN,
       {
-       { SPELL_BRAIN_BITE, 14, MON_SPELL_MAGICAL },
        { SPELL_CAUSE_FEAR, 14, MON_SPELL_MAGICAL },
        { SPELL_SHADOW_CREATURES, 14, MON_SPELL_MAGICAL },
        { SPELL_MASS_CONFUSION, 14, MON_SPELL_MAGICAL },
@@ -1044,6 +1070,13 @@ static const mon_spellbook mspell_list[] =
     {  MST_MANTICORE,
       {
        { SPELL_THROW_BARBS, 100, MON_SPELL_NATURAL },
+      }
+    },
+
+    {  MST_HIPPOGRIFF,
+      {
+        { SPELL_WARNING_CRY, 35, MON_SPELL_VOCAL | MON_SPELL_BREATH },
+        { SPELL_BECKONING_GALE, 60, MON_SPELL_NATURAL },
       }
     },
 
@@ -1123,6 +1156,13 @@ static const mon_spellbook mspell_list[] =
     {  MST_KOBOLD_BLASTMINER,
       {
        { SPELL_BOMBARD, 32, MON_SPELL_NATURAL | MON_SPELL_NOISY },
+      }
+    },
+
+    {  MST_KOBOLD_FLESHCRAFTER,
+      {
+       { SPELL_BOLT_OF_FLESH, 32, MON_SPELL_WIZARD },
+       { SPELL_AWAKEN_FLESH, 60, MON_SPELL_WIZARD },
       }
     },
 
@@ -2199,9 +2239,9 @@ static const mon_spellbook mspell_list[] =
     // ('5') Lesser demons.
     {  MST_GRINDER,
       {
-       { SPELL_PAIN, 19, MON_SPELL_MAGICAL },
-       { SPELL_PARALYSE, 19, MON_SPELL_MAGICAL },
-       { SPELL_BLINK, 19, MON_SPELL_MAGICAL },
+       { SPELL_PAIN, 17, MON_SPELL_MAGICAL },
+       { SPELL_PARALYSE, 17, MON_SPELL_MAGICAL },
+       { SPELL_BLINK, 21, MON_SPELL_MAGICAL },
       }
     },
 

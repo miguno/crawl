@@ -452,7 +452,6 @@ tileidx_t tileidx_feature_base(dungeon_feature_type feat)
     case DNGN_EXIT_ZIGGURAT:
     case DNGN_EXIT_BAZAAR:
     case DNGN_EXIT_TROVE:
-    case DNGN_EXIT_SEWER:
     case DNGN_EXIT_OSSUARY:
     case DNGN_EXIT_BAILEY:
     case DNGN_EXIT_DESOLATION:
@@ -461,6 +460,8 @@ tileidx_t tileidx_feature_base(dungeon_feature_type feat)
         return TILE_DNGN_PORTAL;
     case DNGN_EXIT_NECROPOLIS:
         return TILE_DNGN_EXIT_NECROPOLIS;
+    case DNGN_EXIT_SEWER:
+        return TILE_DNGN_EXIT_SEWER;
     case DNGN_EXIT_ICE_CAVE:
         return TILE_DNGN_PORTAL_ICE_CAVE;
     case DNGN_EXIT_VOLCANO:
@@ -547,6 +548,8 @@ tileidx_t tileidx_feature_base(dungeon_feature_type feat)
         return TILE_DNGN_EYES_FOUNTAIN;
     case DNGN_DRY_FOUNTAIN:
         return TILE_DNGN_DRY_FOUNTAIN;
+    case DNGN_DECORATIVE_FLOOR:
+        return TILE_DNGN_DECORATIVE_FLOOR;
     case DNGN_CACHE_OF_FRUIT:
         return TILE_DNGN_CACHE_OF_FRUIT;
     case DNGN_CACHE_OF_MEAT:
@@ -1397,6 +1400,8 @@ static tileidx_t _zombie_tile_to_skeleton(const tileidx_t z_tile)
         return TILEP_MONS_SKELETON_DRAKE;
     case TILEP_MONS_ZOMBIE_UGLY_THING:
         return TILEP_MONS_SKELETON_UGLY_THING;
+    case TILEP_MONS_ZOMBIE_X:
+        return TILEP_MONS_SKELETON_X;
     case TILEP_MONS_ZOMBIE_DRACONIAN:
         return TILEP_MONS_SKELETON_DRACONIAN;
     default:
@@ -1676,7 +1681,6 @@ tileidx_t tileidx_monster_base(int type, int mon_id, bool in_water, int colour,
         // Number of heads
         return tileidx_mon_clamp(TILEP_MONS_HYDRA, number - 1);
     case MONS_SLIME_CREATURE:
-    case MONS_MERGED_SLIME_CREATURE:
         return tileidx_mon_clamp(TILEP_MONS_SLIME_CREATURE, number - 1);
     case MONS_LERNAEAN_HYDRA:
         // Step down the number of heads to get the appropriate tile:
@@ -1937,6 +1941,29 @@ static tileidx_t _tileidx_monster_no_props(const monster_info& mon)
         case MONS_YAKTAUR:
         case MONS_YAKTAUR_CAPTAIN:
             return base + (_bow_offset(mon) ? 1 : 0);
+
+
+        case MONS_GOBLIN_RIDER:
+        {
+            // Their tile only covers spears.
+            const item_def * const weapon = mon.inv[MSLOT_WEAPON].get();
+            if (weapon && weapon->is_type(OBJ_WEAPONS, WPN_SPEAR))
+                if (get_weapon_brand(*weapon) != SPWPN_NORMAL)
+                    return TILEP_MONS_GOBLIN_RIDER_GOOD_SPEAR;
+                else
+                    return TILEP_MONS_GOBLIN_RIDER;
+            else
+                return TILEP_MONS_GOBLIN_RIDER_SPEARLESS;
+        }
+
+        case MONS_REAPER:
+        {
+            const item_def * const weapon = mon.inv[MSLOT_WEAPON].get();
+            if (weapon && weapon->is_type(OBJ_WEAPONS, WPN_HALBERD))
+                return TILEP_MONS_REAPER;
+            else
+                return TILEP_MONS_REAPER_SCYTHELESS;
+        }
 
         case MONS_CEREBOV:
         case MONS_SERAPH:
@@ -2338,6 +2365,7 @@ static const map<monster_info_flags, tileidx_t> monster_status_icons = {
     { MB_BURNING, TILEI_STICKY_FLAME },
     { MB_INNER_FLAME, TILEI_INNER_FLAME },
     { MB_BERSERK, TILEI_BERSERK },
+    { MB_FRENZIED, TILEI_FRENZIED },
     { MB_SLOWED, TILEI_SLOWED },
     { MB_MIRROR_DAMAGE, TILEI_PAIN_MIRROR },
     { MB_HASTED, TILEI_HASTED },
@@ -2390,7 +2418,7 @@ static const map<monster_info_flags, tileidx_t> monster_status_icons = {
     { MB_RETREATING, TILEI_RETREAT  },
     { MB_TOUCH_OF_BEOGH, TILEI_TOUCH_OF_BEOGH },
     { MB_VENGEANCE_TARGET, TILEI_VENGEANCE_TARGET },
-    { MB_MAGNETISED, TILEI_BULLSEYE },  // Placeholder
+    { MB_MAGNETISED, TILEI_MAGNETISED },
     { MB_RIMEBLIGHT, TILEI_RIMEBLIGHT },
     { MB_ARMED, TILEI_UNDYING_ARMS },
     { MB_SHADOWLESS, TILEI_SHADOWLESS },
@@ -2405,6 +2433,7 @@ static const map<monster_info_flags, tileidx_t> monster_status_icons = {
     { MB_VEXED, TILEI_VEXED },
     { MB_VAMPIRE_THRALL, TILEI_VAMPIRE_THRALL },
     { MB_PYRRHIC_RECOLLECTION, TILEI_PYRRHIC },
+    { MB_CLOCKWORK_BEE_CAST, TILEI_PARTIALLY_CHARGED },
 };
 
 set<tileidx_t> status_icons_for(const monster_info &mons)
@@ -2516,7 +2545,12 @@ tileidx_t tileidx_player_mons()
 
     // Handled here so that it can wield weapons at non-standard offsets
     if (you.form == transformation::fortress_crab)
-        return TILEP_TRAN_FORTRESS_CRAB;
+    {
+        if (you.species == SP_GARGOYLE)
+            return TILEP_TRAN_FORTRESS_CRAB_GARGOYLE;
+        else
+            return TILEP_TRAN_FORTRESS_CRAB;
+    }
 
     if (you.may_pruneify() && you.cannot_act())
         return TILEP_MONS_PRUNE;
@@ -3103,7 +3137,8 @@ static tileidx_t _tileidx_misc(const item_def &item)
                                              : TILE_MISC_LIGHTNING_ROD_INERT;
 
     case MISC_SACK_OF_SPIDERS:
-        return TILE_MISC_SACK_OF_SPIDERS;
+        return evoker_charges(item.sub_type) ? TILE_MISC_SACK_OF_SPIDERS
+                                             : TILE_MISC_SACK_OF_SPIDERS_INERT;
 
     case MISC_GRAVITAMBOURINE:
         return evoker_charges(item.sub_type) ? TILE_MISC_TAMBOURINE
@@ -3571,6 +3606,8 @@ tileidx_t vary_bolt_tile(tileidx_t tile, int dir, int dist)
         return tile + (dist - 1) % tile_main_count(tile);
 
     case TILE_BOLT_FLAME:
+    case TILE_BOLT_IGNITE_POISON_TARGET:
+    case TILE_BOLT_IGNITE_POISON_TERRAIN:
     case TILE_BOLT_MAGMA:
     case TILE_BOLT_ICEBLAST:
     case TILE_BOLT_ALEMBIC_POTION:
@@ -3586,6 +3623,8 @@ tileidx_t vary_bolt_tile(tileidx_t tile, int dir, int dist)
     case TILE_BOLT_BOMBLET_BLAST:
     case TILE_BOLT_MANIFOLD_ASSAULT:
     case TILE_BOLT_PARAGON_TEMPEST:
+    case TILE_BOLT_FLESH:
+    case TILE_BOLT_CHAOS:
     case TILE_BOLT_CHAOS_BUFF:
         return tile + ui_random(tile_main_count(tile));
 

@@ -1038,11 +1038,10 @@ static void _inc_gift_timeout(int val)
 }
 
 // These are sorted in order of power.
-// monsters here come from genera: n, z, V and W
-// - Vampire mages are excluded because they worship scholarly Kiku
-// - M genus is all Kiku's domain
-// - Curse *, putrid mouths, and bloated husks left out as they might
-//   do too much collateral damage
+// monsters here mostly come from the glyphs: n, z, V and W
+// - Vampire mages / bloodprinces / mummies are Kiku's scholarly / curse domain
+// - Curse foo, putrid mouths, bloated husks all cause too much collateral damage
+// - Whatever dead stars made cognitogaunts are out of Yred's grasp
 static const vector<random_pick_entry<monster_type>> _yred_servants =
 {
   { -2,  5,   80, PEAK, MONS_NECROPHAGE },
@@ -1301,7 +1300,7 @@ static set<spell_type> _vehumet_eligible_gift_spells(set<spell_type> excluded_sp
 
 static int _vehumet_weighting(spell_type spell)
 {
-    int bias = 100 + elemental_preference(spell, 10);
+    int bias = 100 + destructive_elemental_preference(spell, 10);
     return bias;
 }
 
@@ -1568,7 +1567,7 @@ static bool _handle_veh_gift(bool forced)
     const int gifts = you.num_total_gifts[you.religion];
     if (forced || !you.duration[DUR_VEHUMET_GIFT]
                   && !you.has_mutation(MUT_INNATE_CASTER)
-                  && (you.piety >= piety_breakpoint(0) && gifts == 0
+                  && (gifts == 0
                       || you.piety >= piety_breakpoint(0) + random2(6) + 18 * gifts && gifts <= 5
                       || you.piety >= piety_breakpoint(4) && gifts <= 11 && one_chance_in(20)
                       || you.piety >= piety_breakpoint(5) && gifts <= 12 && one_chance_in(20)))
@@ -2700,7 +2699,8 @@ void lose_piety(int pgn)
         invalidate_agrid(true);
     }
 
-    you.props[MIN_IGNIS_PIETY_KEY] = you.piety;
+    if (you_worship(GOD_IGNIS))
+        you.props[MIN_IGNIS_PIETY_KEY] = you.piety;
 }
 
 /// Whether Fedhas would set `target` to a neutral attitude
@@ -2793,6 +2793,28 @@ static void _ash_uncurse()
             uncursed = true;
         }
         unequip_item(entry.get_item());
+    }
+}
+
+static void _jiyva_remove_slime_mutations()
+{
+    bool slimy = false;
+    string reason = "the all-consuming vengeance of Jiyva";
+    for (int i = 0; i < NUM_MUTATIONS; ++i)
+    {
+        if (is_slime_mutation(static_cast<mutation_type>(i))
+            && you.has_mutation(static_cast<mutation_type>(i)))
+        {
+            if (!slimy)
+            {
+                slimy = true;
+                simple_god_message(" gift of slime is revoked.", true, GOD_JIYVA);
+            }
+            // XXX: replicates _god_wrath_name()
+            while (_delete_single_mutation_level(static_cast<mutation_type>(i), reason, true));
+            delete_mutation(static_cast<mutation_type>(i),
+                            reason, true, false, true);
+        }
     }
 }
 
@@ -3000,6 +3022,8 @@ void excommunication(bool voluntary, god_type new_god)
             mprf(MSGCH_MONSTER_ENCHANT, "All of your fellow slimes turn on you.");
             add_daction(DACT_ALLY_SLIME);
         }
+
+        _jiyva_remove_slime_mutations();
         break;
 
     case GOD_FEDHAS:
@@ -3685,13 +3709,21 @@ static void _join_cheibriados()
 static void _join_makhleb()
 {
     // Re-active our Mark, if we gained one, then abandoned and rejoined.
+    if (!makhleb_mark_name().empty())
+        mprf("Your %s burns with power once more.", makhleb_mark_name().c_str());
+
+    makhleb_initialize_marks();
+}
+
+string makhleb_mark_name()
+{
     for (int i = 0; i < NUM_MUTATIONS; i++)
     {
         if (you.innate_mutation[i] && is_makhleb_mark((mutation_type)i))
-            mprf("Your %s burns with power once more.", mutation_name((mutation_type)i));
+            return mutation_name((mutation_type)i);
     }
 
-    makhleb_initialize_marks();
+    return "";
 }
 
 // Initialize what Marks the player will eventually the offered.
@@ -3832,6 +3864,10 @@ void join_religion(god_type which_god)
             if (power.rank <= 0)
                 power.display(true, "You can now %s.");
 
+    // Vehumet gifts a level one spell immediately.
+    if (you_worship(GOD_VEHUMET))
+        do_god_gift();
+
     // Allow training all divine ability skills immediately.
     vector<ability_type> abilities = get_god_abilities();
     for (ability_type abil : abilities)
@@ -3876,7 +3912,7 @@ void god_pitch(god_type which_god)
         return;
     }
 
-    if (which_god == GOD_LUGONU && you.penance[GOD_LUGONU])
+    if (!is_good_god(which_god) && you.penance[which_god])
     {
         you.turn_is_over = false;
         simple_god_message(" refuses to forgive you so easily!", false,
@@ -4453,14 +4489,14 @@ int get_monster_tension(const monster& mons, god_type god)
     if (mons.cannot_act())
         return 0;
 
-    int exper = exper_value(mons);
+    int exp = exp_value(mons);
 
-    // XXX: It's hard to entirely figure out how strong a projectile
-    // or bomb is offhand, but they should count for _some_ minimal tension.
-    if (exper <= 0)
+    // XXX: It's hard to entirely figure out how strong a projectile or bomb
+    // is offhand, but they should count for _some_ minimal tension.
+    if (exp <= 0)
     {
         if (mons.is_peripheral())
-            exper = 50;
+            exp = 50;
         else
             return 0;
     }
@@ -4468,9 +4504,9 @@ int get_monster_tension(const monster& mons, god_type god)
     // Almost dead monsters might die the next turn, but
     // they're also still entirely capable of killing you.
     if (att == ATT_HOSTILE || att == ATT_NEUTRAL)
-        exper = exper * (10 + (mons.hit_points * 10 / mons.max_hit_points)) / 30;
+        exp = exp * (10 + (mons.hit_points * 10 / mons.max_hit_points)) / 30;
     else
-        exper = exper * (10 + (mons.hit_points * 10 / mons.max_hit_points)) / 50;
+        exp = exp * (10 + (mons.hit_points * 10 / mons.max_hit_points)) / 50;
 
     bool gift = false;
 
@@ -4489,33 +4525,33 @@ int get_monster_tension(const monster& mons, god_type god)
     else if (att == ATT_FRIENDLY)
     {
         // Friendly monsters being around to help you reduce tension.
-        exper = -exper;
+        exp = -exp;
 
         // If it's a god gift, it reduces tension even more, since
         // the god is already helping you out.
         if (gift)
-            exper *= 2;
+            exp *= 2;
     }
     else if (att == ATT_NEUTRAL)
     {
         // Might hit you, might hit something else. Unreliable in threat.
-        exper = exper / 2;
+        exp = exp / 2;
     }
     else if (att == ATT_GOOD_NEUTRAL)
     {
         // Unreliable in its help versus wandering around or leaving entirely.
-        exper = -exper / 2;
+        exp = -exp / 2;
     }
 
     if (mons.asleep() || mons_is_fleeing(mons))
-        exper /= 20;
+        exp /= 20;
 
     if (att != ATT_FRIENDLY && att != ATT_GOOD_NEUTRAL)
     {
         if (!you.visible_to(&mons))
-            exper = exper * 2 / 3;
+            exp = exp * 2 / 3;
         if (!mons.visible_to(&you))
-            exper *= 2;
+            exp *= 2;
     }
 
     const vector<pair<bool, pair<int, int>>> tension_monster_status_checks {
@@ -4538,12 +4574,12 @@ int get_monster_tension(const monster& mons, god_type god)
     for (auto &checks : tension_monster_status_checks) {
         if (checks.first)
         {
-            exper *= checks.second.first;
-            exper /= checks.second.second;
+            exp *= checks.second.first;
+            exp /= checks.second.second;
         }
     }
 
-    return exper;
+    return exp;
 }
 
 int get_tension(god_type god)
@@ -4557,12 +4593,12 @@ int get_tension(god_type god)
 
         if (mon && mon->alive() && you.can_see(*mon))
         {
-            int exper = get_monster_tension(*mon, god);
+            const int exp = get_monster_tension(*mon, god);
 
             if (!mon->wont_attack())
                 nearby_monster = true;
 
-            total += exper;
+            total += exp;
         }
     }
 
@@ -4664,7 +4700,7 @@ int get_tension(god_type god)
 int get_fuzzied_monster_difficulty(const monster& mons)
 {
     double factor = sqrt(exp_needed(you.experience_level) / 30.0);
-    int exp = exper_value(mons) * 100;
+    int exp = exp_value(mons) * 100;
     exp = random2(exp) + random2(exp);
     return exp / (1 + factor);
 }

@@ -448,6 +448,7 @@ static void _note_tele_cancel(MenuEntry* entry)
     if (ie && ie->item
         && ie->item->base_type == OBJ_SCROLLS
         && ie->item->sub_type == SCR_TELEPORTATION
+        && ie->item->is_identified()
         && you.duration[DUR_TELEPORT])
     {
         ie->text += " (cancels current teleport)";
@@ -1233,6 +1234,19 @@ static item_def* _item_swap_prompt(const vector<item_def*>& candidates)
         return nullptr;
 }
 
+static bool _is_slow_equip(const item_def& item)
+{
+    if (item.base_type == OBJ_JEWELLERY)
+        return jewellery_is_amulet(item.sub_type);
+    else if (item.base_type == OBJ_ARMOUR)
+        return true;
+    else if (is_weapon(item))
+        return you.has_mutation(MUT_SLOW_WIELD);
+
+    // Probably nothing reaches this?
+    return true;
+}
+
 /**
  * Potentially prompt the player about a multitude of things related to changing
  * their current gear. This includes inscriptions, god disapproval, Drain^ and
@@ -1268,6 +1282,7 @@ bool warn_about_changing_gear(const vector<item_def*>& to_remove, item_def* to_e
         return false;
     }
 
+    bool needs_delay = to_equip && _is_slow_equip(*to_equip);
     for (const item_def* item : to_remove)
     {
         if (!maybe_warn_about_removing(*item))
@@ -1275,6 +1290,15 @@ bool warn_about_changing_gear(const vector<item_def*>& to_remove, item_def* to_e
             canned_msg(MSG_OK);
             return false;
         }
+        if (_is_slow_equip(*item))
+            needs_delay = true;
+    }
+
+    if (needs_delay && !i_feel_safe(true)
+        && !yesno("Spend multiple turns changing equipment while enemies are nearby?", true, 'n'))
+    {
+        canned_msg(MSG_OK);
+        return false;
     }
 
     // Check whether removing any of this sequence of items would cause us to
@@ -1323,39 +1347,33 @@ bool try_equip_item(item_def& item)
             return false;
     }
 
-    vector<vector<item_def*>> removal_candidates;  // Items eligible to be removed
     vector<item_def*> to_remove;                   // Queue of items chosen to remove
-    equipment_slot slot = you.equipment.find_slot_to_equip_item(item, removal_candidates);
+    bool requires_replace;
+    equipment_slot slot = you.equipment.find_slot_to_equip_item(item, requires_replace);
 
     // If there is nowhere to put it and nothing the player can do to change
     // this, abort immediately. (If a cursed item was the cause, a message was
     // already printed by find_slot_to_equip_item()
-    if (slot == SLOT_UNUSED && removal_candidates.empty())
+    if (slot == SLOT_UNUSED && !requires_replace)
         return false;
 
     // Otherwise, maybe look into removing items to make room.
-    if (!removal_candidates.empty())
+    if (requires_replace)
     {
-        for (size_t i = 0; i < removal_candidates.size(); ++i)
+        player_equip_set equipment = you.equipment;
+        vector<equipment_slot> slots = get_all_item_slots(item);
+        vector<item_def*> candidates;
+        for (equipment_slot wanted_slot : slots)
         {
-            vector<item_def*>& candidates = removal_candidates[i];
-
-            // If one of the candidates has already been removed to free
-            // another slot, we don't need to remove anything to free this slot
-            bool slot_freed_when_freeing_other_slot = false;
-            for (const item_def* removed_item : to_remove)
+            // Has freeing an earlier slot also freed this slot?
+            equipment_slot free_slot = equipment.find_free_compatible_slot(wanted_slot);
+            if (free_slot != SLOT_UNUSED)
             {
-                for (const item_def* candidate : candidates)
-                {
-                    if (candidate == removed_item)
-                    {
-                        slot_freed_when_freeing_other_slot = true;
-                        break;
-                    }
-                }
-            }
-            if (slot_freed_when_freeing_other_slot)
+                equipment.num_slots[free_slot] -= 1;
                 continue;
+            }
+
+            equipment.find_removable_items_for_slot(wanted_slot, candidates);
 
             // Check if some number of items are inscribed with {=R} (but less
             // than all of them), and remove them from the candidates.
@@ -1401,11 +1419,24 @@ bool try_equip_item(item_def& item)
                     return false;
             }
 
+            equipment_slot used_slot = equipment.find_compatible_occupied_slot(
+                                                             *to_remove.back(),
+                                                             item);
+
+            // See if any other reason is preventing us from removing this.
+            if (!can_unequip_item(*to_remove.back()))
+                return false;
+
+            equipment.remove(*to_remove.back());
+
+            equipment.num_slots[used_slot] -= 1;
+            candidates.clear();
+
             // If find_slot_to_equip_item didn't give us a more specific slot,
             // the first chosen slot to remove must be the 'primary' slot to put
             // this item in, so save it.
             if (slot == SLOT_UNUSED)
-                slot = you.equipment.find_compatible_occupied_slot(*to_remove.back(), item);
+                slot = used_slot;
 
             // Handle trying to remove items that may themselves require other
             // items to be removed, due to losing slots (ie: Macabre Finger)
@@ -1430,19 +1461,6 @@ bool try_equip_item(item_def& item)
     item_def& real_item = you.inv[_get_item_slot_maybe_with_move(item)];
     do_equipment_change(&real_item, slot, to_remove);
 
-    return true;
-}
-
-static bool _is_slow_equip(const item_def& item)
-{
-    if (item.base_type == OBJ_JEWELLERY)
-        return jewellery_is_amulet(item.sub_type);
-    else if (item.base_type == OBJ_ARMOUR)
-        return true;
-    else if (is_weapon(item))
-        return you.has_mutation(MUT_SLOW_WIELD);
-
-    // Probably nothing reaches this?
     return true;
 }
 
@@ -1546,9 +1564,15 @@ bool handle_chain_removal(vector<item_def*>& to_remove, bool interactive)
 void do_equipment_change(item_def* to_equip, equipment_slot equip_slot,
                          vector<item_def*> to_remove)
 {
+    bool needs_delay = false;
+    if (to_equip && _is_slow_equip(*to_equip))
+        needs_delay = true;
+    for (const item_def* item : to_remove)
+        if (_is_slow_equip(*item))
+            needs_delay = true;
+
     const bool is_multi = (to_equip != nullptr && !to_remove.empty())
                             || to_remove.size() > 1;
-    bool all_fast = true;
 
     // Removals happen first
     if (!to_remove.empty())
@@ -1560,14 +1584,11 @@ void do_equipment_change(item_def* to_equip, equipment_slot equip_slot,
         {
             item_def* item = to_remove[i];
             if (_is_slow_equip(*item))
-            {
                 start_delay<EquipOffDelay>(ARMOUR_EQUIP_DELAY, *item);
-                all_fast = false;
-            }
             // If this removal is queued after another removal, it needs to use
             // a delay. (This means it takes 10 aut instead of 5, but this should
             // matter so rarely that I'm not sure it's worth fixing?)
-            else if (!all_fast)
+            else if (needs_delay)
                 start_delay<EquipOffDelay>(1, *item);
             else
             {
@@ -1581,56 +1602,73 @@ void do_equipment_change(item_def* to_equip, equipment_slot equip_slot,
     if (to_equip)
     {
         if (_is_slow_equip(*to_equip))
-        {
             start_delay<EquipOnDelay>(ARMOUR_EQUIP_DELAY, *to_equip, equip_slot);
-            all_fast = false;
-        }
-        else if (!all_fast)
+        else if (needs_delay)
             start_delay<EquipOnDelay>(1, *to_equip, equip_slot);
         else
             equip_item(equip_slot, to_equip->link);
     }
 
     // If we did only a single fast equip action, it only takes half a turn.
-    if (all_fast && !is_multi)
+    if (!needs_delay && !is_multi)
         you.time_taken /= 2;
     // If we did slow actions, no time should pass immediately (since time
     // passing will be handled by the delays).
-    else if (!all_fast)
+    else if (needs_delay)
         you.time_taken = 0;
 
     you.turn_is_over = true;
 }
 
-bool try_unequip_item(item_def& item)
+bool can_unequip_item(item_def& item, bool silent)
 {
     if (item_is_melded(item))
     {
-        mprf(MSGCH_PROMPT, "%s is melded into your body!",
-                           item.name(DESC_YOUR).c_str());
+        if (!silent)
+        {
+            mprf(MSGCH_PROMPT, "%s is melded into your body!",
+                               item.name(DESC_YOUR).c_str());
+        }
         return false;
     }
 
     if (item.cursed())
     {
-        mprf(MSGCH_PROMPT, "%s is stuck to your body!",
-                            item.name(DESC_YOUR).c_str());
+        if (!silent)
+        {
+            mprf(MSGCH_PROMPT, "%s is stuck to your body!",
+                                item.name(DESC_YOUR).c_str());
+        }
         return false;
     }
 
-    if (is_unrandom_artefact(item, UNRAND_DEMON_AXE))
+    if (is_unrandom_artefact(item, UNRAND_DEMON_AXE) && you.beheld())
     {
-        mprf(MSGCH_PROMPT, "Your thirst for blood prevents you from unwielding "
-                           "your weapon!");
+        if (!silent)
+        {
+            mprf(MSGCH_PROMPT, "Your thirst for blood prevents you from unwielding "
+                               "your weapon!");
+        }
         return false;
     }
 
     if (you.duration[DUR_VAINGLORY] && is_unrandom_artefact(item, UNRAND_VAINGLORY))
     {
-        mprf(MSGCH_PROMPT, "It would be unfitting for someone so glorious to "
-                           "remove their crown in front of an audience.");
+        if (!silent)
+        {
+            mprf(MSGCH_PROMPT, "It would be unfitting for someone so glorious to "
+                               "remove their crown in front of an audience.");
+        }
         return false;
     }
+
+    return true;
+}
+
+bool try_unequip_item(item_def& item)
+{
+    if (!can_unequip_item(item))
+        return false;
 
     vector<item_def*> to_remove = {&item};
 
@@ -1660,14 +1698,8 @@ static bool _try_unwield_weapons()
     }
 
     for (item_def* item : weapons)
-    {
-        if (item->cursed())
-        {
-            mprf(MSGCH_PROMPT, "%s is stuck to your body!",
-                                    item->name(DESC_YOUR).c_str());
+        if (!can_unequip_item(*item))
             return false;
-        }
-    }
 
     if (!warn_about_changing_gear(weapons))
         return false;
@@ -1953,6 +1985,23 @@ bool drink(item_def* potion)
 
     if (!quaff_potion(*potion))
         return false;
+
+    // XXX: maybe being a status-effect potion should be in item-prop.cc?
+    if (you.has_mutation(MUT_EFFICIENT_METABOLISM)
+        && (potion->sub_type == POT_AMBROSIA
+            || potion->sub_type == POT_ATTRACTION
+            || potion->sub_type == POT_BERSERK_RAGE
+            || potion->sub_type == POT_BRILLIANCE
+            || potion->sub_type == POT_ENLIGHTENMENT
+            || potion->sub_type == POT_HASTE
+            || potion->sub_type == POT_INVISIBILITY
+            || potion->sub_type == POT_LIGNIFY
+            || potion->sub_type == POT_MIGHT
+            || potion->sub_type == POT_RESISTANCE))
+        {
+            mprf("Your mutated metabolism churns, savouring the %s.",
+                potion->name(DESC_QUALNAME).c_str());
+        }
 
     if (!alreadyknown)
     {
@@ -2847,7 +2896,19 @@ bool read(item_def* scroll, dist *target)
         break;
 
     case SCR_TELEPORTATION:
+    {
+        // you_teleport already handles much of this, but this allows a more
+        // robust message for unidentified tele scrolls read with -tele
+        const string reason = you.no_tele_reason();
+        if (!reason.empty())
+        {
+            mpr(pre_succ_msg);
+            mpr(reason);
+            break;
+        }
+
         you_teleport();
+    }
         break;
 
     case SCR_ACQUIREMENT:

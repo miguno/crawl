@@ -116,11 +116,11 @@ void surge_power_wand(const int mp_cost)
     }
 }
 
-static string _spell_base_description(spell_type spell, bool viewing)
+static string _spell_base_description(spell_type spell, bool transient)
 {
     ostringstream desc;
 
-    int highlight =  spell_highlight_by_utility(spell, COL_UNKNOWN, !viewing);
+    int highlight =  spell_highlight_by_utility(spell, COL_UNKNOWN, transient);
     if (you.duration[DUR_ENKINDLED] && highlight == COL_UNKNOWN
         && spell_can_be_enkindled(spell))
     {
@@ -157,11 +157,11 @@ static string _spell_base_description(spell_type spell, bool viewing)
     return desc.str();
 }
 
-static string _spell_extra_description(spell_type spell, bool viewing)
+static string _spell_extra_description(spell_type spell, bool transient)
 {
     ostringstream desc;
 
-    int highlight =  spell_highlight_by_utility(spell, COL_UNKNOWN, !viewing);
+    int highlight =  spell_highlight_by_utility(spell, COL_UNKNOWN, transient);
     if (you.duration[DUR_ENKINDLED] && spell_can_be_enkindled(spell) && highlight == COL_UNKNOWN)
         highlight = LIGHTCYAN;
 
@@ -246,8 +246,8 @@ protected:
 // selector is a boolean function that filters spells according
 // to certain criteria. Currently used for Tiles to distinguish
 // spells targeted on player vs. spells targeted on monsters.
-int list_spells(bool toggle_with_I, bool viewing, bool allow_preselect,
-                const string &action)
+int list_spells(bool toggle_with_I, bool transient, bool viewing,
+                bool allow_preselect, const string &action)
 {
     if (toggle_with_I && get_spell_by_letter('I') != SPELL_NO_SPELL)
         toggle_with_I = false;
@@ -297,10 +297,10 @@ int list_spells(bool toggle_with_I, bool viewing, bool allow_preselect,
             continue;
 
         SpellMenuEntry* me =
-            new SpellMenuEntry(_spell_base_description(spell, viewing),
-                               _spell_extra_description(spell, viewing),
+            new SpellMenuEntry(_spell_base_description(spell, transient),
+                               _spell_extra_description(spell, transient),
                                MEL_ITEM, 1, letter);
-        me->colour = spell_highlight_by_utility(spell, COL_UNKNOWN, !viewing);
+        me->colour = spell_highlight_by_utility(spell, COL_UNKNOWN, transient);
         // TODO: maybe fill this from the quiver if there's a quivered spell and
         // no last cast one?
         if (allow_preselect && you.last_cast_spell == spell)
@@ -470,11 +470,11 @@ int raw_spell_fail(spell_type spell, bool enkindled)
     chance += difficulty_by_level[spell_level]; // between 0 and 330
 
     // since chance is passed through a 3rd degree polynomial, cap the
-    // value to avoid any overflow issues. We choose 210 by solving for chance2
-    // = 200 in the polynomial -- it gets capped at 100 ultimately, but we
-    // need a bunch of headroom in case some later calculations lower the value
-    // below 100 after this.
-    chance = min(chance, 210);
+    // value to avoid any overflow issues. I choose 400 as a value that will
+    // remain above 100 no matter how much wizardry the player stacks (so that
+    // we don't get weird effects of the visible success chance being non-0 at
+    // low skill and not improving as skill is gained.)
+    chance = min(chance, 400);
 
     // This polynomial is a smoother approximation of a breakpoint-based
     // calculation that originates pre-DCSS, mapping `chance` at this point to
@@ -657,7 +657,7 @@ void inspect_spells()
         return;
     }
 
-    list_spells(true, true);
+    list_spells(true, false, true);
 }
 
 /**
@@ -870,7 +870,7 @@ spret cast_a_spell(bool check_range, spell_type spell, dist *_target,
 
             if (keyin == '?' || keyin == '*' || Options.spell_menu)
             {
-                keyin = list_spells(true, false);
+                keyin = list_spells(true, true, false);
                 if (!keyin)
                     keyin = ESCAPE;
 
@@ -1374,7 +1374,7 @@ unique_ptr<targeter> find_spell_targeter(spell_type spell, int pow, int range)
     case SPELL_SUMMON_SMALL_MAMMAL:
     case SPELL_AWAKEN_ARMOUR:
     case SPELL_SUMMON_ICE_BEAST:
-    case SPELL_MONSTROUS_MENAGERIE:
+    case SPELL_SPHINX_SISTERS:
     case SPELL_SUMMON_CACTUS:
     case SPELL_SUMMON_HYDRA:
     case SPELL_SUMMON_MANA_VIPER:
@@ -1386,8 +1386,10 @@ unique_ptr<targeter> find_spell_targeter(spell_type spell, int pow, int range)
     case SPELL_SPELLSPARK_SERVITOR:
     case SPELL_FORGE_LIGHTNING_SPIRE:
     case SPELL_BATTLESPHERE:
-    case SPELL_SUMMON_SEISMOSAURUS_EGG:
         return make_unique<targeter_maybe_radius>(&you, LOS_NO_TRANS, 2, 0, 1);
+    case SPELL_SUMMON_SEISMOSAURUS_EGG:
+    case SPELL_HOARFROST_CANNONADE:
+        return make_unique<targeter_maybe_radius>(&you, LOS_NO_TRANS, 3, 0, 2);
     case SPELL_CALL_CANINE_FAMILIAR:
     {
         const monster* dog = find_canine_familiar();
@@ -1706,13 +1708,13 @@ static vector<string> _desc_airstrike_bonus(const monster_info& mi)
     return vector<string>{make_stringf("empty space bonus: %d/8", empty_spaces)};
 }
 
-static vector<string> _desc_mercury_weak_chance(const monster_info& mi, int pow)
+static vector<string> _desc_mercury_weak_chance(const monster_info& mi)
 {
     if (mi.is(MB_NO_ATTACKS))
         return vector<string>{};
 
     return vector<string>{make_stringf("chance to weaken: %d%%",
-                            get_mercury_weaken_chance(mi.hd, pow))};
+                            get_mercury_weaken_chance(mi.hd))};
 }
 
 static vector<string> _desc_warp_space_chance(int pow)
@@ -1982,7 +1984,7 @@ desc_filter targeter_addl_desc(spell_type spell, int powc, spell_flags flags,
         case SPELL_PLASMA_BEAM:
             return bind(_desc_plasma_hit_chance, placeholders::_1, powc);
         case SPELL_MERCURY_ARROW:
-            return bind(_desc_mercury_weak_chance, placeholders::_1, powc);
+            return _desc_mercury_weak_chance;
         case SPELL_WARP_SPACE:
             return bind(_desc_warp_space_chance, powc);
         default:
@@ -2486,8 +2488,8 @@ static spret _do_cast(spell_type spell, int powc, const dist& spd,
     case SPELL_SUMMON_CACTUS:
         return cast_summon_cactus(powc, fail);
 
-    case SPELL_MONSTROUS_MENAGERIE:
-        return cast_monstrous_menagerie(&you, powc, fail);
+    case SPELL_SPHINX_SISTERS:
+        return cast_sphinx_sisters(you, powc, fail);;
 
     case SPELL_SUMMON_DRAGON:
         return cast_summon_dragon(&you, powc, fail);
@@ -3073,6 +3075,8 @@ static dice_def _spell_damage(spell_type spell, int power)
             return poisonous_vapours_damage(power, false);
         case SPELL_DETONATION_CATALYST:
             return detonation_catalyst_damage(power, false);
+        case SPELL_JINXBITE:
+            return jinxbite_damage(power,false);
         default:
             break;
     }

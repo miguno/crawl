@@ -325,6 +325,7 @@ void change_monster_type(monster* mons, monster_type targetc, bool do_seen)
     mon_enchant insanity  = mons->get_ench(ENCH_FRENZIED);
     mon_enchant vengeance = mons->get_ench(ENCH_VENGEANCE_TARGET);
     mon_enchant tempered  = mons->get_ench(ENCH_TEMPERED);
+    mon_enchant thrall    = mons->get_ench(ENCH_VAMPIRE_THRALL);
 
     mons->number       = 0;
 
@@ -366,6 +367,7 @@ void change_monster_type(monster* mons, monster_type targetc, bool do_seen)
     mons->add_ench(insanity);
     mons->add_ench(vengeance);
     mons->add_ench(tempered);
+    mons->add_ench(thrall);
 
     mons->ench_countdown = old_ench_countdown;
 
@@ -771,7 +773,15 @@ void seen_monster(monster* mons)
 
     if (you.unrand_equipped(UNRAND_WYRMBANE))
     {
-        const item_def *wyrmbane = you.weapon();
+        const item_def *wyrmbane = nullptr;
+        const item_def *wpn = you.weapon();
+        const item_def *offhand_wpn = you.offhand_weapon();
+
+        if (wpn && wpn->unrand_idx == UNRAND_WYRMBANE)
+            wyrmbane = wpn;
+        else if (offhand_wpn && offhand_wpn->unrand_idx == UNRAND_WYRMBANE)
+            wyrmbane = offhand_wpn;
+
         if (wyrmbane && mons->dragon_level() > wyrmbane->plus)
             mpr("<green>Wyrmbane glows as a worthy foe approaches.</green>");
     }

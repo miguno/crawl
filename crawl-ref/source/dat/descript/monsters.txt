@@ -247,8 +247,7 @@ test its edge.
 %%%%
 Ijyb
 
-A small and shrewd goblin inventor, cast out from her Coglin kin after
-accidentally exploding her own exoskeleton and half of the surrounding mountain.
+A small and shrewd goblin inventor, wearing blue rags coated in soot.
 She claims dominion over this level of the dungeon; trespassers will find
 themselves on the business end of a homemade wand.
 %%%%
@@ -524,6 +523,13 @@ Snorg
 A particularly corpulent troll with a short temper and a sizable gut.
 Uninterested in the Orb, Snorg delights in the endless parade of adventurers –
 that is, easy meals — it attracts.
+%%%%
+Sprozz
+
+A former beekeeper's apprentice with an ambitious dream: to modernise the whole
+world's beekeeping industry with the smooth certainty of disease-proof metal.
+His methods may be questionable and his goals dubious, but his prototype's
+stinger still looks awfully sharp...
 %%%%
 Sojobo
 
@@ -974,11 +980,30 @@ one of an ox, one of a lion, one of an eagle. It is one of the angelic beings
 who stand before the good gods, singing eternal hymns of praise to their glory
 and greatness.
 %%%%
+chonchon
+
+Some sorcerers care little for unholy realms or undead forms, seeking power
+instead in the whims of cruel chaos. This ominous owl-winged head is all that
+remains of a former archmage: it delights in spreading misfortune and drinking
+blood in its new airborne form.
+%%%%
+cognitogaunt
+
+A wizened, headless corpse, animated not by conventional necromancy but by the
+mournful malice of dead stars. Its psychic eyes, floating disjointedly from its
+body's movements, relentlessly burrow through its victims' minds.
+%%%%
 clockwork bee
 
 A mechanical insect powered by an intricate array of gears and springs. It is
 vicious and resilient to damage, but its clockwork naturally winds down as it
 attacks, eventually leaving it unable to move until its creator winds it again.
+%%%%
+crawling flesh cage
+
+A modern breakthrough in arcane experimentation, this mobile prison cell
+weaponises the living fragments of once-escaped ugly things, extending the reach
+of their tendrils to thrash multiple foes at once from a distance.
 %%%%
 creeping inferno
 
@@ -1530,6 +1555,14 @@ A short, impatient and unfriendly humanoid. Goblins first appeared only a few
 years ago, but are now remarkably numerous. Sadly, no number of raucous goblin
 parties will put them in a welcoming mood toward adventurers.
 %%%%
+goblin rider
+
+Goblin clans fractured over the advent of steel exoskeletons long ago, prompting
+an experimental arms race for goblin hegemony. Some volunteered to join forces
+with other species, an alliance that has enabled capturing and taming wyverns.
+From uptop their majestic dragon-like mounts, these goblins swiftly soar about
+and skewer those who intrude upon their allies' domain.
+%%%%
 golden dragon
 
 A great winged dragon covered in shining golden scales. Legends say that its
@@ -1651,6 +1684,13 @@ A humanoid construct of insubstantial memory, floating through the air. Though
 perhaps somewhat changed in shape and bearing few discernable features, still
 it seems somehow to resemble a warrior from the distantly remembered past,
 ready with debilitating spells and deadly knifework.
+%%%%
+hippogriff
+
+A large creature with the hindquarters of a horse and the wings, head and
+talons of a great eagle. As popular heraldric creatures, some fortresses may
+keep them as symbols and defenders alike, where they in turn launch intruders
+into the waiting blades of their masters.
 %%%%
 hoarfrost cannon
 
@@ -1786,6 +1826,12 @@ ironbound frostheart
 An emaciated warrior-mage, bound to guard long-coveted treasures. It calls
 forth deadly frost from its surrounds, freezing foes that are next to walls.
 %%%%
+ironbound mechanist
+
+A well-armoured coglin whose talents with machinery have been harnessed by the
+Ironbound order to repair and augment the many constructs that help guard the
+Vaults.
+%%%%
 ironbound thunderhulk
 
 A brutish figure, hastily armoured in scraps of leather and metal to combat
@@ -1866,6 +1912,12 @@ kobold demonologist
 
 A kobold in league with demonic powers, able to call forth beings from the
 depths of Hell.
+%%%%
+kobold fleshcrafter
+
+A skull-masked kobold, its body mutated by forbidden magics. It conducts vile
+experiments in the service of demonic powers, formulating ever more terrible
+monstrosities as vessels for devilish minds.
 %%%%
 komodo dragon
 
@@ -2302,6 +2354,13 @@ pile of debris
 
 A heavily ruptured stonework, surrounded by rubble.
 %%%%
+pile of flesh
+
+A leftover mess of broken bones, inert grasping organs, and scattered skin.
+While some highly-specialised sorcerers might be capable of bringing it to life,
+it is otherwise harmless - the possible leftovers of some departed or
+absent-minded magus.
+%%%%
 pillar of rime
 
 A spire of strangely tenebrous ice, its brittle tendrils reaching skyward like
@@ -2430,7 +2489,7 @@ and covers great distances by bursting into living lightning.
 %%%%
 reaper
 
-A skeletal form wielding a giant scythe, ceaselessly harvesting the souls of
+A haunting form wielding a giant scythe, ceaselessly harvesting the souls of
 the living.
 %%%%
 red devil
@@ -2566,7 +2625,7 @@ thunderous footfalls herald violent tremors.
 seismosaurus egg
 
 A lizard egg the size of a small boulder and nearly as hard. Perhaps as a
-defense mechanism, they hatch rapidly in the presence of predators and even a
+defence mechanism, they hatch rapidly in the presence of predators and even a
 newborn can give all but the most ambitious of monsters a reason to consider an
 easier meal.
 %%%%
@@ -3677,6 +3736,10 @@ sulphuric acid blob
 vault guard captain
 
 <vault guard>
+%%%%
+grandmaster elementalist
+
+<master elementalist>
 %%%%
 ### Meatsprint
 bag of meat
