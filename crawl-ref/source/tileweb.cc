@@ -7,6 +7,7 @@
 #include <cerrno>
 #include <cstdarg>
 
+#include <signal.h>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -420,6 +421,19 @@ static int _handle_cell_click(const coord_def &gc, int button, bool force)
     return CK_MOUSE_CLICK;
 }
 
+static char32_t _remove_first_character_utf8(string& text)
+{
+    if (text.empty())
+        return 0;
+    char32_t result = 0;
+    int length = utf8towc(&result, text.c_str());
+    if (!length)
+        text.clear();
+    else
+        text.erase(0, length);
+    return result;
+}
+
 wint_t TilesFramework::_handle_control_message(sockaddr_un addr, string data)
 {
     JsonWrapper obj = json_decode(data.c_str());
@@ -432,7 +446,7 @@ wint_t TilesFramework::_handle_control_message(sockaddr_un addr, string data)
     fprintf(stderr, "websocket: Received control message '%s' in %d byte.\n", msgtype.c_str(), (int) data.size());
 #endif
 
-    int c = 0;
+    wint_t c = 0;
 
     if (msgtype == "attach")
     {
@@ -606,65 +620,115 @@ wint_t TilesFramework::_handle_control_message(sockaddr_un addr, string data)
         // (possibly just as a string, like the lua API for this)
         process_command(CMD_GAME_MENU);
     }
+    else if (msgtype == "text_input")
+    {
+        JsonWrapper text = json_find_member(obj.node, "text");
+        text.check(JSON_STRING);
+        ASSERT(m_pending_text_input.empty());
+        m_pending_text_input = text->string_;
+        c = _remove_first_character_utf8(m_pending_text_input);
+    }
 
     return c;
 }
 
-bool TilesFramework::await_input(wint_t& c, bool block)
+wint_t TilesFramework::try_await_input()
 {
+    if (m_sock_name.empty())
+        return 0;
+
+    wint_t c = _remove_first_character_utf8(m_pending_text_input);
+    if (c != 0)
+        return c;
+
+    fd_set fds;
+    int result;
+    while (true)
+    {
+        FD_ZERO(&fds);
+        FD_SET(m_sock, &fds);
+
+        timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 0;
+
+        result = select(m_sock + 1, &fds, nullptr, nullptr, &timeout);
+        if (result == -1 && errno == EINTR)
+            continue;
+
+        if (result <= 0)
+            return 0;
+
+        c = _receive_control_message();
+        if (c != 0)
+            return c;
+    }
+}
+
+struct save_signal_mask
+{
+    save_signal_mask()
+    {
+        sigprocmask(SIG_SETMASK, nullptr, &old);
+    }
+
+    ~save_signal_mask()
+    {
+        sigprocmask(SIG_SETMASK, &old, nullptr);
+    }
+
+    sigset_t old;
+};
+
+wint_t TilesFramework::await_input(bool(*has_console_input)())
+{
+    if (m_sock_name.empty())
+        return 0;
+
+    wint_t c = _remove_first_character_utf8(m_pending_text_input);
+    if (c != 0)
+        return c;
+
     int result;
     fd_set fds;
-    int maxfd = m_sock_name.empty() ? STDIN_FILENO : m_sock;
+    int maxfd = m_sock;
+
+    save_signal_mask saved_sig_mask;
+    sigset_t signals_to_wait_for;
+    sigemptyset(&signals_to_wait_for);
+    sigaddset(&signals_to_wait_for, SIGWINCH);
+    sigprocmask(SIG_BLOCK, &signals_to_wait_for, nullptr);
 
     while (true)
     {
-        do
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+        FD_SET(m_sock, &fds);
+
+        tiles.flush_messages();
+
+        if (has_console_input())
+            return 0;
+        result = pselect(maxfd + 1, &fds, nullptr, nullptr, nullptr,
+                         &saved_sig_mask.old);
+        if (has_console_input())
+            return 0;
+        if (result == -1 && errno == EINTR || result == 0)
+            continue;
+        if (result > 0)
         {
-            FD_ZERO(&fds);
-            FD_SET(STDIN_FILENO, &fds);
-            if (!m_sock_name.empty())
-                FD_SET(m_sock, &fds);
-
-            if (block)
-            {
-                tiles.flush_messages();
-                result = select(maxfd + 1, &fds, nullptr, nullptr, nullptr);
-            }
-            else
-            {
-                timeval timeout;
-                timeout.tv_sec = 0;
-                timeout.tv_usec = 0;
-
-                result = select(maxfd + 1, &fds, nullptr, nullptr, &timeout);
-            }
-        }
-        while (result == -1 && errno == EINTR);
-
-        if (result == 0)
-            return false;
-        else if (result > 0)
-        {
-            if (!m_sock_name.empty() && FD_ISSET(m_sock, &fds))
+            if (FD_ISSET(m_sock, &fds))
             {
                 c = _receive_control_message();
-
                 if (c != 0)
-                    return true;
-            }
-
-            if (FD_ISSET(STDIN_FILENO, &fds))
-            {
-                c = 0;
-                return true;
+                    return c;
             }
         }
         else if (errno == EBADF)
         {
             // This probably means that stdin got closed because of a
             // SIGHUP. We'll just return.
-            c = 0;
-            return false;
+            return 0;
         }
         else
             die("select error: %s", strerror(errno));
@@ -992,21 +1056,7 @@ static bool _update_statuses(player_info& c)
     status_info inf;
     for (unsigned int status = 0; status <= STATUS_LAST_STATUS; ++status)
     {
-        if (status == DUR_ICEMAIL_DEPLETED)
-        {
-            inf = status_info();
-            if (you.duration[status] <= ICEMAIL_TIME / ICEMAIL_MAX)
-                continue;
-            inf.short_text = "icemail depleted";
-        }
-        else if (status == DUR_ACROBAT)
-        {
-            inf = status_info();
-            if (!acrobat_boost_active())
-                continue;
-            inf.short_text = "acrobatic";
-        }
-        else if (!fill_status_info(status, inf)) // this will reset inf itself
+        if (!fill_status_info(status, inf)) // this will reset inf itself
             continue;
 
         if (!inf.light_text.empty() || !inf.short_text.empty())
@@ -1107,6 +1157,7 @@ void TilesFramework::_send_player(bool force_full)
         prank = 2;
     }
     _update_int(force_full, c.piety_rank, prank, "piety_rank");
+    _update_int(force_full, c.ostracism_pips, ostracism_pips(), "ostracism_pips");
 
     _update_int(force_full, c.form, (uint8_t) you.form, "form");
 
@@ -1134,9 +1185,18 @@ void TilesFramework::_send_player(bool force_full)
     _update_int(force_full, c.shield_class, player_displayed_shield_class(),
                 "sh");
 
+    _update_int(force_full, c.ac_boost, you.temp_ac_mod(), "ac_mod");
+    _update_int(force_full, c.ev_boost, you.temp_ev_mod(), "ev_mod");
+    _update_int(force_full, c.sh_boost, you.temp_sh_mod(), "sh_mod");
+
     _update_int(force_full, c.strength, (int8_t) you.strength(false), "str");
     _update_int(force_full, c.intel, (int8_t) you.intel(false), "int");
     _update_int(force_full, c.dex, (int8_t) you.dex(false), "dex");
+
+    _update_int(force_full, c.doom, you.attribute[ATTR_DOOM], "doom");
+    _update_string(force_full, c.doom_desc, getLongDescription("doom status"), "doom_desc");
+
+    _update_int(force_full, c.contam, you.magic_contamination / 10, "contam");
 
     if (you.has_mutation(MUT_MULTILIVED))
     {
@@ -1286,7 +1346,18 @@ static int _useful_consumable_order(const item_def &item, const string &name)
         if (p.matches(name))
             return -1;
 
-    return order - base_types.begin();
+    // Within each category, sort by usefulness.
+    int subsort = 2;
+    if (is_useless_item(item, true))
+        subsort = 4;
+    if (is_emergency_item(item))
+        subsort = 0;
+    else if (is_good_item(item))
+        subsort = 1;
+    else if (is_dangerous_item(item))
+        subsort = 3;
+
+    return (order - base_types.begin()) * 5 + subsort;
 }
 
 // Returns the name of an item_def field to display on the action panel
@@ -1353,6 +1424,7 @@ void TilesFramework::_send_item(item_def& current, const item_def& next,
                            "flags", false);
     changed |= _update_string(force_full, current.inscription,
                               next.inscription, "inscription", false);
+    changed |= _update_int(force_full, current.slot, next.slot, "letter", false);
 
     // TODO: props?
 
@@ -1416,7 +1488,7 @@ void TilesFramework::_send_item(item_def& current, const item_def& next,
             current.plus = evoker_charges(current.sub_type);
         if (in_inventory(current))
         {
-            auto action = quiver::slot_to_action(current.link, false);
+            auto action = quiver::slot_to_action(current.link);
             // TODO: does this stay in sync? Do anything with enabledness?
             if (action && action->is_valid())
                 json_write_string("action_verb", action->quiver_verb());
@@ -1582,6 +1654,23 @@ void TilesFramework::_send_cell(const coord_def &gc,
             write_tileidx(next_pc.fg);
             if (get_tile_texture(fg_idx) == TEX_DEFAULT)
                 json_write_int("base", (int) tileidx_known_base_item(fg_idx));
+
+            // XXX: Encode spell school overlays for parchments.
+            if (fg_idx >= TILE_PARCHMENT_LOW && fg_idx <= TILE_PARCHMENT_HIGH)
+            {
+                const item_def* item = next_pc.map_knowledge.item();
+                if (item)
+                {
+                    spell_type spell = static_cast<spell_type>(item->plus);
+                    const tileidx_t school1 = tileidx_parchment_overlay(spell, 0);
+                    const tileidx_t school2 = tileidx_parchment_overlay(spell, 1);
+
+                    if (school1 > 0)
+                        json_write_int("overlay1", school1);
+                    if (school2 > 0)
+                        json_write_int("overlay2", school2);
+                }
+            }
         }
 
         if (next_pc.bg != current_pc.bg)
@@ -1802,7 +1891,7 @@ void TilesFramework::_mcache_ref(bool inc)
         }
 }
 
-void TilesFramework::_send_map(bool force_full)
+void TilesFramework::_send_map(bool spectator_only)
 {
     // TODO: prevent in some other / better way?
     if (_send_lock)
@@ -1812,13 +1901,17 @@ void TilesFramework::_send_map(bool force_full)
 
     map<uint32_t, coord_def> new_monster_locs;
 
-    force_full = force_full || m_need_full_map;
+    bool force_full = spectator_only || m_need_full_map;
     m_need_full_map = false;
 
     json_open_object();
     json_write_string("msg", "map");
     json_treat_as_empty();
 
+    // cautionary note: this is used in heuristic ways in process_handler.py,
+    // see `_is_spectator_only`
+    if (spectator_only)
+        json_write_bool("spect_only", true);
     // cautionary note: this is used in heuristic ways in process_handler.py,
     // see `_is_full_map_msg`
     if (force_full)
@@ -1915,6 +2008,10 @@ void TilesFramework::_send_map(bool force_full)
 
     if (force_full)
         _send_cursor(CURSOR_MAP);
+
+    // Everything should already be up to date when called with spectator_only
+    if (spectator_only)
+        return;
 
     if (m_mcache_ref_done)
         _mcache_ref(false);
@@ -2105,7 +2202,16 @@ void TilesFramework::_send_everything()
 
     // Map is sent after player, otherwise HP/MP bar can be left behind in the
     // old location if the player has moved
-    _send_map(true);
+
+    // The player might not have received the latest map data yet and
+    // _send_map(true) only sends the full map to the newly connected
+    // spectator but resets the dirty flags. So make sure the player's
+    // map data is up to date first.
+    const bool sent_full_map = m_need_full_map;
+    _send_map(false);
+    // If we didn't send the full map, send it to the new spectator
+    if (!sent_full_map)
+        _send_map(true);
 
     // Menus
     json_open_object();

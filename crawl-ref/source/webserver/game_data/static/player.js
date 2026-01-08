@@ -13,16 +13,6 @@ function ($, comm, client, enums, map_knowledge, messages, options, util) {
         "mp": "divinely vigorous"
     };
 
-    var defense_boosters = {
-        "ac": "ice-armoured|protected from physical damage|sanguine armoured"
-              + "|under a protective aura|fiery-armoured|phalanx barrier"
-              + "|trickster",
-        "ev": "^agile|acrobatic|in a heavenly storm",
-
-        // RIP "I am here because empty strings match everything and this does not"
-        "sh": "ephemerally shielded"
-    }
-
     /**
      * Update the stats area bar of the given type.
      * @param name     The name of the bar.
@@ -238,19 +228,28 @@ function ($, comm, client, enums, map_knowledge, messages, options, util) {
         var elem = $("#stats_"+type);
         elem.text(player[type]);
         elem.removeClass();
-        if (type == "sh" && player.incapacitated()
-            && player.offhand_index != -1)
-            // XXX This really doesn't work properly
-            // Orbs, and coglins with offhand weapons, also trigger this...
-            // Amulets of reflection on the other hand, do not...
-            elem.addClass("degenerated_defense");
-        else if (player.has_status(defense_boosters[type]))
-            elem.addClass("boosted_defense");
-        else if (type == "ac" && player.has_status("corroded"))
-            elem.addClass("degenerated_defense");
-        else if (type == "sh" && player.god == "Qazlal"
-                 && player.piety_rank > 0)
-            elem.addClass("boosted_defense");
+
+        if (type == "ac")
+        {
+            if (player.ac_mod > 0)
+                elem.addClass("boosted_defense");
+            else if (player.ac_mod < 0)
+                elem.addClass("degenerated_defense");
+        }
+        else if (type == "ev")
+        {
+            if (player.ev_mod > 0)
+                elem.addClass("boosted_defense");
+            else if (player.ev_mod < 0)
+                elem.addClass("degenerated_defense");
+        }
+        else if (type == "sh")
+        {
+            if (player.sh_mod > 0)
+                elem.addClass("boosted_defense");
+            else if (player.sh_mod < 0)
+                elem.addClass("degenerated_defense");
+        }
     }
 
     function stat_class(stat)
@@ -286,6 +285,65 @@ function ($, comm, client, enums, map_knowledge, messages, options, util) {
         }
         elem.addClass(stat_class(stat));
         $("#stats_" + stat).html(elem);
+    }
+
+    function update_doom()
+    {
+        if (player.doom == 0 && options.get("always_show_doom_contam") === false)
+        {
+            $("#stats_doom_ui").hide();
+            return;
+        }
+        else
+            $("#stats_doom_ui").show();
+
+        var val = player["doom"];
+        var elem = $("<span>");
+        elem.text(" " + val + "%");
+
+        var colour = "fg7";
+        if (player.doom == 0)
+            colour = "fg8";
+        if (player.doom >= 75)
+            colour = "fg5";
+        else if (player.doom >= 50)
+            colour = "fg12";
+        else if (player.doom >= 25)
+            colour = "fg14";
+
+        elem.addClass(colour);
+        $("#stats_doom").html(elem);
+
+        var tooltip = $("#stats_status_lights_tooltip");
+        elem.on("mouseenter mousemove", ev => {
+                tooltip.css({top: ev.pageY + "px"});
+                tooltip.html(util.formatted_string_to_html(player["doom_desc"]));
+                tooltip.show();
+            });
+        elem.on("mouseleave", ev => tooltip.hide());
+    }
+
+    function update_contam()
+    {
+        if (player.contam == 0 && options.get("always_show_doom_contam") === false)
+        {
+            $("#stats_contam_ui").hide();
+            return;
+        }
+        else
+            $("#stats_contam_ui").show();
+
+        var val = player.contam;
+        var elem = $("<span>");
+        elem.text(" " + val + "%");
+
+        var colour = "fg8";
+        if (val >= 200)
+            colour = "fg4";
+        else if (val >= 100)
+            colour = "fg14";
+        elem.addClass(colour);
+        $("#stats_contam").html(elem);
     }
 
     function percentage_color(name)
@@ -356,8 +414,11 @@ function ($, comm, client, enums, map_knowledge, messages, options, util) {
         else if ((player.piety_rank > 0 || player.god != "")
                  && player.god != "Gozag")
         {
-            $("#stats_piety").text(repeat_string("*", player.piety_rank)
-                                   + repeat_string(".", 6-player.piety_rank));
+            $("#stats_piety").html(repeat_string("*", player.piety_rank)
+                                   + repeat_string(".", 6-player.piety_rank-player.ostracism_pips)
+                                   + "<span class=fg5>"
+                                   + repeat_string("X", player.ostracism_pips)
+                                   + "</span>");
         }
         else
             $("#stats_piety").text("");
@@ -404,6 +465,9 @@ function ($, comm, client, enums, map_knowledge, messages, options, util) {
             $("#stats_mpline").show();
 
         update_bar("mp");
+
+        update_doom();
+        update_contam();
 
         update_defense("ac");
         update_defense("ev");
@@ -536,7 +600,7 @@ function ($, comm, client, enums, map_knowledge, messages, options, util) {
         if (family !== "" && family !== "monospace")
         {
             family += ", monospace";
-            $("#stats").css("font-family", family);
+            document.documentElement.style.setProperty("--stat-font", family);
         }
     });
 

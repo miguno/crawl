@@ -9,6 +9,7 @@
 #include "activity-interrupt-type.h"
 #include "char-set-type.h"
 #include "confirm-prompt-type.h"
+#include "duration-type.h"
 #include "easy-confirm-type.h"
 #include "explore-greedy-options.h"
 #include "explore-stop-options.h"
@@ -16,14 +17,17 @@
 #include "fixedp.h"
 #include "flang-t.h"
 #include "flush-reason-type.h"
+#include "item-prop-enum.h"
 #include "kill-dump-options-type.h"
 #include "lang-t.h"
 #include "level-gen-type.h"
 #include "maybe-bool.h"
 #include "mon-dam-level-type.h"
+#include "mon-util.h"
 #include "mpr.h"
 #include "newgame-def.h"
 #include "pattern.h"
+#include "potion-type.h"
 #include "rc-line-type.h"
 #include "screen-mode.h"
 #include "skill-focus-mode.h"
@@ -513,6 +517,9 @@ public:
     bool        jewellery_prompt; // Always prompt for slot when changing jewellery.
     bool        easy_door;       // 'O', 'C' don't prompt with just one door.
     bool        warn_hatches;    // offer a y/n prompt when the player uses an escape hatch
+    bool        warn_contam_cost; // Prompt when casting a spell like Irradiate, with dangerous contam.
+    bool        show_resist_percent; // Show resist percentages on the % screen
+    bool        always_show_doom_contam; // Always show doom/contam meters, even without doom/contam
     bool        enable_recast_spell; // Allow recasting spells with 'z' Enter.
     skill_focus_mode skill_focus; // is the focus skills available
     bool        auto_hide_spells; // hide new spells
@@ -531,6 +538,8 @@ public:
                                                    // static spell targeters
     bool        always_use_static_ability_targeters; // whether to always use
                                                      // static ability targeters
+    bool        always_use_static_scroll_targeters; // whether to always use
+                                                    // static targets for scrolls
 
     int         colour[16];      // macro fg colours to other colours
     unsigned    background_colour; // select default background colour
@@ -548,6 +557,8 @@ public:
 
     vector<text_pattern> unusual_monster_items; // which monster items to
                                                 // highlight as unusual
+    vector<pair<brand_type, int>> vulnerable_brand_warning; // Monster brands to hilight the monster
+                                                // as having, below a given XL, while vulnerable
 
     int         hp_warning;      // percentage hp for danger warning
     int         magic_point_warning;    // percentage mp for danger warning
@@ -595,6 +606,9 @@ public:
                                              // targeter for
     unordered_set<int> force_ability_targeter; // ability types to always use a
                                                // targeter for
+    unordered_set<int> force_scroll_targeter; // scroll types to always use a
+                                              // targeter for
+    bool        show_invis_targeter;  // Whether to show a targeter for going invisible
 
     bool        flush_input[NUM_FLUSH_REASONS]; // when to flush input buff
 
@@ -629,8 +643,19 @@ public:
     // Skill levels to note
     FixedBitVector<MAX_SKILL_LEVEL + 1> note_skill_levels;
     vector<pair<text_pattern, string>> auto_spell_letters;
-    vector<pair<text_pattern, string>> auto_item_letters;
+    vector<pair<text_pattern, string>> auto_gear_letters;
     vector<pair<text_pattern, string>> auto_ability_letters;
+
+    vector<pair<string, char>> auto_consumable_letters;
+    FixedVector<char, NUM_POTIONS> potion_shortcuts;
+    FixedVector<char, NUM_SCROLLS> scroll_shortcuts;
+    FixedVector<char, NUM_WANDS + NUM_MISCELLANY + NUM_BAUBLES> evokable_shortcuts;
+
+    vector<string> monster_alert_option;
+    FixedVector<bool, NUM_MONSTERS> monster_alert;    // Whether to force_more on first seeing each monster type
+    bool monster_alert_uniques;                       // Whether to force_more on first seeing any unique
+    bool monster_alert_unusual;                       // Whether to force_more on first seeing any monster it unusual items
+    mon_threat_level_type monster_alert_min_threat;   // What is the minimum threat level to warn on?
 
     bool        pickup_thrown;  // Pickup thrown missiles
     int         travel_delay;   // How long to pause between travel moves
@@ -709,6 +734,12 @@ public:
     // Wait for rest wait percent HP and MP before exploring.
     bool        explore_auto_rest;
 
+    // Which temporary statuses and cooldowns to wait for before exploring.
+    vector<string> explore_auto_rest_status_option;
+    // Processed into these automatically:
+    vector<duration_type> explore_auto_rest_status;
+    bool        explore_auto_rest_contam;
+
     bool        travel_key_stop;   // Travel stops on keypress.
 
     bool        travel_one_unsafe_move; // Allow one unsafe move of auto travel
@@ -742,6 +773,8 @@ public:
     bool        spell_menu;         // 'z' starts with a full-screen menu
     bool        easy_floor_use;     // , selects the floor item if there's 1
     bool        bad_item_prompt;    // Confirm before using a bad consumable
+    bool        show_paged_inventory;   // If true, use pages for the 'i' menu
+                                        // (just like the 'd'rop menu does).
 
     slot_select_mode assign_item_slot;   // How free slots are assigned
     maybe_bool  show_god_gift;      // Show {god gift} in item names
@@ -971,6 +1004,7 @@ private:
 
     void update_explore_stop_conditions();
     void update_explore_greedy_visit_conditions();
+    void update_explore_auto_rest_status();
     void update_use_animations();
     void update_travel_terrain();
 
@@ -987,6 +1021,12 @@ private:
     void remove_force_spell_targeter(const string &s);
     void add_force_ability_targeter(const string &s, bool prepend);
     void remove_force_ability_targeter(const string &s);
+    void add_force_scroll_targeter(const string &s, bool prepend);
+    void remove_force_scroll_targeter(const string &s);
+
+    void update_consumable_shortcuts();
+    void process_unusual_items();
+    void update_monster_alerts();
 
     static const string interrupt_prefix;
 

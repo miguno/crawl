@@ -11,6 +11,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Spinner;
+import android.widget.TextView;
 
 import java.io.File;
 
@@ -27,6 +28,9 @@ public class DCSSMorgue extends AppCompatActivity
     // RecyclerView Adapter
     DCSSMorgueAdapter adapter;
 
+    // Status messages
+    private TextView status;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -42,7 +46,6 @@ public class DCSSMorgue extends AppCompatActivity
         sortSpinner.setSelection(DEFAULT_ORDER);
 
         RecyclerView recyclerView = findViewById(R.id.recyclerView);
-        recyclerView.setHasFixedSize(true);
         LinearLayoutManager layoutManager = new LinearLayoutManager(getBaseContext());
         recyclerView.setLayoutManager(layoutManager);
 
@@ -52,14 +55,16 @@ public class DCSSMorgue extends AppCompatActivity
         adapter = new DCSSMorgueAdapter(morgueDir, this);
         recyclerView.setAdapter(adapter);
         adapter.sortMorgueFiles(DEFAULT_ORDER);
-        progress.setVisibility(View.INVISIBLE);
+        progress.setVisibility(View.GONE);
+        status = findViewById(R.id.status);
     }
 
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+        status.setText("");
         progress.setVisibility(View.VISIBLE);
         adapter.sortMorgueFiles(position);
-        progress.setVisibility(View.INVISIBLE);
+        progress.setVisibility(View.GONE);
     }
 
     @Override
@@ -70,18 +75,22 @@ public class DCSSMorgue extends AppCompatActivity
     // Show morgue file
     @Override
     public void onMorgueClick(int position) {
-        Log.e(DCSSLauncher.TAG, "Morgue item selected: " + position);
+        status.setText("");
+        Log.d(DCSSLauncher.TAG, "Morgue item selected: " + position);
         File morgue = adapter.getMorgueFile(position);
         if (morgue != null) {
             Intent intent = new Intent(getBaseContext(), DCSSTextViewer.class);
             intent.putExtra("file", morgue);
             intent.putExtra("download", true);
             startActivity(intent);
+        } else {
+            status.setText(R.string.open_error);
         }
     }
 
     // Close button
     private void onClickClose(View v) {
+        status.setText("");
         finish();
     }
 

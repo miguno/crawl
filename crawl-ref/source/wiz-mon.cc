@@ -78,7 +78,7 @@ void wizard_create_spec_monster_name()
         if (strlen(specs) >= 3 && partial != MONS_PROGRAM_BUG)
         {
             mlist.clear();
-            newerr = mlist.add_mons(mons_type_name(partial, DESC_PLAIN));
+            newerr = mlist.add_mons(remove_prepended_the(mons_type_name(partial, DESC_PLAIN)));
         }
 
         if (!newerr.empty())
@@ -99,7 +99,7 @@ void wizard_create_spec_monster_name()
         fixup_zombie_type(static_cast<monster_type>(mspec.type),
                           mspec.monbase);
 
-    coord_def place = find_newmons_square(type, you.pos());
+    coord_def place = find_newmons_square(type, you.pos(), 2, you.current_vision);
     if (!in_bounds(place))
     {
         // Try again with habitat HT_LAND.
@@ -249,7 +249,9 @@ static string _habitat_debug_name(habitat_type ht)
         result += "lava|";
     if (ht & HT_MALIGN_GATEWAY)
         result += "malign_gateway|";
-    if (ht >= (HT_MALIGN_GATEWAY << 1))
+    if (ht & HT_WALLS_ONLY)
+        result += "walls|";
+    if (ht >= (HT_WALLS_ONLY << 1))
         result += "INVALID|";
     if (result.empty())
         return "none";
@@ -611,7 +613,7 @@ static void _move_player(const coord_def& where)
         env.grid(where) = DNGN_FLOOR;
         set_terrain_changed(where);
     }
-    move_player_to_grid(where, false);
+    you.move_to(where, MV_INTERNAL);
     // If necessary, update the Abyss.
     if (player_in_branch(BRANCH_ABYSS))
         maybe_shift_abyss_around_player();
@@ -634,7 +636,7 @@ static void _move_monster(const coord_def& where, int idx1)
     const int idx2 = env.mgrid(moves.target);
     monster* mon2 = monster_at(moves.target);
 
-    mon1->moveto(moves.target);
+    mon1->move_to(moves.target, MV_INTERNAL | MV_NO_MGRID_UPDATE);
     env.mgrid(moves.target) = idx1;
     mon1->check_redraw(moves.target);
 
@@ -642,14 +644,11 @@ static void _move_monster(const coord_def& where, int idx1)
 
     if (mon2 != nullptr)
     {
-        mon2->moveto(where);
+        mon2->move_to(where, MV_INTERNAL | MV_NO_MGRID_UPDATE);
         mon1->check_redraw(where);
     }
     if (!you.see_cell(moves.target))
-    {
-        mon1->flags &= ~(MF_WAS_IN_VIEW | MF_SEEN);
-        mon1->seen_context = SC_NONE;
-    }
+        mon1->flags &= ~(MF_WAS_IN_VIEW | MF_SEEN | MF_SENSED);
 }
 
 void wizard_move_player_or_monster(const coord_def& where)

@@ -50,22 +50,19 @@ end
 function setup_slime_pit_ending(e)
   e.place("Slime:$")
   e.orient("encompass")
-  e.mons("the Royal Jelly")
+  e.mons("Royal Jelly")
   e.mons("acid blob")
   e.mons("great orb of eyes / nothing")
   e.kfeat("Z = altar_jiyva")
   e.kitem("k = |, starry gem")
   e.kitem("O = slimy rune of Zot")
+  e.tile("n = slimy_transparent_stone")
 
 -- Attach function to the Royal Jelly itself. This will follow it wherever
 -- it goes, even through polymorphs, and set dgn.persist.fix_slime_vaults
--- when it dies through means other than being banished.
+-- when it dies.
   local function trj_die(monster, killer_type, killer_index, silent, wizard)
-      if killer_type == "banished" then
-        crawl.mpr("You feel a great sense of loss, and a brush of the Abyss.")
-      else
-        dgn.persist.fix_slime_vaults = true
-      end
+      dgn.persist.fix_slime_vaults = true
   end
 
   local wall_fixup_marker = TriggerableFunction:new( {
@@ -136,9 +133,9 @@ MAP
 ENDMAP
 
 NAME:   minmay_slime_entry_eyes
-TAGS:   ruin_lair
-WEIGHT: 2
-MONS:   eye of devastation, glass eye
+TAGS:   ruin_lair patrolling
+WEIGHT: 3
+MONS:   golden eye, basilisk
 : slime_pits_entry(_G)
 MAP
  ....   ....
@@ -146,9 +143,9 @@ MAP
 .xxxx.x.xxxx.
 .xxx.....xxx.
 ..x.S...S.x..
- ...........
- xxS.1O2.Sxx
- ....._.....
+ ....1......
+ xxS..O2.Sxx
+ ....1_.....
 ..x.S...S.x..
 .xxx.....xxx.
 .xxxx.x.xxxx.
@@ -316,6 +313,8 @@ d..fwwwfww.b
     aaaa..fw
 ENDMAP
 
+
+
 NAME: nicolae_slime_jelly_donut
 DEPTH: Slime, !Slime:$
 ORIENT: float
@@ -375,13 +374,15 @@ c..........b
                   aaaaa
 ENDMAP
 
-NAME: nicolae_slime_welcoming_committee
-TAGS: no_monster_gen no_item_gen no_trap_gen
-DEPTH: Slime:2-, !Slime:$
-SUBST: X = x., { = {[(
-KMONS: 1 : jelly w:20 / endoplasm / slime creature w:30 / \
-   acid blob w:5 / rockslime w:5 / void ooze w:5 /\
-   azure jelly w:5
+NAME:   nicolae_slime_welcoming_committee
+TAGS:   no_monster_gen no_item_gen no_trap_gen
+DEPTH:  Slime:2-, !Slime:$
+SUBST:  X = x., { = {[(, 1 : 1:35 2 3:5
+KMONS:  1 : slime creature w:30 / rockslime w:5 / azure jelly w:5
+KMONS:  23 : jelly w:20 / endoplasm
+KMONS:  4 : acid blob / void ooze / star jelly
+KMONS:  5 : colossal amoeba / morphogenic ooze / four-headed slymdra
+NSUBST: 2 = 3:4 / *:2, 3 = 2:5 / *:2
 MAP
       xxx
    xxxxxxxx
@@ -396,13 +397,13 @@ xxxXX.....1.@
       xxx
 ENDMAP
 
-NAME: nicolae_slime_phagocytosis
-DEPTH: Slime, !Slime:$
-TAGS: transparent
-SUBST: a : .x, b : .x, c : .x, d : .x, e : .x, { = {[(, X = Wx, ' = ._
-NSUBST: W = 4:1 / *:W
-KMONS: 1 = slime creature
-KFEAT: 1 = W
+NAME:   nicolae_slime_phagocytosis
+TAGS:   transparent
+DEPTH:  Slime, !Slime:$
+KMONS:  1 = colossal amoeba
+KFEAT:  1 = W
+SUBST:  a : .x, b : .x, c : .x, d : .x, e : .x, { = {[(, X = Wx, ' = ._
+NSUBST: W = 3:1 / *:W
 CLEAR: _
 MAP
        '.......'
@@ -427,13 +428,15 @@ MAP
    ''...........''
 ENDMAP
 
-NAME: nicolae_slime_round_cave
-DEPTH: Slime:2-, !Slime:$
-TAGS: no_monster_gen no_descent
-SHUFFLE: {}/()/[]
-NSUBST: a = X / .
-SUBST: X = x., z = x_, 0 = 0009.., 9 = 9998
-CLEAR: _
+NAME:    nicolae_slime_round_cave
+TAGS:    no_monster_gen no_descent
+DEPTH:   Slime:2-, !Slime:$
+KMONS:   y = creeping plasmodium
+KFEAT:   y = x
+SHUFFLE: {} / () / []
+NSUBST:  a = X / .
+SUBST:   X = x., z = x_, 0 = 0009.., 9 = 9998
+CLEAR:   _
 MAP
        zzzzzzzzzzz
      zzzXXXXXXXXXzzz
@@ -445,11 +448,11 @@ MAP
 zzX..0..XXxx.xxXX.....Xzz
 zXX....XXxxX.XxxXX....XXz
 zX..0.XXxxXX.XXxxXX.9..Xz
-zXX..aXxxXX...XxxxX...XXz
+zXX..aXxxXX...XxyxX...XXz
 zX....XxXX.............Xz
-zXX.{.......}....9..0.XXz
+zXX.{.......}.......0.XXz
 zX....XxXX.............Xz
-zXX..aXxxXX...XxxxX...XXz
+zXX..aXxxXX...XxyxX...XXz
 zX..0.XXxxXX.XXxxXX.9..Xz
 zXX....XXxxX.XxxXX....XXz
 zzX..0..XXxx.xxXX.....Xzz
@@ -495,11 +498,10 @@ XXxxxxxx@@@@@xxxxxxXX
   XXXX         XXXX
 ENDMAP
 
-NAME: cheibrodos_slime_lost_civilization_1
-DEPTH: Slime, !Slime:$
-TAGS: decor transparent ruin
-ORIENT: float
-SUBST: B = xxxW., C = W., D = VVW.
+NAME:   cheibrodos_slime_lost_civilization_1
+TAGS:   decor transparent ruin
+DEPTH:  Slime, !Slime:$
+SUBST:  B = xxxW., C = W., D = VVW.
 MAP
 xxxxxxxxxxxxxxxxx
 xxxxxxxxxxxxxxxxx
@@ -520,9 +522,9 @@ xxxxxxxxxxxxxxxxx
 xxxxxxxxxxxxxxxxx
 ENDMAP
 
-NAME: cheibrodos_slime_lost_civilization_2
-DEPTH: Slime, !Slime:$
-TAGS: decor
+NAME:   cheibrodos_slime_lost_civilization_2
+TAGS:   decor
+DEPTH:  Slime, !Slime:$
 ORIENT: float
 MAP
    xxxxx
@@ -538,13 +540,12 @@ xxxx...xxxx
   xx@@@xx
 ENDMAP
 
-NAME: cheibrodos_slime_lost_civilization_3
-DEPTH: Slime, !Slime:$
-TAGS: decor transparent
-ORIENT: float
+NAME:    cheibrodos_slime_lost_civilization_3
+TAGS:    decor transparent
+DEPTH:   Slime, !Slime:$
 SHUFFLE: W.
-SUBST: W = WW.
-KMASK: W = no_monster_gen
+SUBST:   W = WW.
+KMASK:   W = no_monster_gen
 MAP
 xxxxxxxxxxxxx
 xWWWxWWWxWWWx
@@ -559,9 +560,9 @@ xWWWxWWWxWWWx
 xxxxxxxxxxxxx
 ENDMAP
 
-NAME: cheibrodos_slime_lost_civilization_4
+NAME:  cheibrodos_slime_lost_civilization_4
+TAGS:  decor
 DEPTH: Slime, !Slime:$
-TAGS: decor
 MAP
 .x...x.
 .......
@@ -570,11 +571,11 @@ x..G..x
 .x...x.
 ENDMAP
 
-NAME: cheibrodos_slime_lost_civilization_5
-DEPTH: Slime, !Slime:$
-TAGS: decor
-SUBST: A=x, B=.
+NAME:    cheibrodos_slime_lost_civilization_5
+TAGS:    decor
+DEPTH:   Slime, !Slime:$
 SHUFFLE: AB
+SUBST:   A = x,  B = .
 MAP
      ...
     ..B..
@@ -591,10 +592,11 @@ MAP
      ...
 ENDMAP
 
-NAME: cheibrodos_slime_lost_civilization_6
-DEPTH: Slime, !Slime:$
-TAGS: decor
-SUBST: } = }G..
+NAME:    cheibrodos_slime_lost_civilization_6
+TAGS:    extra
+DEPTH:   Slime:2-, !Slime:$
+MONS:    slymdra band / morphogenic ooze band w:6 / eye of draining band w:4
+SHUFFLE: 1} / 'G / '' / ''
 MAP
 .............
 .x.x.x.x.x.x.
@@ -602,7 +604,7 @@ MAP
 .x.........x.
 ..x.......x..
 .x...}.....x.
-..x.......x..
+..x...1...x..
 .x.....{...x.
 ..x.......x..
 .x.........x.
@@ -611,9 +613,10 @@ MAP
 .............
 ENDMAP
 
-NAME: cheibrodos_slime_lost_civilization_7
+NAME:  cheibrodos_slime_lost_civilization_7
+TAGS:  decor
 DEPTH: Slime, !Slime:$
-TAGS: decor
+KFEAT: V = dry_fountain / fountain_eyes
 MAP
   ...........
  .............
@@ -628,11 +631,11 @@ MAP
   ...........
 ENDMAP
 
-NAME: cheibrodos_slime_lost_civilization_8
-DEPTH: Slime, !Slime:$
-TAGS: decor
+NAME:   cheibrodos_slime_lost_civilization_8
+TAGS:   decor
+DEPTH:  Slime, !Slime:$
 ORIENT: float
-SUBST: - = xxx., " = ...x
+SUBST:  - = xxx., " = ...x
 MAP
 @.............
 .(..----------
@@ -650,11 +653,10 @@ MAP
 .-------xxxxxx
 ENDMAP
 
-NAME: cheibrodos_slime_lost_civilization_9
-DEPTH: Slime, !Slime:$
-TAGS: decor transparent
-ORIENT: float
-SUBST: x = xxx., G = G..
+NAME:   cheibrodos_slime_lost_civilization_9
+TAGS:   decor transparent
+DEPTH:  Slime, !Slime:$
+SUBST:  x = xxx., G = G..
 MAP
 .............
 .xx.xx.xx.xx.
@@ -669,11 +671,11 @@ MAP
 .............
 ENDMAP
 
-NAME: cheibrodos_slime_lost_civilization_10
+NAME:  cheibrodos_slime_lost_civilization_10
+TAGS:  transparent decor
 DEPTH: Slime, !Slime:$
-TAGS: decor transparent
-ORIENT: float
 SUBST: x = xxxx.
+KFEAT: V = dry_fountain / fountain_eyes
 MAP
 ...............
 .xxxxxxxxxxxxx.
@@ -693,7 +695,7 @@ ENDMAP
 # inspired by a comment of spacejung on SomethingAwful (dpeg)
 NAME:   dissolution_awaits
 DEPTH:  Slime:2-, !Slime:$
-KMONS:  1 = patrolling Dissolution, azure jelly / great orb of eyes
+KMONS:  1 = patrolling Dissolution, morphogenic ooze / colossal amoeba
 MAP
  .....
 ...{...
@@ -729,7 +731,7 @@ TAGS:    transparent patrolling
 DEPTH:   Slime
 KMONS:   1 = glowing orange brain
 KMONS:   2 = glass eye / golden eye / shining eye / eye of devastation / \
-             great orb of eyes
+             great orb of eyes / eye of draining
 SHUFFLE: DEF
 SUBST:   ` = 2..., D = @, E : @., F : @..., - = _x
 CLEAR:   _

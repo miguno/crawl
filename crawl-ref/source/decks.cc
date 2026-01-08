@@ -526,7 +526,7 @@ deck_type ability_deck(ability_type abil)
 // deck passed.
 static char _deck_hotkey(deck_type deck)
 {
-    return get_talent(deck_ability[deck], false).hotkey;
+    return get_talent(deck_ability[deck]).hotkey;
 }
 
 static deck_type _choose_deck(const string title = "Draw")
@@ -1164,7 +1164,7 @@ static void _damaging_card(card_type card, int power,
     // Confirm aborts as they waste the card.
     prompt = make_stringf("Aiming: %s", card_name(card));
     while (!(spell_direction(target, beam, &args)
-            && player_tracer(ZAP_DEBUGGING_RAY, power/6, beam)))
+            && player_tracer(ZAP_SEARING_RAY, power/6, beam)))
     {
         if (crawl_state.seen_hups
             || yesno("Really abort (and waste the card)?", false, 0))
@@ -1474,7 +1474,7 @@ static void _storm_card(int power)
     int valid_targets = 0;
     for (radius_iterator ri(you.pos(), LOS_NO_TRANS, true); ri; ++ri)
     {
-        if (grid_distance(*ri, you.pos()) > 3 && !cell_is_solid(*ri))
+        if (grid_distance(*ri, you.pos()) > 3 && !cell_is_invalid_target(*ri))
         {
             ++valid_targets;
             for (int i = 0; i < max_explosions; ++i)
@@ -1566,8 +1566,7 @@ static void _degeneration_card(int power)
                }
                else
                {
-                   const int daze_time = (5 + 5 * power_level) * BASELINE_DELAY;
-                   mons.add_ench(mon_enchant(ENCH_DAZED, 0, &you, daze_time));
+                   mons.daze(2 + 3 * power_level);
                    simple_monster_message(mons,
                                           " is dazed by the mutagenic energy.");
                }
@@ -1647,11 +1646,11 @@ static int _card_power(bool punishment)
     if (punishment)
         return you.experience_level * 18;
 
-    int result = you.piety;
+    int result = you.piety();
     result *= you.skill(SK_INVOCATIONS, 100) + 2500;
     result /= 2700;
     result += you.skill(SK_INVOCATIONS, 9);
-    result += (you.piety * 3) / 2;
+    result += (you.piety() * 3) / 2;
 
     return result;
 }

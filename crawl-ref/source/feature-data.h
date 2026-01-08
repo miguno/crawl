@@ -224,6 +224,14 @@ static feature_def feat_defs[] =
 },
 
 {
+    // Names remapped based on orb in the game
+    DNGN_ZOT_STATUE, "zot statue", "zot_statue",
+    DCHAR_STATUE, NUM_DCHAR_TYPES,
+    COLOUR_IS(DARKGREY),
+    FFT_SOLID | FFT_NOTABLE, MF_WALL,
+},
+
+{
     DNGN_MALIGN_GATEWAY, "portal to somewhere", "malign_gateway",
     DCHAR_ARCH, NUM_DCHAR_TYPES,
     COLOURS(ETC_SHIMMER_BLUE, LIGHTGREY),
@@ -354,6 +362,13 @@ TRAP(DNGN_TRAP_ZOT, "Zot trap", "trap_zot", LIGHTMAGENTA),
 TRAP(DNGN_PASSAGE_OF_GOLUBRIA, "passage of Golubria", "passage of golubria", GREEN),
 TRAP(DNGN_TRAP_SHAFT, "shaft", "shaft", BROWN),
 TRAP(DNGN_TRAP_WEB, "web", "trap_web", LIGHTGREY),
+
+{
+    DNGN_TRAP_DISPERSAL_INACTIVE, "dispersal trap (recharging)", "trap_dispersal_inactive",
+    DCHAR_TRAP, NUM_DCHAR_TYPES,
+    COLOUR_AND_MAP(LIGHTGREY),
+    FFT_NONE, MF_TRAP,
+},
 
 #if TAG_MAJOR_VERSION == 34
 {
@@ -665,21 +680,21 @@ FOUNTAIN(DNGN_DECORATIVE_FLOOR, "decorative floor", "decorative_floor", DARKGREY
 FOUNTAIN(DNGN_RUNELIGHT, "runelight", "runelight", ETC_DISJUNCTION),
 
 {
-    DNGN_CACHE_OF_BAKED_GOODS, "cache of baked goods", "cache of baked goods",
+    DNGN_CACHE_OF_BAKED_GOODS, "cache of baked goods", "cache_of_baked_goods",
     DCHAR_ITEM_SKELETON, NUM_DCHAR_TYPES,
     COLOUR_AND_MAP(YELLOW),
     FFT_NONE, MF_FLOOR,
 },
 
 {
-    DNGN_CACHE_OF_FRUIT, "cache of fruit", "cache of fruit",
+    DNGN_CACHE_OF_FRUIT, "cache of fruit", "cache_of_fruit",
     DCHAR_ITEM_SKELETON, NUM_DCHAR_TYPES,
     COLOUR_AND_MAP(GREEN),
     FFT_NONE, MF_FLOOR,
 },
 
 {
-    DNGN_CACHE_OF_MEAT, "cache of meat", "cache of meat",
+    DNGN_CACHE_OF_MEAT, "cache of meat", "cache_of_meat",
     DCHAR_ITEM_SKELETON, NUM_DCHAR_TYPES,
     COLOUR_AND_MAP(BROWN),
     FFT_NONE, MF_FLOOR,

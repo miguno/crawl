@@ -47,7 +47,7 @@
 #include "player-stats.h"
 #include "showsymb.h"      // For Cigotuvi's Embrace
 #include "spl-cast.h"      // For evokes
-#include "spl-damage.h"    // For the Singing Sword and the Sword of Power.
+#include "spl-damage.h"    // For the Singing Sword
 #include "spl-goditem.h"   // For Sceptre of Torment tormenting
 #include "spl-miscast.h"   // For Spellbinder and plutonium sword miscasts
 #include "spl-monench.h"   // For Zhor's aura
@@ -55,6 +55,7 @@
 #include "spl-transloc.h"  // For Autumn Katana's Manifold Assault
 #include "tag-version.h"
 #include "terrain.h"       // For storm bow
+#include "tilepick.h"
 #include "rltiles/tiledef-main.h"
 #include "unwind.h"        // For autumn katana
 #include "view.h"          // For arc blade's discharge effect
@@ -111,7 +112,7 @@ static void _CEREBOV_melee_effects(item_def* /*weapon*/, actor* attacker,
                      defender->name(DESC_ITS).c_str());
             }
             defender->as_monster()->add_ench(
-                mon_enchant(ENCH_FIRE_VULN, 1, attacker,
+                mon_enchant(ENCH_FIRE_VULN, attacker,
                             (3 + random2(dam)) * BASELINE_DELAY));
         }
     }
@@ -141,7 +142,7 @@ static void _CONDEMNATION_melee_effects(item_def* /*weapon*/, actor* attacker,
         return;
     const int dur = random_range(40, 80);
     const bool was_guilty = mons->has_ench(ENCH_ANGUISH);
-    if (mons->add_ench(mon_enchant(ENCH_ANGUISH, 0, attacker, dur)) && !was_guilty)
+    if (mons->add_ench(mon_enchant(ENCH_ANGUISH, attacker, dur)) && !was_guilty)
         simple_monster_message(*mons, " is haunted by guilt!");
 }
 
@@ -276,27 +277,6 @@ static void _OLGREB_melee_effects(item_def* /*weapon*/, actor* attacker,
         if (defender->alive())
             defender->poison(attacker, 2, true);
     }
-}
-
-////////////////////////////////////////////////////
-
-static void _POWER_equip(item_def * /* item */, bool *show_msgs,
-                         bool /*unmeld*/)
-{
-    _equip_mpr(show_msgs, "You sense an aura of extreme power.");
-}
-
-static void _POWER_melee_effects(item_def* /*weapon*/, actor* attacker,
-                                 actor* defender, bool mondied, int /*dam*/)
-{
-    if (mondied)
-        return;
-
-    const int num_beams = div_rand_round(attacker->stat_hp(), 270);
-    coord_def targ = defender->pos();
-
-    for (int i = 0; i < num_beams; i++)
-        fire_life_bolt(*attacker, targ);
 }
 
 ////////////////////////////////////////////////////
@@ -461,10 +441,10 @@ static void _TROG_unequip(item_def */*item*/, bool *show_msgs)
 ///////////////////////////////////////////////////
 
 static void _VARIABILITY_melee_effects(item_def* /*weapon*/, actor* attacker,
-                                       actor* /*defender*/, bool mondied,
+                                       actor* /*defender*/, bool /*mondied*/,
                                        int /*dam*/)
 {
-    if (!mondied && one_chance_in(5))
+    if (one_chance_in(5))
     {
         const int pow = 75 + random2avg(75, 2);
         if (you.can_see(*attacker))
@@ -518,9 +498,9 @@ static void _STORM_QUEEN_melee_effects(item_def* /*item*/, actor* wearer,
     // elec brand - same average damage per trigger, higher trigger chance,
     // but checks (half) AC - and triggers on block instead of attack :)
     if (!attacker || !one_chance_in(3)) return;
-    shock_discharge_fineff::schedule(wearer, *attacker,
-                                     wearer->pos(), 3,
-                                     "shield");
+    schedule_shock_discharge_fineff(wearer, *attacker,
+                                    wearer->pos(), 3,
+                                    "shield");
 
 }
 
@@ -649,9 +629,7 @@ static void _WYRMBANE_melee_effects(item_def* weapon, actor* attacker,
 
         defender->hurt(attacker, bonus_dam);
 
-        // Allow the lance to charge when killing dragonform felid players.
-        mondied = defender->is_player() ? defender->as_player()->pending_revival
-                                        : !defender->alive();
+        mondied = !defender->alive();
     }
 
     if (!mondied || !hd)
@@ -815,7 +793,7 @@ static void _PLUTONIUM_SWORD_melee_effects(item_def* weapon,
             mpr(random_choose("Your body deforms painfully.",
                               "Your limbs ache and wobble like jelly.",
                               "Your body is flooded with magical radiation."));
-            contaminate_player(random_range(3500, 6500));
+            contaminate_player(random_range(700, 1350));
         }
         defender->hurt(attacker, random_range(5, 25));
     }
@@ -882,6 +860,7 @@ static void _DAMNATION_launch(bolt* beam)
     expl->damage = dice_def(2, 14);
     expl->name   = "damnation";
     expl->tile_explode = TILE_BOLT_DAMNATION;
+    expl->safe_to_user = true;
 
     beam->special_explosion = expl;
 }
@@ -1059,7 +1038,7 @@ static void _FIRESTARTER_melee_effects(item_def* /*weapon*/, actor* attacker,
             mprf("%s is filled with an inner flame.",
                  defender->name(DESC_THE).c_str());
             defender->as_monster()->add_ench(
-                mon_enchant(ENCH_INNER_FLAME, 0, attacker,
+                mon_enchant(ENCH_INNER_FLAME, attacker,
                             (3 + random2(dam)) * BASELINE_DELAY));
         }
     }
@@ -1102,7 +1081,7 @@ static void _CHILLY_DEATH_melee_effects(item_def* /*weapon*/, actor* attacker,
             mprf("%s is flash-frozen.",
                  defender->name(DESC_THE).c_str());
             defender->as_monster()->add_ench(
-                mon_enchant(ENCH_FROZEN, 0, attacker,
+                mon_enchant(ENCH_FROZEN, attacker,
                             (5 + random2(dam)) * BASELINE_DELAY));
         }
         else if (defender->is_player()
@@ -1312,12 +1291,8 @@ static void _FROSTBITE_melee_effects(item_def* /*weapon*/, actor* attacker,
                                      int /*dam*/)
 {
     coord_def spot = defender->pos();
-    if (!cell_is_solid(spot)
-        && !cloud_at(spot)
-        && one_chance_in(5))
-    {
-         place_cloud(CLOUD_COLD, spot, random_range(4, 8), attacker, 0);
-    }
+    if (one_chance_in(5))
+        place_cloud(CLOUD_COLD, spot, random_range(4, 8), attacker, 0);
 }
 
 ///////////////////////////////////////////////////
@@ -1478,11 +1453,11 @@ static int _harvest_corpses()
                 bolt beam;
                 beam.source = *ri;
                 beam.target = you.pos();
+                beam.tile_beam = tileidx_item(item);
                 beam.glyph = get_item_glyph(item).ch;
                 beam.colour = item.get_colour();
                 beam.range = LOS_RADIUS;
                 beam.aimed_at_spot = true;
-                beam.item = &item;
                 beam.flavour = BEAM_VISUAL;
                 beam.draw_delay = 3;
                 beam.fire();
@@ -1605,7 +1580,6 @@ static void _RCLOUDS_world_reacts(item_def */*item*/)
     {
         monster* m = monster_at(*ri);
         if (m && !m->wont_attack() && mons_is_threatening(*m)
-            && !cell_is_solid(*ri) && !cloud_at(*ri)
             && x_chance_in_y(you.time_taken, 7 * BASELINE_DELAY))
         {
             mprf("Storm clouds gather above %s.", m->name(DESC_THE).c_str());
@@ -1730,6 +1704,7 @@ static void _VICTORY_death_effects(item_def *item, monster* mons,
             item->plus = bonus_stats;
             artefact_set_property(*item, ARTP_SLAYING, bonus_stats);
             artefact_set_property(*item, ARTP_INTELLIGENCE, bonus_stats);
+            you.equipment.update();
             mprf(MSGCH_GOD, GOD_OKAWARU, "%s glows%s.",
                  item->name(DESC_THE, false, true, false).c_str(),
                  bonus_stats == VICTORY_STAT_CAP ? " brightly" : "");
@@ -1775,7 +1750,7 @@ static void _ASMODEUS_melee_effects(item_def* /*weapon*/, actor* attacker,
 
         mgen_data mg(demon, BEH_FRIENDLY, you.pos(), MHITYOU,
                      MG_FORCE_BEH | MG_AUTOFOE);
-        mg.set_summoned(&you, SPELL_FIRE_SUMMON, summ_dur(4));
+        mg.set_summoned(&you, SPELL_HELLFIRE_COURT, summ_dur(4));
 
         if (create_monster(mg))
         {
@@ -1787,7 +1762,7 @@ static void _ASMODEUS_melee_effects(item_def* /*weapon*/, actor* attacker,
 
 ////////////////////////////////////////////////////
 
-static void _DOOM_KNIGHT_melee_effects(item_def* /*item*/, actor* attacker,
+static void _DREAD_KNIGHT_melee_effects(item_def* /*item*/, actor* attacker,
                                         actor* defender, bool mondied, int /*dam*/)
 {
     if (!mondied)

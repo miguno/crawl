@@ -53,7 +53,7 @@ static int bgr[8] = {0, 4, 2, 6, 1, 5, 3, 7};
 static string colour(int colour, string text, bool bg = false)
 {
     if (_is_element_colour(colour))
-        colour = element_colour(colour, true);
+        colour = element_colour(colour, coord_def(), true);
 
     if (isatty(1))
     {
@@ -265,17 +265,18 @@ static string mi_calc_pyre_arrow_damage(monster* mons)
     return make_stringf("2d%d*", 2 + mons->get_hit_dice() * 12 / 14);
 }
 
-static string mi_calc_draining_gaze_drain(monster* mons)
+static string mi_calc_antimagic_gaze_drain(monster* mons)
 {
-    const int pow = mons_power_for_hd(SPELL_DRAINING_GAZE, mons->get_hit_dice());
+    const int pow = mons_power_for_hd(SPELL_ANTIMAGIC_GAZE, mons->get_hit_dice());
     return make_stringf("0-%d MP", pow / 8);
 }
 
-static string mi_calc_airstrike_damage(monster* mons)
+static string mi_calc_airstrike_damage(monster* mons, spell_type spell_cast)
 {
-    const int pow = mons_power_for_hd(SPELL_AIRSTRIKE, mons->get_hit_dice());
+    const int pow = mons_power_for_hd(spell_cast, mons->get_hit_dice());
     dice_def dice = base_airstrike_damage(pow);
-    return describe_airstrike_dam(dice);
+    return make_stringf("%dd%d+(%d/space)", dice.num, dice.size,
+                        spell_cast == SPELL_SLEETSTRIKE ? 3 : 2);
 }
 
 static string mi_calc_glaciate_damage(monster* mons)
@@ -357,10 +358,11 @@ static string mons_human_readable_spell_damage_string(monster* monster,
             return mi_calc_brain_bite_damage(monster);
         case SPELL_PYRE_ARROW:
             return mi_calc_pyre_arrow_damage(monster);
-        case SPELL_DRAINING_GAZE:
-            return mi_calc_draining_gaze_drain(monster);
+        case SPELL_ANTIMAGIC_GAZE:
+            return mi_calc_antimagic_gaze_drain(monster);
         case SPELL_AIRSTRIKE:
-            return mi_calc_airstrike_damage(monster);
+        case SPELL_SLEETSTRIKE:
+            return mi_calc_airstrike_damage(monster, sp);
         case SPELL_GLACIATE:
             return mi_calc_glaciate_damage(monster);
         case SPELL_CHAIN_LIGHTNING:
@@ -975,7 +977,6 @@ int main(int argc, char* argv[])
         mon.wield_melee_weapon();
         for (int x = 0; x < 4; x++)
         {
-            mon_attack_def orig_attk(me->attack[x]);
             int attack_num = x;
             if (mon.has_hydra_multi_attack())
                 attack_num = x == 0 ? x : x + mon.number - 1;
@@ -1111,6 +1112,9 @@ int main(int argc, char* argv[])
                 case AF_ANTIMAGIC:
                     monsterattacks += colour(LIGHTBLUE, "(antimagic)");
                     break;
+                case AF_DIM:
+                    monsterattacks += colour(LIGHTBLUE, "(dim)");
+                    break;
                 case AF_STEAL:
                     monsterattacks += colour(CYAN, "(steal)");
                     break;
@@ -1123,8 +1127,8 @@ int main(int argc, char* argv[])
                                                             hd * 3 / 4,
                                                             hd * 3 / 2));
                     break;
-                case AF_ENGULF:
-                    monsterattacks += colour(LIGHTBLUE, "(engulf)");
+                case AF_FLOOD:
+                    monsterattacks += colour(LIGHTBLUE, "(flood)");
                     break;
                 case AF_DRAIN_SPEED:
                     monsterattacks += colour(LIGHTMAGENTA, "(drain speed)");
@@ -1137,6 +1141,9 @@ int main(int argc, char* argv[])
                     break;
                 case AF_CORRODE:
                     monsterattacks += colour(BROWN, "(corrosion)");
+                    break;
+                case AF_SLIMIFY:
+                    monsterattacks += colour(LIGHTMAGENTA, "(slimify)");
                     break;
                 case AF_TRAMPLE:
                     monsterattacks += colour(BROWN, "(trample)");
@@ -1173,6 +1180,9 @@ int main(int argc, char* argv[])
                     break;
                 case AF_TRICKSTER:
                     monsterattacks += colour(LIGHTGREEN, "(trickster)");
+                    break;
+                case AF_DOOM:
+                    monsterattacks += colour(RED, "(doom)");
                     break;
                 case AF_CRUSH:
                 case AF_PLAIN:
@@ -1282,6 +1292,7 @@ int main(int argc, char* argv[])
         mons_check_flag(mon.is_unbreathing(), monsterflags, "unbreathing");
         mons_check_flag(mon.is_insubstantial(), monsterflags, "insubstantial");
         mons_check_flag(mon.is_amorphous(), monsterflags, "amorphous");
+        mons_check_flag(bool(me->bitfields & M_WARDED), monsterflags, "warded");
 
         string spell_string = construct_spells(spell_lists, damages);
         if (shapeshifter || mon.type == MONS_PANDEMONIUM_LORD

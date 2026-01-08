@@ -70,7 +70,7 @@ fire_vulnerable FIRE_VULN
 injury_bond INJURY_BOND
 partially_charged PARTIALLY_CHARGED
 fully_charged FULLY_CHARGED
-repel_missiles REPEL_MISSILES
+deflect_missiles DEFLECT_MISSILES
 ghostly GHOSTLY
 still_winds STILL_WINDS
 waterlogged WATERLOGGED
@@ -96,7 +96,7 @@ shadowless SHADOWLESS
 bind BIND
 weak_willed WEAK_WILLED
 sign_of_ruin SIGN_OF_RUIN
-doubled_health DOUBLED_HEALTH
+doubled_vigour DOUBLED_VIGOUR
 kinetic_grapnel KINETIC_GRAPNEL
 tempered TEMPERED
 heart HEART
@@ -111,6 +111,14 @@ nobody_memory_2 NOBODY_MEMORY_2
 nobody_memory_3 NOBODY_MEMORY_3
 pyrrhic PYRRHIC
 magnetised MAGNETISED
+figment FIGMENT
+paradox PARADOX
+warding WARDING
+dim DIMMED
+sentinel_mark SENTINEL_MARK
+strong_willed STRONG_WILLED
+tesseract_spawn TESSERACT_SPAWN
+sundering SUNDERING
 
 something_under SOMETHING_UNDER
 new_stair NEW_STAIR

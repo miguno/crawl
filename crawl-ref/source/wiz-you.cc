@@ -191,7 +191,7 @@ void wizard_memorise_spec_spell()
         }
     }
 
-    if (get_spell_flags(static_cast<spell_type>(spell)) & spflag::monster)
+    if (spell_is_monster_only(static_cast<spell_type>(spell)))
         mpr("Spell is monster-only - unpredictable behaviour may result.");
     if (!learn_spell(static_cast<spell_type>(spell), true))
         crawl_state.cancel_cmd_repeat();
@@ -205,12 +205,13 @@ void wizard_heal(bool super_heal)
         // Clear more stuff.
         undrain_hp(9999);
         you.magic_contamination = 0;
+        you.redraw_contam = true;
         you.duration[DUR_STICKY_FLAME] = 0;
         you.clear_beholders();
         you.duration[DUR_PETRIFIED] = 0;
         you.duration[DUR_PETRIFYING] = 0;
         you.duration[DUR_CORROSION] = 0;
-        you.duration[DUR_DOOM_HOWL] = 0;
+        you.duration[DUR_OBLIVION_HOWL] = 0;
         you.duration[DUR_WEAK] = 0;
         you.duration[DUR_NO_HOP] = 0;
         you.duration[DUR_DIMENSION_ANCHOR] = 0;
@@ -236,6 +237,8 @@ void wizard_heal(bool super_heal)
         you.duration[DUR_SAP_MAGIC] = 0;
         you.duration[DUR_SLOW] = 0;
         you.duration[DUR_BLIND] = 0;
+        you.duration[DUR_FLOODED] = 0;
+        you.duration[DUR_DIMINISHED_SPELLS] = 0;
         you.duration[DUR_SIGN_OF_RUIN] = 0;
         you.duration[DUR_SENTINEL_MARK] = 0;
         you.duration[DUR_CANINE_FAMILIAR_DEAD] = 0;
@@ -250,9 +253,12 @@ void wizard_heal(bool super_heal)
         you.duration[DUR_WORD_OF_CHAOS_COOLDOWN] = 0;
         you.duration[DUR_FIRE_VULN] = 0;
         you.duration[DUR_POISON_VULN] = 0;
+        you.duration[DUR_SLIMIFYING] = 0;
+        you.attribute[ATTR_DOOM] = 0;
         delete_all_temp_mutations("Super heal");
         decr_zot_clock();
         you.redraw_stats = true;
+        you.redraw_doom = true;
         gain_draconian_breath_uses(MAX_DRACONIAN_BREATH);
         gain_grave_claw_soul(true, true);
         you.props[ENKINDLE_CHARGES_KEY].get_int() = enkindle_max_charges();
@@ -287,7 +293,7 @@ void wizard_set_piety_to(int newpiety, bool force)
 
     if (you_worship(GOD_XOM))
     {
-        you.piety = newpiety;
+        you.raw_piety = newpiety;
         you.redraw_title = true; // redraw piety display
 
         int newinterest;
@@ -316,7 +322,7 @@ void wizard_set_piety_to(int newpiety, bool force)
         else
             mpr("Interest must be between 0 and 255.");
 
-        mprf("Set piety to %d, interest to %d.", you.piety, newinterest);
+        mprf("Set piety to %d, interest to %d.", you.raw_piety, newinterest);
 
         const string new_xom_favour = describe_xom_favour();
         const string msg = "You are now " + new_xom_favour;
@@ -328,7 +334,7 @@ void wizard_set_piety_to(int newpiety, bool force)
     {
         if (yesno("Are you sure you want to be excommunicated?", false, 'n'))
         {
-            you.piety = 0;
+            you.raw_piety = 0;
             excommunication();
         }
         else
@@ -380,7 +386,7 @@ void wizard_set_piety()
     }
 
     mprf(MSGCH_PROMPT, "Enter new piety value (current = %d, Enter for 0): ",
-         you.piety);
+         you.raw_piety);
     char buf[30];
     if (cancellable_get_line_autohist(buf, sizeof buf))
     {
@@ -573,6 +579,67 @@ bool wizard_add_mutation()
                 if (delete_mutation(mutat, "wizard power", true, true))
                     success = true;
         }
+    }
+
+    return success;
+}
+
+bool wizard_toggle_bane()
+{
+    bool success = false;
+    char specs[80];
+
+    msgwin_get_line("Which bane? ", specs, sizeof(specs));
+
+    if (specs[0] == '\0')
+    {
+        canned_msg(MSG_OK);
+        return true;
+    }
+
+    vector<bane_type> partial_matches;
+    bane_type bane = bane_from_name(specs, &partial_matches);
+
+    if (bane == NUM_BANES)
+    {
+        crawl_state.cancel_cmd_repeat();
+
+        if (partial_matches.empty())
+            mpr("No matching bane names.");
+        else
+        {
+            vector<string> matches;
+
+            for (bane_type ban : partial_matches)
+            {
+                const string banname = bane_name(ban, true);
+                ASSERT(!banname.empty()); // `bane_name` is empty if something went wrong getting the desc for `ban`.
+                matches.emplace_back(banname);
+            }
+
+            string prefix = make_stringf("No exact match for bane '%s', possible matches are: ", specs);
+
+            // Use mpr_comma_separated_list() because the list
+            // might be *LONG*.
+            mpr_comma_separated_list(prefix, matches, " and ", ", ",
+                                     MSGCH_DIAGNOSTICS);
+        }
+
+        return false;
+    }
+    else
+    {
+        mprf("Found #%d: %s (\"%s\")", (int) bane,
+             bane_name(bane).c_str(),
+             bane_desc(bane).c_str());
+
+        if (you.has_bane(bane))
+        {
+            remove_bane(bane);
+            success = true;
+        }
+        else
+            success = add_bane(bane, "wizard power");
     }
 
     return success;
@@ -915,9 +982,8 @@ void wizard_transform()
     {
         const auto tr = static_cast<transformation>(i);
 #if TAG_MAJOR_VERSION == 34
-        if (tr == transformation::jelly || tr == transformation::porcupine
-            || tr == transformation::hydra || tr == transformation::appendage
-            || tr == transformation::shadow)
+        if (tr == transformation::porcupine || tr == transformation::hydra
+            || tr == transformation::appendage || tr == transformation::shadow)
         {
             continue;
         }
@@ -944,7 +1010,7 @@ void wizard_transform()
     if (you.default_form == you.form && you.form != transformation::none)
     {
         you.default_form = form; // ehhh
-        you.active_talisman.clear();
+        you.cur_talisman = -1;
     }
     if (!transform(200, form, true) && you.form != form)
         mpr("Transformation failed.");
@@ -993,7 +1059,7 @@ void wizard_xom_acts()
     msgwin_get_line("What action should Xom take? (Blank = any) " ,
                     specs, sizeof(specs));
 
-    const int severity = you_worship(GOD_XOM) ? abs(you.piety - HALF_MAX_PIETY)
+    const int severity = you_worship(GOD_XOM) ? abs(you.raw_piety - HALF_MAX_PIETY)
                                               : random_range(0, HALF_MAX_PIETY);
 
     if (specs[0] == '\0')

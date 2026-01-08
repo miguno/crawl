@@ -37,6 +37,7 @@
 #include "mapmark.h"
 #include "maps.h"
 #include "message.h"
+#include "mon-act.h"
 #include "mon-cast.h"
 #include "mon-death.h"
 #include "mon-pathfind.h"
@@ -172,11 +173,9 @@ static int _abyssal_rune_roll()
 {
     if (you.runes[RUNE_ABYSSAL] || you.depth < ABYSSAL_RUNE_MIN_LEVEL)
         return -1;
-    const bool god_favoured = have_passive(passive_t::attract_abyssal_rune);
 
-    const double depth = you.depth + god_favoured;
-
-    return (int) pow(100.0, depth/6);
+    static const int chance[] = {0, 0, 10, 15, 22, 100, 100};
+    return chance[you.depth] * (have_passive(passive_t::attract_abyssal_rune) ? 2 : 1);
 }
 
 static void _abyss_fixup_vault(const vault_placement *vp)
@@ -396,25 +395,7 @@ static string _who_banished(const string &who)
     return who.empty() ? who : " (" + who + ")";
 }
 
-static int _banished_depth(const int power)
-{
-    // Linear, with the max going from (1,1) to (25,5)
-    // and the min going from (9,1) to (27,5)
-    // Currently using HD for power
-
-    // This means an orc will send you to A:1, an orc warrior
-    // has a small chance of A:2,
-    // Elves have a good shot at sending you to A:3, but won't
-    // always
-    // Ancient Liches are sending you to A:5 and there's nothing
-    // you can do about that.
-    const int maxdepth = div_rand_round((power + 5), 6);
-    const int mindepth = min(maxdepth, (4 * power + 7) / 23);
-    const int bottom = brdepth[BRANCH_ABYSS];
-    return min(bottom, max(1, random_range(mindepth, maxdepth)));
-}
-
-void banished(const string &who, const int power)
+void banished(const string &who)
 {
     ASSERT(!crawl_state.game_is_arena());
     if (brdepth[BRANCH_ABYSS] == -1)
@@ -433,16 +414,14 @@ void banished(const string &who, const int power)
         return;
     }
 
-    const int depth = _banished_depth(power);
-
     stop_delay(true);
     splash_corruption(you.pos());
     run_animation(ANIMATION_BANISH, UA_BRANCH_ENTRY, false);
     push_features_to_abyss();
     floor_transition(DNGN_ENTER_ABYSS, orig_terrain(you.pos()),
-                     level_id(BRANCH_ABYSS, depth), true);
+                     level_id(BRANCH_ABYSS), true);
     // This is an honest abyss entry, mark milestone and take note
-    // floor_transition might change our final destination in the abyss
+    // floor_transition will determine our final destination in the abyss
     const string what = make_stringf("Cast into level %d of the Abyss",
                                      you.depth) + _who_banished(who);
     take_note(Note(NOTE_MESSAGE, 0, 0, what), true);
@@ -453,7 +432,7 @@ void banished(const string &who, const int power)
     if (you_worship(GOD_XOM) && who != "Xom" && who != "wizard command"
         && who != "a distortion unwield")
     {
-        xom_maybe_reverts_banishment(false, false);
+        xom_maybe_reverts_banishment();
     }
 }
 
@@ -462,6 +441,7 @@ void check_banished()
     if (you.banished)
     {
         you.banished = false;
+        mons_reset_just_seen();
         ASSERT(brdepth[BRANCH_ABYSS] != -1);
         if (!player_in_branch(BRANCH_ABYSS))
             mprf(MSGCH_BANISHMENT, "You are cast into the Abyss!");
@@ -470,7 +450,7 @@ void check_banished()
         else
             mprf(MSGCH_BANISHMENT, "The Abyss bends around you!");
         // these are included in default force_more_message
-        banished(you.banished_by, you.banished_power);
+        banished(you.banished_by);
     }
 }
 
@@ -978,12 +958,6 @@ static void _abyss_identify_area_to_shift(coord_def source, int radius,
         _abyss_expand_mask_to_cover_vault(mask, i);
 }
 
-static void _abyss_invert_mask(map_bitmask *mask)
-{
-    for (rectangle_iterator ri(0); ri; ++ri)
-        mask->set(*ri, !mask->get(*ri));
-}
-
 // Moves everything in the given radius around the player (where radius=0 =>
 // only the player) to another part of the level, centred on target_centre.
 // Everything not in the given radius is wiped to DNGN_UNSEEN and the provided
@@ -1046,7 +1020,7 @@ static void _abyss_shift_level_contents_around_player(
     // So far we've used the mask to track the portions of the level we're
     // preserving. The inverse of the mask represents the area to be filled
     // with brand new abyss:
-    _abyss_invert_mask(&abyss_destruction_mask);
+    abyss_destruction_mask.invert();
 
     // Update env.level_vaults to discard any vaults that are no longer in
     // the picture.
@@ -1324,7 +1298,7 @@ static void _update_abyss_terrain(const coord_def &p,
             int cloud_life = _in_wastes(abyssal_state.major_coord) ? 5 : 2;
             cloud_life += random2(2); // force a sequence point, just in case
             if (cloud != CLOUD_NONE)
-                check_place_cloud(_cloud_from_feat(currfeat), rp, cloud_life, 0, 3);
+                place_cloud(_cloud_from_feat(currfeat), rp, cloud_life, 0, 3);
         }
         else if (feat_is_solid(feat))
             delete_cloud(rp);
@@ -1346,13 +1320,16 @@ static void _destroy_all_terrain(bool vaults)
 
 static void _ensure_player_habitable(bool dig_instead)
 {
+    if (crawl_state.game_is_arena())
+        return;
+
     dungeon_feature_type feat = env.grid(you.pos());
     if (!you.can_pass_through_feat(feat) || is_feat_dangerous(feat))
     {
-        bool shoved = you.shove();
-        if (!shoved)
+        const coord_def old_pos = you.pos();
+        if (push_or_teleport_actor_from(you.pos()) == old_pos)
         {
-            // legal only if we just placed a vault
+            // Failing to move the player is legal only if we just placed a vault
             ASSERT(dig_instead);
             env.grid(you.pos()) = DNGN_FLOOR;
         }
@@ -1528,7 +1505,7 @@ void set_abyss_state(coord_def coord, uint32_t depth)
     abyssal_state.phase = 0.0;
     abyssal_state.destroy_all_terrain = true;
     abyss_sample_queue = sample_queue(ProceduralSamplePQCompare());
-    you.moveto(ABYSS_CENTRE);
+    you.move_to(ABYSS_CENTRE, MV_INTERNAL);
     map_bitmask abyss_genlevel_mask(true);
     _abyss_apply_terrain(abyss_genlevel_mask, true, true);
 }
@@ -1650,7 +1627,7 @@ static void _abyss_generate_new_area()
     _abyss_wipe_unmasked_area(abyss_genlevel_mask);
     dgn_erase_unused_vault_placements();
 
-    you.moveto(ABYSS_CENTRE);
+    you.move_to(ABYSS_CENTRE, MV_INTERNAL);
     abyss_genlevel_mask.init(true);
     _generate_area(abyss_genlevel_mask);
     if (one_chance_in(5))
@@ -1736,23 +1713,47 @@ void abyss_morph()
     los_changed();
 }
 
-// Force the player one level deeper in the abyss during an abyss teleport with
-// probability:
-//   (max(0, XL - Depth))^2 / 27^2 * 3
-//
-// Consequences of this formula:
-// - Chance to be pulled deeper increases with XL and decreases with current
-//   abyss depth.
-// - Characters won't get pulled to a depth higher than their XL
-// - Characters at XL 13 have chances for getting pulled from A:1/A:2/A:3/A:4
-//   of about 6.6%/5.5%/4.5%/3.7%.
-// - Characters at XL 27 have chances for getting pulled from A:1/A:2/A:3/A:4
-//   of about 31%/28.5%/26.3%/24.1%.
+
+constexpr int ABYSS_DEPTH_6_TIME = 7500;
+constexpr int ABYSS_DEPTH_7_TIME = 15000;
+
+// Determine what the 'baseline' Abyss depth is for the player's current XP.
+// (We use skill_cost_level instead of XL to try and be more equitable between
+// species and also to avoid issues with Ru's Sac Experience)
+int abyss_default_depth(bool max_possible)
+{
+    if (you.skill_cost_level <= 13)
+        return 1;
+    else if (you.skill_cost_level >= 25)
+    {
+        // If the player has been spending a lot of time on J:5 in endgame,
+        // pull them even lower than this. It should be very unlikely to ever
+        // have this happening unless you're deliberately spending time there.
+        const int timer = you.props[ABYSS_LOITERING_TIME_KEY].get_int();
+        if (timer > ABYSS_DEPTH_7_TIME)
+            return 7;
+        else if (timer > ABYSS_DEPTH_6_TIME)
+            return 6;
+        return 5;
+    }
+    else if (max_possible)
+        return 1 + div_round_up((you.skill_cost_level - 13), 3);
+    else
+        return 1 + div_rand_round((you.skill_cost_level - 13), 3);
+}
+
 static bool _abyss_force_descent()
 {
-    const int depth = level_id::current().depth;
-    const int xl_factor = max(0, you.experience_level - depth);
-    return x_chance_in_y(xl_factor * xl_factor, 729 * 3);
+    // If the player could already have entered at a deeper depth than this for
+    // their XL, have a chance of pulling them deeper. (And much higher one if
+    // the player has been loitering.)
+    if (abyss_default_depth() > you.depth
+        && (one_chance_in(4) || you.skill_cost_level == 27))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 void abyss_teleport(bool wizard_tele)
@@ -1847,7 +1848,10 @@ static void _initialise_level_corrupt_seeds(int power)
 
 static bool _incorruptible(monster_type mt)
 {
-    return mons_is_abyssal_only(mt) || mons_class_holiness(mt) == MH_HOLY;
+    return mt == MONS_ANCIENT_ZYME
+            || mt == MONS_LURKING_HORROR
+            || mt == MONS_WRETCHED_STAR
+            || mons_class_holiness(mt) == MH_HOLY;
 }
 
 // Create a corruption spawn at the given position. Returns false if further
@@ -2028,10 +2032,6 @@ static void _corrupt_square_flavor(const corrupt_env &cenv, const coord_def &c)
     else if (feat == DNGN_FLOOR)
         env.grid_colours(c) = floor;
 
-    // if you add new features to this, you'll probably need to do some
-    // hand-tweaking in tileview.cc apply_variations.
-    // TODO: these tile assignments here seem to get overridden in
-    // apply_variations, or not used at all...what gives?
     if (feat == DNGN_ROCK_WALL)
     {
         tileidx_t idx = tile_dngn_coloured(TILE_WALL_ABYSS,
@@ -2053,6 +2053,7 @@ static void _corrupt_square_flavor(const corrupt_env &cenv, const coord_def &c)
         // in _is_grid_corruptible
         tileidx_t idx = tile_dngn_coloured(TILE_DNGN_STONE_WALL,
                                            cenv.rock_colour);
+        // XXX: wall flavour only affects rock walls, so this does nothing
         tile_env.flv(c).wall = idx + random2(tile_dngn_count(idx));
         _recolour_wall(c, idx);
     }
@@ -2060,6 +2061,7 @@ static void _corrupt_square_flavor(const corrupt_env &cenv, const coord_def &c)
     {
         tileidx_t idx = tile_dngn_coloured(TILE_DNGN_METAL_WALL,
                                            cenv.rock_colour);
+        // XXX: wall flavour only affects rock walls, so this does nothing
         tile_env.flv(c).wall = idx + random2(tile_dngn_count(idx));
         _recolour_wall(c, idx);
     }
@@ -2321,10 +2323,8 @@ void lugonu_corrupt_level(int power)
     _corrupt_level_features(cenv);
     run_corruption_effects(300);
 
-#ifndef USE_TILE_LOCAL
     // Allow extra time for the flash to linger.
     scaled_delay(1000);
-#endif
 }
 
 void lugonu_corrupt_level_monster(const monster &who)
@@ -2345,10 +2345,8 @@ void lugonu_corrupt_level_monster(const monster &who)
     for (int i = 0; i < count; ++i)
         _spawn_corrupted_servant_near_monster(who);
 
-#ifndef USE_TILE_LOCAL
     // Allow extra time for the flash to linger.
     scaled_delay(300);
-#endif
 }
 
 /// Splash decorative corruption around the given space.

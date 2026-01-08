@@ -67,7 +67,7 @@ enum monster_type                      // env.mons[].type
 #if TAG_MAJOR_VERSION > 34
     MONS_INUGAMI,
     MONS_RAIJU,
-    MONS_DOOM_HOUND,
+    MONS_OBLIVION_HOUND,
 #endif
     MONS_HOG,
     MONS_HELL_HOG,
@@ -157,10 +157,16 @@ enum monster_type                      // env.mons[].type
     MONS_JELLY,
 #if TAG_MAJOR_VERSION == 34
     MONS_BROWN_OOZE,
-    MONS_GIANT_AMOEBA,
-#else
+#endif
+    MONS_COLOSSAL_AMOEBA,
+#if TAG_MAJOR_VERSION > 34
+    MONS_MORPHOGENIC_OOZE,
+    MONS_SLYMDRA,
     MONS_ROCKSLIME,
     MONS_VOID_OOZE,
+    MONS_CREEPING_PLASMODIUM,
+    MONS_NASCENT_PLASMODIUM,
+    MONS_STAR_JELLY,
 #endif
     MONS_AZURE_JELLY,
 #if TAG_MAJOR_VERSION == 34
@@ -175,9 +181,7 @@ enum monster_type                      // env.mons[].type
     MONS_FLOATING_EYE,               // genus
 #endif
     MONS_GLASS_EYE,
-#if TAG_MAJOR_VERSION == 34
     MONS_EYE_OF_DRAINING,
-#endif
     MONS_SHINING_EYE,
     MONS_EYE_OF_DEVASTATION,
     MONS_GREAT_ORB_OF_EYES,
@@ -205,9 +209,7 @@ enum monster_type                      // env.mons[].type
     MONS_RADROACH,
 #endif
     MONS_HARPY,
-#if TAG_MAJOR_VERSION == 34
     MONS_RAVEN,
-#endif
 #if TAG_MAJOR_VERSION > 34
     MONS_CHONCHON,
     MONS_BENNU,
@@ -260,10 +262,13 @@ enum monster_type                      // env.mons[].type
 #if TAG_MAJOR_VERSION > 34
     MONS_DEATH_SCARAB,
 #endif
-    MONS_GIANT_COCKROACH,
 #if TAG_MAJOR_VERSION == 34
+    MONS_GIANT_COCKROACH,
     MONS_GIANT_CENTIPEDE,
     MONS_GIANT_MITE,
+#endif
+#if TAG_MAJOR_VERSION > 34
+    MONS_CLOCKROACH,
 #endif
     MONS_SPIDER,
     MONS_WOLF_SPIDER,
@@ -285,6 +290,9 @@ enum monster_type                      // env.mons[].type
     MONS_DEMONIC_CRAWLER,
     MONS_SNAPPING_TURTLE,
     MONS_ALLIGATOR_SNAPPING_TURTLE,
+#if TAG_MAJOR_VERSION > 34
+    MONS_MOUNTAINSHELL,
+#endif
 #if TAG_MAJOR_VERSION == 34
     MONS_GNOME,
 #endif
@@ -332,18 +340,22 @@ enum monster_type                      // env.mons[].type
     MONS_SPELLSPARK_SERVITOR,
     MONS_USHABTI,
     MONS_NARGUN,
+    MONS_UNDERTAKER,
     MONS_PLATINUM_PARAGON,
     MONS_WALKING_ALEMBIC,
     MONS_SOLAR_EMBER,
 #endif
     MONS_ORB_OF_FIRE,    // Swords renamed to fit -- bwr
 #if TAG_MAJOR_VERSION > 34
+    MONS_ORB_OF_ENTROPY,
+    MONS_ORB_OF_WINTER,
     MONS_ELEMENTAL,             // genus
 #endif
     MONS_EARTH_ELEMENTAL,
     MONS_FIRE_ELEMENTAL,
     MONS_AIR_ELEMENTAL,
 #if TAG_MAJOR_VERSION > 34
+    MONS_ERYTHROSPITE,
     MONS_IRON_ELEMENTAL,
     MONS_QUICKSILVER_ELEMENTAL,
     MONS_ELEMENTAL_WELLSPRING,
@@ -354,7 +366,9 @@ enum monster_type                      // env.mons[].type
     MONS_GOLDEN_EYE,
     MONS_FIRE_VORTEX,
     MONS_SPATIAL_VORTEX,
+#if TAG_MAJOR_VERSION == 34
     MONS_INSUBSTANTIAL_WISP,
+#endif
 #if TAG_MAJOR_VERSION > 34
     MONS_THERMIC_DYNAMO,
     MONS_WILL_O_THE_WISP,
@@ -418,6 +432,7 @@ enum monster_type                      // env.mons[].type
     MONS_KOBOLD_BRIGAND,
     MONS_KOBOLD_DEMONOLOGIST,
 #if TAG_MAJOR_VERSION > 34
+    MONS_KOBOLD_GEOMANCER,
     MONS_KOBOLD_BLASTMINER,
     MONS_KOBOLD_FLESHCRAFTER,
 #endif
@@ -643,6 +658,10 @@ enum monster_type                      // env.mons[].type
 #if TAG_MAJOR_VERSION > 34
     MONS_SALAMANDER_MYSTIC,
     MONS_SALAMANDER_TYRANT,
+
+    // Rock fish:
+    MONS_ROCK_FISH,
+
 #endif
 
     // Water monsters:
@@ -681,13 +700,12 @@ enum monster_type                      // env.mons[].type
     MONS_HELLFIRE_MORTAR,
     MONS_SPLINTERFROST_BARRICADE,
     MONS_SHADOW_TURRET,
+    MONS_BOUNDLESS_TESSERACT,
 #endif
 
     // Demons:
     MONS_CRIMSON_IMP,
-#if TAG_MAJOR_VERSION == 34
-    MONS_QUASIT,
-#endif
+    MONS_DRUDE,
     MONS_WHITE_IMP,
     MONS_LEMURE,
     MONS_UFETUBUS,
@@ -725,6 +743,9 @@ enum monster_type                      // env.mons[].type
     MONS_BLIZZARD_DEMON,
     MONS_BALRUG,
     MONS_CACODEMON,
+#if TAG_MAJOR_VERSION > 34
+    MONS_ZYKZYL,
+#endif
     MONS_SUN_DEMON,
     MONS_SHADOW_DEMON,
     MONS_HELL_SENTINEL,
@@ -764,6 +785,7 @@ enum monster_type                      // env.mons[].type
     MONS_STARSPAWN_TENTACLE_SEGMENT,
     MONS_SPATIAL_MAELSTROM,
     MONS_WORLDBINDER,
+    MONS_SCREAMING_REFRACTION,
     MONS_ENTROPY_WEAVER, // not sure where else to put it
     MONS_BUNYIP,
     MONS_CREEPING_INFERNO,
@@ -781,7 +803,7 @@ enum monster_type                      // env.mons[].type
     // Undead:
 #if TAG_MAJOR_VERSION > 34
     MONS_ZOMBIE,
-    MONS_SKELETON,
+    MONS_DRAUGR,
     MONS_SIMULACRUM,
 #endif
 #if TAG_MAJOR_VERSION == 34
@@ -809,6 +831,9 @@ enum monster_type                      // env.mons[].type
 #endif
     MONS_GHOST,                 // common genus for monster and player ghosts
     MONS_PHANTOM,
+#if TAG_MAJOR_VERSION > 34
+    MONS_BES_KEMWAR,
+#endif
     MONS_SHADOWGHAST,
 #if TAG_MAJOR_VERSION == 34
     MONS_HUNGRY_GHOST,
@@ -911,7 +936,9 @@ enum monster_type                      // env.mons[].type
     MONS_TERENCE,
     MONS_BLORKULA_THE_ORCULA,
     MONS_EDMUND,
+#if TAG_MAJOR_VERSION == 34
     MONS_PSYCHE,
+#endif
     MONS_EROLCHA,
     MONS_DONALD,
     MONS_URUG,
@@ -996,6 +1023,7 @@ enum monster_type                      // env.mons[].type
     MONS_XAKKRIXIS,
     MONS_NAMELESS_REVENANT,  // 'Nobody' (except with a less misleading enum name)
     MONS_SPROZZ,
+    MONS_CASSANDRA,
 #endif
     // Sprint uniques:
     MONS_CHUCK,
@@ -1023,6 +1051,8 @@ enum monster_type                      // env.mons[].type
     MONS_GLOBE_OF_ANNIHILATION,
     MONS_PILE_OF_DEBRIS,
     MONS_PILE_OF_FLESH,
+    MONS_SHOOTING_STAR,
+    MONS_CAUSTIC_SPORANGIUM,
 #endif
     MONS_PILLAR_OF_SALT,
 #if TAG_MAJOR_VERSION > 34
@@ -1097,7 +1127,7 @@ enum monster_type                      // env.mons[].type
     MONS_IRONBOUND_PRESERVER,
 
     MONS_ZOMBIE,
-    MONS_SKELETON,
+    MONS_DRAUGR,
     MONS_SIMULACRUM,
 
     MONS_ANCIENT_CHAMPION,
@@ -1204,7 +1234,7 @@ enum monster_type                      // env.mons[].type
     MONS_MUTANT_BEAST,
     MONS_JUGGERNAUT,
     MONS_SPARK_WASP,
-    MONS_DOOM_HOUND,
+    MONS_OBLIVION_HOUND,
     MONS_DEEP_ELF_ELEMENTALIST,
     MONS_DEEP_ELF_ARCHER,
     MONS_DEMONIC_PLANT,
@@ -1314,9 +1344,7 @@ enum monster_type                      // env.mons[].type
     MONS_PILE_OF_DEBRIS,
     MONS_PILLAR_OF_RIME,
     MONS_HOARFROST_CANNON,
-#if TAG_MAJOR_VERSION == 34
-    MONS_ELECTROFERRIC_VORTEX,
-#endif
+    MONS_ELECTROFERRIC_VORTEX,  // removed
     MONS_POLTERGUARDIAN,
     MONS_MARROWCUDA,
     MONS_UNDYING_ARMOURY,
@@ -1362,6 +1390,26 @@ enum monster_type                      // env.mons[].type
     MONS_CHONCHON,
     MONS_KOBOLD_FLESHCRAFTER,
     MONS_PILE_OF_FLESH,
+    MONS_ZYKZYL,
+    MONS_BOUNDLESS_TESSERACT,
+    MONS_ORB_OF_ENTROPY,
+    MONS_ORB_OF_WINTER,
+    MONS_SCREAMING_REFRACTION,
+    MONS_SHOOTING_STAR,
+    MONS_CASSANDRA,
+    MONS_BES_KEMWAR,
+    MONS_ROCK_FISH,
+    MONS_CLOCKROACH,
+    MONS_KOBOLD_GEOMANCER,
+    MONS_MOUNTAINSHELL,
+    MONS_UNDERTAKER,
+    MONS_ERYTHROSPITE,
+    MONS_MORPHOGENIC_OOZE,
+    MONS_SLYMDRA,
+    MONS_CREEPING_PLASMODIUM,
+    MONS_CAUSTIC_SPORANGIUM,
+    MONS_NASCENT_PLASMODIUM,
+    MONS_STAR_JELLY,
 #endif
 
     NUM_MONSTERS,               // used for polymorph
@@ -1387,6 +1435,8 @@ enum monster_type                      // env.mons[].type
     RANDOM_DEMON_COMMON,               //    1: Class III-IV
     RANDOM_DEMON_GREATER,              //    2: Class I-II
     RANDOM_DEMON,                      //    any of the above
+
+    MONS_ORB_OF_APPROPRIATENESS,    // The orb type chosen to populate Zot on this seed.
 
     RANDOM_MODERATE_OOD, // +5 depth, AKA '9' glyph on maps
     RANDOM_SUPER_OOD, // *2 + 4 depth, AKA '8'

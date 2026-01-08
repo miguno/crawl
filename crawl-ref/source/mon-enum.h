@@ -116,7 +116,7 @@ enum attack_flavour
     AF_ANTIMAGIC,
     AF_PAIN,
     AF_ENSNARE,
-    AF_ENGULF,
+    AF_FLOOD,
     AF_PURE_FIRE,
     AF_DRAIN_SPEED,
     AF_VULN,
@@ -159,6 +159,9 @@ enum attack_flavour
     AF_AIRSTRIKE,
     AF_TRICKSTER,
     AF_REACH_CLEAVE_UGLY,
+    AF_DOOM,
+    AF_SLIMIFY,
+    AF_DIM,
 };
 
 // Non-spell "summoning" types to give to monster::mark_summoned(), or
@@ -186,6 +189,10 @@ enum mon_summon_type
     MON_SUMM_THRALL,    // Vampiric thralls
     MON_SUMM_HIVE,      // Hive form insects
     MON_SUMM_SUN_SCARAB, // Sun Scarab's solar ember
+    MON_SUMM_MULTIPLICITY, // Bane of Multiplicity
+    MON_SUMM_MORTALITY, // Bane of Mortality
+    MON_SUMM_STARDUST,  // Orb of Stardust
+    MON_SUMM_SPITEFUL_BLOOD, // Spiteful Blood mutation
 };
 
 #include "mon-flags.h"
@@ -206,6 +213,7 @@ enum habitat_type
     HT_DEEP_WATER = 1 << 2,
     HT_LAVA = 1 << 3,
     HT_MALIGN_GATEWAY = 1 << 4,
+    HT_WALLS_ONLY = 1 << 5,
 
     HT_LAND = HT_DRY_LAND | HT_SHALLOW_WATER,
     HT_AMPHIBIOUS = HT_LAND | HT_DEEP_WATER,
@@ -214,6 +222,7 @@ enum habitat_type
     HT_ELDRITCH_TENTACLE = HT_AMPHIBIOUS | HT_MALIGN_GATEWAY,
     // Flying monsters will appear in all categories except HT_MALIGN_GATEWAY
     HT_FLYER = HT_LAND | HT_WATER | HT_LAVA,
+    HT_WALL = HT_LAND | HT_WALLS_ONLY,
 };
 
 // order of these is important:
@@ -306,13 +315,15 @@ enum shout_type
     S_LOUD_ROAR,            // dragons, &c. loud!
     S_RUSTLE,               // books
     S_SQUEAK,               // rats and similar
+    S_CAW,                  // ravens
+    S_LAUGH,                // cacodemons
     NUM_SHOUTS,
 
     // Loudness setting for shouts that are only defined in dat/shout.txt
     // Only used for the verb/volume of random demon taunts
     S_VERY_SOFT,
     S_SOFT,
-    S_NORMAL,
+    S_NORMAL_VOLUME,
     S_LOUD,
     S_VERY_LOUD,
 

@@ -6,13 +6,13 @@ exp: 1110
 genus: jelly
 will: invuln
 attacks:
- - {type: hit, flavour: engulf, damage: 27}
- - {type: hit, flavour: antimagic, damage: 15}
+ - {type: engulf, flavour: flood, damage: 27}
+ - {type: touch, flavour: dim, damage: 15}
 hd: 13
 hp_10x: 500
 ac: 3
 ev: 15
 intelligence: brainless
 speed: 16
-size: giant
+size: medium
 shape: blob

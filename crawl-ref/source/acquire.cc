@@ -219,7 +219,7 @@ static armour_type _acquirement_shield_type()
 /**
  * Determine the weight (likelihood) to acquire a specific type of body armour.
  *
- * Weighted by Armour skill, though not particularly strongly.
+ * Weighted by Armour skill.
  *
  * @param armour    The type of armour in question. (E.g. ARM_ROBE.)
  * @return          A weight for the armour.
@@ -228,7 +228,8 @@ static int _body_acquirement_weight(armour_type armour)
 {
     const int base_weight = armour_acq_weight(armour);
     const int ac = armour_prop(armour, PARM_AC);
-    return base_weight * (300 + (_skill_rdiv(SK_ARMOUR) - 6) * ac);
+    return base_weight +
+            (_skill_rdiv(SK_ARMOUR) * _skill_rdiv(SK_ARMOUR) * ac * ac / 27);
 }
 
 /**
@@ -415,6 +416,14 @@ static int _acquirement_weapon_subtype(int & /*quantity*/, int agent)
         item_considered.sub_type = i;
 
         int acqweight = property(item_considered, PWPN_ACQ_WEIGHT) * 100;
+
+        // Smaller species missing a hand can acquire polearms with default weight
+        // zero, namely spears, since they have no other polearm option.
+        if (skill == SK_POLEARMS && you.has_mutation(MUT_MISSING_HAND)
+            && you.body_size() < SIZE_MEDIUM && !acqweight)
+        {
+            acqweight = 100;
+        }
 
         if (!acqweight)
             continue;
@@ -830,6 +839,7 @@ static int _book_weight(book_type book)
 {
     ASSERT_RANGE(book, 0, NUM_BOOKS);
     ASSERT(book != BOOK_MANUAL);
+    ASSERT(book != BOOK_PARCHMENT);
     ASSERT(book != BOOK_RANDART_LEVEL);
     ASSERT(book != BOOK_RANDART_THEME);
 
@@ -928,17 +938,10 @@ static bool _acquire_manual(item_def &book)
     {
         const int skl = _skill_rdiv(sk);
 
-        if (skl == 27 || is_useless_skill(sk))
+        if (skl == 27 || is_useless_skill(sk) || _skill_useless_with_god(sk))
             continue;
 
         int w = (skl < 12) ? skl + 3 : max(0, 25 - skl);
-
-        // Greatly reduce the chances of getting a manual for a skill
-        // you couldn't use unless you switched your religion.
-        // Note: manuals that gods actively hate, e.g. spellcasting under
-        // Trog, will be mulched and replaced later. This is silly!
-        if (_skill_useless_with_god(sk))
-            w /= 2;
 
         weights[sk] = w;
         total_weights += w;
@@ -1155,6 +1158,21 @@ static string _why_reject(const item_def &item, int agent)
     if (agent == GOD_OKAWARU && get_weapon_brand(item) == SPWPN_REAPING)
         return "Destroying Oka-gifted reaping weapon.";
 
+    // Oka does not gift command armour.
+    if (agent == GOD_OKAWARU && get_armour_ego_type(item) == SPARM_COMMAND)
+        return "Destroying Oka-gifted command armour.";
+
+    // Oka does not gift the Mask of the Dragon.
+    if (agent == GOD_OKAWARU && is_unrandom_artefact(item, UNRAND_DRAGONMASK))
+        return "Destroying Oka-gifted Mask of the Dragon.";
+
+    // Mask of the Dragon is useless if Love is sacrificed.
+    if (you.get_mutation_level(MUT_NO_LOVE)
+        && is_unrandom_artefact(item, UNRAND_DRAGONMASK))
+    {
+        return "Destroying Mask of the Dragon after Love sac!";
+    }
+
     // Pain brand is useless if you've sacrificed Necromancy.
     if (you.get_mutation_level(MUT_NO_NECROMANCY_MAGIC)
         && get_weapon_brand(item) == SPWPN_PAIN)
@@ -1162,15 +1180,42 @@ static string _why_reject(const item_def &item, int agent)
         return "Destroying pain weapon after Necro sac!";
     }
 
+    // Command brand is useless if you've sacrificed Love, Armour or Summoning.
+    if ((you.get_mutation_level(MUT_NO_LOVE)
+        || you.get_mutation_level(MUT_NO_ARMOUR_SKILL)
+        || you.get_mutation_level(MUT_NO_SUMMONING_MAGIC))
+        && get_armour_ego_type(item) == SPARM_COMMAND)
+    {
+        return "Destroying armour of command after Love, Armour or Summ sac!";
+    }
+
+    // Death brand is useless if you've sacrificed Necro.
+    if (you.get_mutation_level(MUT_NO_NECROMANCY_MAGIC)
+        && get_armour_ego_type(item) == SPARM_DEATH)
+    {
+        return "Destroying armour of death after Necro sac!";
+    }
+
+    // Resonance brand is useless if you've sacrificed Forgecraft.
+    if (you.get_mutation_level(MUT_NO_FORGECRAFT_MAGIC)
+        && get_armour_ego_type(item) == SPARM_RESONANCE)
+    {
+        return "Destroying armour of resonance after Forgecraft sac!";
+    }
+
     if (you.undead_or_demonic(false) && is_holy_item(item))
         return "Destroying holy weapon for evil player!";
+
+    if (you.is_holy() && get_weapon_brand(item) == SPWPN_FOUL_FLAME)
+        return "Destroying foul flame weapon for holy player!";
 
     return ""; // all OK
 }
 
 int acquirement_create_item(object_class_type class_wanted,
                             int agent, bool quiet,
-                            const coord_def &pos)
+                            const coord_def &pos,
+                            int force_ego)
 {
     ASSERT(class_wanted != OBJ_RANDOM);
 
@@ -1200,7 +1245,7 @@ int acquirement_create_item(object_class_type class_wanted,
             want_arts = false;
 
         thing_created = items(want_arts, class_wanted, type_wanted,
-                              item_level, 0, agent);
+                              item_level, force_ego, agent);
 
         if (thing_created == NON_ITEM)
         {
@@ -1210,6 +1255,21 @@ int acquirement_create_item(object_class_type class_wanted,
         }
 
         item_def &acq_item(env.item[thing_created]);
+
+        // If we asked for a specific brand and got something back without it
+        // (likely because we rolled an incompatible type), destroy the item and
+        // try again.
+        if (force_ego > 0)
+        {
+            if ((acq_item.base_type == OBJ_WEAPONS && get_weapon_brand(acq_item) != force_ego)
+                || (acq_item.base_type == OBJ_ARMOUR && get_armour_ego_type(acq_item) != force_ego))
+            {
+                destroy_item(thing_created, true);
+                thing_created = NON_ITEM;
+                continue;
+            }
+        }
+
         _adjust_brand(acq_item, agent);
 
         // Increase the chance of armour being an artefact by usually
@@ -1467,7 +1527,8 @@ static void _create_acquirement_item(item_def &item, string items_key,
 
     take_note(Note(NOTE_ACQUIRE_ITEM, 0, 0, item.name(DESC_A),
               origin_desc(item)));
-    item.flags |= (ISFLAG_NOTED_ID | ISFLAG_NOTED_GET);
+    // Mark as seen so that Lucky cannot proc off it.
+    item.flags |= (ISFLAG_NOTED_ID | ISFLAG_NOTED_GET | ISFLAG_SEEN);
     identify_item(item);
 
     if (is_gizmo)
@@ -1476,7 +1537,7 @@ static void _create_acquirement_item(item_def &item, string items_key,
         // XXX: This is ugly and only works because there can never be another
         //      gizmo in our inventory, but move_item_to_inv() doesn't actually
         //      return an index or anything else we can use.
-        for (int i = 0; i < ENDOFPACK; ++i)
+        for (int i = 0; i < MAX_GEAR; ++i)
         {
             if (you.inv[i].base_type == OBJ_GIZMOS)
             {
@@ -1939,7 +2000,7 @@ static void _make_coglin_gizmos()
 
 bool coglin_invent_gizmo()
 {
-    if (inv_count() >= ENDOFPACK)
+    if (inv_count(INVENT_GEAR) >= MAX_GEAR)
     {
         mpr("You don't have room to hold a gizmo! Drop something first.");
         return false;

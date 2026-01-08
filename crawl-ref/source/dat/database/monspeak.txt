@@ -1510,6 +1510,7 @@ Trog player ghost
 @The_monster@ screams in joy, "As in life, so in death: Kill! Kill!! Kill!!!"
 %%%%
 Uskayaw player ghost
+
 @The_monster@ says @to_foe@, "It's your last dance!"
 
 @The_monster@ says @to_foe@, "Let me show you true rhythm."
@@ -1518,6 +1519,8 @@ Uskayaw player ghost
 
 # La Vie Dansante, Jimmy Buffett
 @The_monster@ says, "I used to wander and follow the dancing life. Look where it got me."
+
+@The_monster@ shouts, "Finally, a proper audience!"
 %%%%
 Vehumet player ghost
 
@@ -2191,6 +2194,52 @@ Boris riddle
 %%%%
 ## END Boris ##
 %%%%
+############ CASSANDRA ############ An oracle powerless to change the future
+Cassandra
+
+@The_monster@ says, "A terrible fate awaits all who seek the ORB - and yours worst of all." @player_only@
+
+@The_monster@ beseeches you, "Abandon your quest, lest a terrible end find us all." @player_only@
+
+@The_monster@ shouts, "Turn back while you still can!"
+
+@The_monster@ says, "The road you walk has only one end and you would not wish it even upon your enemies."
+
+@The_monster@ cries, "You know not what is at stake here!"
+
+# The Mysterious Stranger
+@The_monster@ says, "You never know good fortune from ill. It is because you cannot see into the future."
+
+@The_monster@ says, "Heed my words or we all shall suffer their consequence."
+
+@The_monster@ says, "I have seen things no one ever should."
+
+@The_monster@ says, "Knowledge is its own curse."
+
+w:5
+@The_monster@ says, "Should we be naught but slaves of fate, I will still speak truth to my dying breath."
+%%%%
+Cassandra triumphant
+
+@The_monster@ gasps, "Did I... did I finally change the future?"
+%%%%
+Cassandra killed
+
+@The_monster@ gasps with @possessive@ dying breath, "I... tried to warn you..."
+
+@The_monster@ gasps with @possessive@ dying breath, "No one... ever listens..."
+
+@The_monster@ gasps with @possessive@ dying breath, "Your fate... be upon your own head..."
+%%%%
+friendly Cassandra
+
+@The_monster@ begs you to reconsider your quest.
+
+@The_monster@ pleads, "Will you not heed even the word of a friend and end this?"
+
+@The_monster@ says, "Even I cannot save you if you persist in this."
+%%%%%
+
 ############ CHUCK ### An avid rock collector.
 Chuck
 
@@ -2273,7 +2322,7 @@ Xom Crazy Yiuf
 @The_monster@ says, "It is extremely absurd to expect to be enlightened by reason, and yet to prescribe to it beforehand on which side it must incline."
 
 # The Principia Discordia
-@The_monster@ says, "The real reality is there, but everything you know about it is in your mind and yours to do with as you like."
+@The_monster@ says, "The real reality is there, but everything you KNOW about 'it' is in your mind and yours to do with as you like."
 
 VISUAL:@The_monster@ considers dialectic materialism.
 
@@ -2339,6 +2388,10 @@ VISUAL:@The_monster@ flaps @possessive@ cloak.
 
 w:2
 @The_monster@ says, "I'm not crazy!"
+
+w:2
+# The Lathe of Heaven
+@The_monster@ says, "What sane person could live in this world and not be crazy?"
 %%%%
 _crazy_yiuf_speech_verbs_
 
@@ -2509,7 +2562,7 @@ Walk
 
 Earwax
 
-Millenium
+Millennium
 
 Holy
 
@@ -2664,6 +2717,10 @@ aubergine
 
 sanguine
 
+twenty-three
+
+twenty-seven
+
 forty-two
 
 unthinkable
@@ -2683,7 +2740,6 @@ alas
 rumpyflump
 
 sizzlefizz
-
 %%%%
 ############ DISSOLUTION ### a sentient jelly who used to be human a long time ago
 Dissolution
@@ -3039,6 +3095,8 @@ w:50
 
 @The_monster@ says, "I hate skeletons."
 
+@The_monster@ says, "I hate draugr."
+
 @The_monster@ says, "I hate zombies."
 
 @The_monster@ says, "I hate vampires."
@@ -3076,6 +3134,8 @@ w:50
 @The_monster@ says, "All these vampires have me hopping mad!"
 
 @The_monster@ says, "I hate revenants, but I forget why! And I hate that, too!"
+
+@The_monster@ says, "I got a splinter from a draugr. I hate that."
 %%%%
 Abyss Donald
 
@@ -3097,6 +3157,8 @@ w:50
 @The_monster@ says, "I hate wrenching sensations."
 
 @The_monster@ says, "What's so abyssal about tentacles and stars?"
+
+@The_monster@ says, "Screaming refractions? What's next, yodelling boulders?"
 %%%%
 Zot Donald
 
@@ -3273,7 +3335,7 @@ _yredelemnul_Donald_
 
 @The_monster@ says, "I hate zombies."
 
-@The_monster@ says, "Zombies? Skeletons? Spectral things? Don't you get bored without any real company?"
+@The_monster@ says, "Zombies? Spectres? Don't you get bored without any real company?"
 
 @The_monster@ says, "Angels painted black are so last century."
 
@@ -3613,6 +3675,7 @@ w:50
 
 @The_monster@ says, "I hate explosions."
 
+@The_monster@ says, "You're supposed to blow everything up for a god who barely gives you powers?"
 %%%%
 Ashenzari Donald
 
@@ -6611,95 +6674,6 @@ baby bat
 blue-tailed skink
 ## END Prince Ribbit ##
 %%%%
-############ PSYCHE ### An insane sorceress
-Psyche
-
-@_Psyche_common_@
-
-w:7
-@_Psyche_medium_@
-
-w:3
-@_Psyche_rare_@
-%%%%
-_Psyche_common_
-
-@The_monster@ laughs secretively.
-%%%%
-_Psyche_medium_
-
-VISUAL:@The_monster@ glows with a rainbow of weird force.
-
-VISUAL:@The_monster@ toys with @possessive@ hair.
-
-@The_monster@ giggles crazily.
-
-VISUAL:@The_monster@ cries.
-
-VISUAL:@The_monster@ looks as if @subjective@ doubts whether @foe@ exists.
-
-VISUAL:@The_monster@ looks excited.
-
-VISUAL:@The_monster@ looks confused.
-
-@The_monster@ sings.
-
-@The_monster@ sings a strange song.
-
-@The_monster@ says @to_foe@, "Please, could you die a little faster?"
-
-@The_monster@ says @to_foe@, "I'm a bad girl, but I can't do anything about it."
-
-@The_monster@ says @to_foe@, "I'm so lonely. Only corpses are my friends."
-
-@The_monster@ says @to_foe@, "Once you're dead we can play together!"
-
-@The_monster@ says @to_foe@, "I'll kill you and take you home."
-
-@The_monster@ cries, "I hate blood and violence."
-
-@The_monster@ cries @to_foe@, "You've killed my pet!"
-
-@The_monster@ screams @at_foe@, "Die, monster!"
-
-@The_monster@ screams @at_foe@, "Give me the Holy Grail!"
-
-@The_monster@ screams @at_foe@, "You killed all those lovely monsters, you murderer!"
-
-@The_monster@ screams @at_foe@, "Hurray!"
-%%%%
-_Psyche_rare_
-
-VISUAL:@The_monster@ smiles happily.
-
-VISUAL:@The_monster@ stares at @foe@ for a moment.
-
-VISUAL:@The_monster@ bursts into tears.
-
-VISUAL:@The_monster@ sucks @possessive@ thumb.
-
-@The_monster@ asks @foe,@ "You're a monster, aren't you?"
-
-@The_monster@ says @to_foe@, "My Mum always said: 'Kill them all.'"
-
-@The_monster@ screams @at_foe@, "Get ready! I'll kill you! Or something like that..."
-
-@The_monster@ screams @at_foe@, "Red! No, blue!"
-
-@The_monster@ screams @at_foe@, "YOU ARE VIOLATING AREA SECURITY!!!"
-
-@The_monster@ screams @at_foe@, "Peace! Flowers! Freedom! Dead adventurers!"
-
-@The_monster@ shouts @at_foe@, "Well, maybe I'm a bit nutty, but who cares?!"
-
-@The_monster@ shouts @at_foe@, "I'm not crazy, you are!"
-
-@The_monster@ shouts @at_foe@, "I hope that you are sorry for that!"
-
-# Copyright U2?
-@The_monster@ whispers @to_foe@, "Hold me, thrill me, kiss me, kill me."
-## END Psyche ##
-%%%%
 ############ PARGI ### A teased troll
 Pargi
 
@@ -7258,6 +7232,9 @@ Terence triumphant
 
 # Ayla, Chrono Trigger
 @The_monster@ says, "Win and live. Lose and die. It's the rule of life."
+
+# Realm of Atland; this is especially appropriate if he's wielding Throatcutter
+@The_monster@ says, "Honour does not prevent me from taking a tactical advantage."
 ## END Terence ###
 %%%%
 ##################### A coarse and lanky orc. Urug lost her eye in a fight with a harpy,
@@ -7791,6 +7768,11 @@ default electric golem
 
 SOUND:@The_monster@ crackles and sizzles.
 %%%%
+################## Erythrospite #############################
+erythrospite
+
+VISUAL:@The_monster@ throbs to the beat of your heart.
+%%%%
 ################## Frilled lizard ##############################
 frilled lizard
 
@@ -8035,6 +8017,15 @@ friendly protean progenitor
 
 w:30
 __NONE
+%%%%
+################## Raven ###########################
+raven
+
+w:100
+__NONE
+
+w:2
+@The_monster@ caws, "Nevermore!"
 %%%%
 ################## Reaper ##################################
 # The reaper has come for you!
@@ -8955,9 +8946,9 @@ not dealing with demons.
 rejecting the service of demons.
 
 # talismans
-not transforming your body with talismans.
+not transforming your body with [talismans|baubles].
 
-shunning all talismans.
+shunning all [talismans|baubles].
 %%%%
 # the subject of your recital/lecture/whatever
 # needs the full dot or exclamation mark
@@ -8979,7 +8970,7 @@ mutations, and how to avoid them.
 
 potions of mutation - the devil's brew!
 
-neqoxecs and cacodemons - may they all be destroyed!
+neqoxecs and zykzyls - may they all be destroyed!
 
 # respecting intelligent beings
 a proper diet respecting intelligent beings.
@@ -9192,22 +9183,6 @@ w:5
 w:1
 @The_monster@ says, "I wanted to be a wyvern-rider, but @my_God@ had other plans!"
 %%%%
-# Cards not from any Nemelex deck
-_misplaced_card_
-
-the Ace of Spades
-
-the Old Maid
-
-# Tarot
-the Hanged Man
-
-# Tarot via the Simpsons
-the Happy Squirrel
-
-# Uno
-Wild Draw Four
-%%%%
 # Nemelex's old Deck of Oddities; just names, not lines
 _deck_of_oddities_card_
 
@@ -9227,6 +9202,24 @@ the Helix
 
 Xom
 %%%%
+# Cards not from any Nemelex deck
+_misplaced_card_
+
+the Ace of Spades
+
+the Joker
+
+the Old Maid
+
+# Tarot
+the Hanged Man
+
+# Tarot via the Simpsons
+the Happy Squirrel
+
+# Uno
+Wild Draw Four
+%%%%
 # Nemelex's deck of destruction
 _deck_of_destruction_line_
 
@@ -9245,7 +9238,7 @@ _deck_of_destruction_line_
 # Nemelex's deck of escape
 _deck_of_escape_line_
 
-@The_monster@ draws the Cloud. "Smoke, smoke everywhere!"
+@The_monster@ draws the Cloud. "No fresh air for enemies!"
 
 @The_monster@ draws the Elixir. "Healing and magic? Woohoo!"
 

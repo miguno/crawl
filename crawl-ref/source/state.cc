@@ -28,6 +28,7 @@
 game_state::game_state()
     : game_crashed(false), crash_debug_scans_safe(true),
       mouse_enabled(false), waiting_for_command(false),
+      waiting_for_ui(false),
       terminal_resized(false), last_winch(0),
       seed(0),
       io_inited(false),
@@ -211,7 +212,6 @@ bool interrupt_cmd_repeat(activity_interrupt ai,
 
     switch (ai)
     {
-    case activity_interrupt::teleport:
     case activity_interrupt::force:
     case activity_interrupt::hp_loss:
     case activity_interrupt::monster_attacks:
@@ -225,7 +225,7 @@ bool interrupt_cmd_repeat(activity_interrupt ai,
 
     if (ai == activity_interrupt::see_monster)
     {
-        const monster* mon = at.mons_data;
+        monster* mon = at.mons_data;
         ASSERT(mon);
         if (!you.can_see(*mon))
             return false;
@@ -239,13 +239,7 @@ bool interrupt_cmd_repeat(activity_interrupt ai,
         crawl_state.cancel_cmd_repeat();
 
 #ifndef DEBUG_DIAGNOSTICS
-        if (at.context == SC_NEWLY_SEEN)
-        {
-            monster_info mi(mon);
-
-            mprf(MSGCH_WARN, "%s comes into view.",
-                 get_monster_equipment_desc(mi, DESC_WEAPON).c_str());
-        }
+        monster_interrupt_message(ai, at);
 
         if (crawl_state.game_is_hints())
             hints_monster_seen(*mon);

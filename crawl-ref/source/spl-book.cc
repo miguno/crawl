@@ -129,6 +129,13 @@ vector<spell_type> spells_in_book(const item_def &book)
     ASSERT(book.base_type == OBJ_BOOKS);
 
     vector<spell_type> ret;
+
+    if (book.sub_type == BOOK_PARCHMENT && book.plus > 0)
+    {
+        ret.emplace_back(static_cast<spell_type>(book.plus));
+        return ret;
+    }
+
     const CrawlHashTable &props = book.props;
     if (!props.exists(SPELL_LIST_KEY))
         return spellbook_template(static_cast<book_type>(book.sub_type));
@@ -159,6 +166,7 @@ bool book_exists(book_type bt)
     case BOOK_RANDART_LEVEL:
     case BOOK_RANDART_THEME:
     case BOOK_MANUAL:
+    case BOOK_PARCHMENT:
     case NUM_BOOKS:
         return false;
     default:
@@ -1031,7 +1039,7 @@ static bool _learn_spell_checks(spell_type specspell, bool wizard = false)
 
     if (you.spell_no >= MAX_KNOWN_SPELLS)
     {
-        mpr("Your head is already too full of spells!");
+        mpr("Your mind is already too full of spells!");
         return false;
     }
 
@@ -1071,11 +1079,6 @@ bool learn_spell(spell_type specspell, bool wizard, bool interactive)
     if (!_learn_spell_checks(specspell, wizard))
         return false;
 
-    string mem_spell_warning_string = god_spell_warn_string(specspell, you.religion);
-
-    if (!mem_spell_warning_string.empty())
-        mprf(MSGCH_WARN, "%s", mem_spell_warning_string.c_str());
-
     if (!wizard)
     {
         const int severity = fail_severity(specspell);
@@ -1090,19 +1093,31 @@ bool learn_spell(spell_type specspell, bool wizard, bool interactive)
         }
     }
 
+    string mem_spell_warning_string = "";
+
+    if (!wizard)
+        mem_spell_warning_string = god_spell_warn_string(specspell, you.religion);
+
     if (interactive)
     {
         const string prompt = make_stringf(
-                 "Memorise %s, consuming %d spell level%s and leaving %d?",
+                 "Memorise %s, consuming %d spell level%s and leaving %d?%s%s",
                  spell_title(specspell), spell_levels_required(specspell),
                  spell_levels_required(specspell) != 1 ? "s" : "",
-                 player_spell_levels() - spell_levels_required(specspell));
+                 player_spell_levels() - spell_levels_required(specspell),
+                 !mem_spell_warning_string.empty() ? " " : "",
+                 mem_spell_warning_string.c_str());
 
         if (!yesno(prompt.c_str(), true, 'n', false))
         {
             canned_msg(MSG_OK);
             return false;
         }
+    }
+    else
+    {
+        if (!wizard && !mem_spell_warning_string.empty())
+            mprf(MSGCH_WARN, "%s", mem_spell_warning_string.c_str());
     }
 
     if (wizard)
@@ -1113,7 +1128,7 @@ bool learn_spell(spell_type specspell, bool wizard, bool interactive)
             start_delay<MemoriseDelay>(spell_difficulty(specspell), specspell);
         you.turn_is_over = true;
 
-        did_god_conduct(DID_SPELL_CASTING, 2 + random2(5));
+        did_god_conduct(DID_SPELL_MEMORISE, 2 + random2(5));
     }
 
     quiver::on_actions_changed();

@@ -130,6 +130,7 @@ string cannot_drink_item_reason(const item_def *item=nullptr,
 
 string make_name(uint32_t seed = rng::get_uint32(),
                  makename_type name_type = MNAME_DEFAULT);
+string make_name_randgen();
 void make_name_tests();
 
 const char* brand_type_name(brand_type brand, bool terse) PURE;
@@ -171,5 +172,6 @@ string weapon_brand_desc(const char *body, const item_def &weap,
                          brand_type override_brand = SPWPN_NORMAL);
 
 const char* potion_type_name(int potiontype);  //used in xom.cc
+const char* scroll_type_name(int scrolltype);
 const char* jewellery_effect_name(int jeweltype, bool terse = false) PURE; //used in l-item.cc
 const char* gizmo_effect_name(int gizmotype);

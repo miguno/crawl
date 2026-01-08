@@ -359,7 +359,7 @@ static void _dump_player(FILE *file)
     for (player_equip_entry& entry : you.equipment.items)
     {
         fprintf(file, "    eq slot #%d, inv slot #%d", entry.slot, entry.item);
-        if (entry.item < 0 || entry.item >= ENDOFPACK)
+        if (entry.item < 0 || entry.item >= MAX_GEAR)
         {
             fprintf(file, " <invalid>\n");
             continue;
@@ -736,13 +736,21 @@ void do_crash_dump()
         fprintf(file, "%s\n", screenshot().c_str());
     }
 
+    fprintf(file, "dlua errors:\n");
+    for (const CLuaError &error : dlua_errors)
+    {
+        fprintf(file, "%s\n%s\n", error.message.c_str(),
+                error.stack_trace.c_str());
+    }
+    fprintf(file, "\n");
+
     // If anything has screwed up the Lua runtime stacks then trying to
     // print those stacks will likely crash, so do this after the others.
     fprintf(file, "clua stack:\n");
-    clua.print_stack();
+    fprintf(file, "%s\n", clua.get_stack_trace().c_str());
 
     fprintf(file, "dlua stack:\n");
-    dlua.print_stack();
+    fprintf(file, "%s\n", dlua.get_stack_trace().c_str());
 
     // Lastly try to dump the Lua persistent data and the contents of the Lua
     // markers, since actually running Lua code has the greatest chance of

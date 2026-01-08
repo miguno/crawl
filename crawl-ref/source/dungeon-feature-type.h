@@ -61,6 +61,7 @@ enum dungeon_feature_type
     DNGN_ORCISH_IDOL,
 #if TAG_MAJOR_VERSION > 34
     DNGN_METAL_STATUE,                 // Vault statues that aren't rock
+    DNGN_ZOT_STATUE,                   // Statue of the orbs guardian Zot
 #endif
     DNGN_GRANITE_STATUE,
     DNGN_MALIGN_GATEWAY,
@@ -102,6 +103,7 @@ enum dungeon_feature_type
     DNGN_TRAP_ALARM,
     DNGN_TRAP_ZOT,
     DNGN_TRAP_DISPERSAL,
+    DNGN_TRAP_DISPERSAL_INACTIVE,
     DNGN_PASSAGE_OF_GOLUBRIA,
 #endif
 #if TAG_MAJOR_VERSION > 34
@@ -394,6 +396,8 @@ enum dungeon_feature_type
     DNGN_ENTER_NECROPOLIS,
     DNGN_EXIT_NECROPOLIS,
     DNGN_FRIGID_WALL,
+    DNGN_ZOT_STATUE,
+    DNGN_TRAP_DISPERSAL_INACTIVE,
 #endif
 
     NUM_FEATURES

@@ -139,7 +139,8 @@ function choose_mset_1(e)
     e.kmons("1 = scorpion w:15 / scorpion simulacrum w:5 / tarantella w:5")
 -- Crypt
   elseif rnd < 49 then
-    e.kmons("1 = zombie / skeleton / wight w:5 / weeping skull / phantom")
+    e.kmons("1 = zombie / orc draugr / wight w:5 / \
+                 weeping skull / phantom / bes kemwar w:5")
 -- Abyss
   elseif rnd < 59 then
     e.kmons("1 = lesser demon w:20 / brain worm / weeping skull / neqoxec w:2")
@@ -151,7 +152,7 @@ function choose_mset_1(e)
     e.kmons("1 = merfolk")
 -- Hell
   elseif rnd < 79 then
-    e.kmons("1 = zombie w:5 / skeleton w:5 / lesser demon w:15 / hell hound w:5")
+    e.kmons("1 = zombie w:5 / jackal draugr w:5 / lesser demon w:15 / hell hound w:5")
 -- Giant
   elseif rnd < 81 then
     e.kmons("1 = ogre / two-headed ogre / troll w:5 / cyclops w:3")
@@ -166,7 +167,7 @@ function choose_mset_1(e)
     e.kmons("1 = sky beast")
 -- Earth
   elseif rnd < 89 then
-    e.kmons("1 = toenail golem")
+    e.kmons("1 = rock fish / toenail golem w:2")
 -- Dragon
   elseif rnd < 91 then
     e.kmons("1 = swamp drake / steam dragon / acid dragon")
@@ -202,7 +203,7 @@ function choose_mset_1(e)
     e.kmons("1 = Sigmund, Jessica, Blorkula the orcula, Crazy Yiuf, Dowan, \
                Duvessa, Edmund, Erica, Erolcha, Eustachio, Gastronok, \
                Grum, Grinder, Harold, Ijyb, Joseph, Josephine, \
-               Maurice, Menkaure, Pikel, Prince Ribbit, Psyche, \
+               Maurice, Menkaure, Pikel, Prince Ribbit, \
                Pargi, Sonja, Sprozz, Terence, Urug, human")
   end
 end
@@ -226,11 +227,12 @@ function choose_mset_2(e)
                place:Lair:1 w:30")
 -- Spider
   elseif rnd < 34 then
-    e.kmons("1 = scorpion w:15 / jumping spider w:5 / tarantella w:5 /\
-               wolf spider w:5 / redback w:5")
+    e.kmons("1 = scorpion w:15 / jumping spider w:5 / \
+                 tarantella w:5 / culicivora")
 -- Crypt
   elseif rnd < 44 then
-    e.kmons("1 = zombie w:20 / skeleton w:20 / wight / weeping skull / phantom")
+    e.kmons("1 = place:D:7 zombie w:20 / place:D:4 draugr w:20 /\
+                 wight / weeping skull / phantom")
 -- Abyss
   elseif rnd < 54 then
     e.kmons("1 = small abomination / large abomination / lesser demon")
@@ -243,7 +245,7 @@ function choose_mset_2(e)
     e.kmons("1 = merfolk w:20 / wind drake / centaur / cyclops w:3")
 -- Hell
   elseif rnd < 80 then
-    e.kmons("1 =  zombie / skeleton / lesser demon / hell hound")
+    e.kmons("1 = place:D:7 zombie / hound draugr / lesser demon / hell hound")
 -- Giant
   elseif rnd < 82 then
     e.kmons("1 = ogre / two-headed ogre / troll w:5 / cyclops w:5")
@@ -260,7 +262,9 @@ function choose_mset_2(e)
     e.kmons("1 = sky beast / wind drake w:5 / hippogriff w:5")
 -- Earth
   elseif rnd < 90 then
-    e.kmons("1 = toenail golem / earth elemental / gargoyle w:2")
+    e.kmons("1 = rock fish / kobold geomancer / basilisk /\
+                 catoblepas w:5 / boulder beetle w:5 /\
+                 toenail golem w:2 / gargoyle w:2")
 -- Dragon
   elseif rnd < 92 then
     e.kmons("1 = swamp drake / rime drake / acid dragon / steam dragon / wyvern")
@@ -297,7 +301,7 @@ function choose_mset_2(e)
     e.kmons("1 = Sigmund, Jessica, Blorkula the orcula, Crazy Yiuf, Dowan, \
                Duvessa, Edmund, Erica, Erolcha, Eustachio, Gastronok, \
                Grum, Grinder, Harold, Ijyb, Joseph, Josephine, \
-               Maurice, Menkaure, Pikel, Prince Ribbit, Psyche, \
+               Maurice, Menkaure, Pikel, Prince Ribbit, \
                Pargi, Sonja, Sprozz, Terence, Urug, human")
   end
 end
@@ -310,8 +314,8 @@ function choose_mset_3(e)
     e.kmons("1 = jelly w:15 / endoplasm / slime creature w:30 /\
                glass eye w:2 / golden eye w:5 / void ooze w:2 /\
                eye of devastation w:5 / shining eye w:5 / acid blob w:5 /\
-               rockslime / azure jelly w:5 / great orb of eyes w:5 /\
-               glowing orange brain w:2")
+               rockslime / star jelly w:5 / azure jelly w:5 /\
+               great orb of eyes w:5 / glowing orange brain w:2")
 -- Snake
   elseif rnd < 14 then
     e.kmons("1 = ball python / adder / water moccasin / naga /\
@@ -325,10 +329,10 @@ function choose_mset_3(e)
     e.kmons("1 = place:Spider:$ w:70 / hornet")
 -- Crypt
   elseif rnd < 34 then
-    e.kmons("1 = zombie / skeleton / skeletal warrior w:5 / ghoul w:2 /\
-                 laughing skull w:5 / vampire w:5 / vampire mage w:5 /\
-                 vampire knight w:5 / lich w:2 / shadowghast /\
-                 phantasmal warrior w:5 / wight / necromancer")
+    e.kmons("1 = place:D:$ zombie / place:D:7 draugr / skeletal warrior w:5 /\
+                 ghoul w:2 / laughing skull w:5 / vampire w:5 /\
+                 vampire mage w:5 / vampire knight w:5 / lich w:2 /\
+                 shadowghast / phantasmal warrior w:5 / wight / necromancer")
 -- Abyss
   elseif rnd < 39 then
     e.kmons("1 = lesser demon w:5 / place:Abyss")
@@ -350,8 +354,9 @@ function choose_mset_3(e)
     e.kmons("1 = hell knight / hell hog / fire giant / lich")
 -- Tartarus
   elseif rnd < 64 then
-    e.kmons("1 = zombie / skeleton / soul eater / shadow dragon w:3 /\
-                 spectral thing / ghoul w:2")
+    e.kmons("1 = place:Depths:$ zombie / place:D:$ draugr /\
+                 soul eater / shadow dragon w:3 /\
+                 place:D:$ spectral thing / ghoul w:2")
 -- Dis
   elseif rnd < 69 then
     e.kmons("1 = crystal echidna / crystal guardian / hell knight")
@@ -374,9 +379,9 @@ function choose_mset_3(e)
                storm dragon / titan w:2")
 -- Earth
   elseif rnd < 79 then
-    e.kmons("1 = earth elemental w:15 / gargoyle w:5 / iron golem w:20 /\
-               crystal guardian / stone giant w:5 / iron dragon w:5 /\
-               quicksilver dragon w:5")
+    e.kmons("1 = earth elemental w:15 / boulder beetle w:5 / gargoyle w:5 /\
+                 catoblepas / mountainshell w:5 / crystal guardian /\
+                 stone giant w:5 / iron dragon w:5")
 -- Dragon
   elseif rnd < 81 then
     e.kmons("1 = swamp drake / rime drake / acid dragon / steam dragon /\
@@ -422,7 +427,7 @@ function choose_mset_3(e)
     e.kmons("1 =  Blorkula the orcula / Crazy Yiuf / Dowan / Duvessa / Edmund /\
                Erica / Erolcha / Eustachio / Gastronok / Grum / Grinder /\
                Harold / Ijyb / Jessica / Joseph / Josephine / Maurice /\
-               Menkaure / Pikel / Prince Ribbit / Psyche / Pargi / Sigmund /\
+               Menkaure / Pikel / Prince Ribbit / Pargi / Sigmund /\
                Sonja / Sprozz / Terence / Urug / Agnes / Aizul / Azrael /\
                Donald / Frances / Kirke / Louise / Nergalle / Nessos / Nikola /\
                Polyphemus / Roxanne / Rupert / Saint Roka / Snorg")
@@ -438,11 +443,11 @@ function choose_mset_4(e)
 local rnd = crawl.random2(142)
 -- Slime
   if rnd < 9 then
-    e.kmons("1 = jelly w:5 / slime creature w:30 /\
-               glass eye w:2 / golden eye w:4 / void ooze w:2 /\
+    e.kmons("1 = jelly w:5 / slime creature w:25 / colossal amoeba w:5 /\
+               glass eye w:2 / golden eye w:4 / void ooze w:4 / slymdra w:4 /\
                eye of devastation w:5 / shining eye w:4 / acid blob /\
-               rockslime / azure jelly / great orb of eyes w:4 /\
-               glowing orange brain w:2")
+               rockslime / azure jelly / star jelly / great orb of eyes w:4 /\
+               morphogenic ooze w:2 / eye of draining w:2")
 -- Snake
   elseif rnd < 14 then
     e.kmons("1 = anaconda / mana viper / shock serpent / naga mage /\
@@ -459,7 +464,7 @@ local rnd = crawl.random2(142)
                  moth of wrath w:5")
 -- Crypt
   elseif rnd < 34 then
-    e.kmons("1 = place:Crypt:$ zombie / place:Crypt:$ skeleton /\
+    e.kmons("1 = place:Crypt:$ zombie / place:Crypt:$ draugr /\
                  skeletal warrior / ancient champion w:7 /\
                  laughing skull w:13 / vampire mage w:5 / vampire knight /\
                  lich w:5 / ancient lich w:2 / cognitogaunt w:5 /\
@@ -489,8 +494,9 @@ local rnd = crawl.random2(142)
     e.kmons("1 = place:Geh:$ w:500 / oni incarcerator")
 -- Tartarus
   elseif rnd < 67 then
-    e.kmons("1 = zombie / skeleton / soul eater / shadow dragon w:5 /\
-                 tzitzimitl w:1 / spectral thing place:Tar:$ / ghoul w:5")
+    e.kmons("1 = place:Tar:$ zombie / place:Depths:$ draugr / soul eater /\
+                 shadow dragon w:5 / tzitzimitl w:1 /\
+                 spectral thing place:Tar:$ / place:Tar:$ w:5")
 -- Dis
   elseif rnd < 72 then
     e.kmons("1 = place:Dis:$ w:500 / hell sentinel")
@@ -506,16 +512,16 @@ local rnd = crawl.random2(142)
   elseif rnd < 81 then
     e.kmons("1 = ice beast / polar bear / white imp / simulacrum / rime drake/\
                freezing wraith / ice devil / ice dragon / frost giant /\
-               ice fiend w:5 / blizzard demon")
+               orb of winter w:5 / blizzard demon")
 -- Air
   elseif rnd < 84 then
     e.kmons("1 = air elemental / wind drake / spriggan air mage /\
                storm dragon / titan / electric golem")
 -- Earth
   elseif rnd < 87 then
-    e.kmons("1 = earth elemental w:15 / gargoyle w:5 / iron golem /\
-               crystal guardian / stone giant / iron dragon /\
-               quicksilver dragon")
+    e.kmons("1 = walking earthen tome / war gargoyle /\
+                 crystal guardian / stone giant / iron dragon /\
+                 quicksilver dragon / walking crystal tome")
 -- Dragon
   elseif rnd < 90 then
     e.kmons("1 = swamp drake / rime drake / acid dragon / steam dragon /\
@@ -564,16 +570,16 @@ local rnd = crawl.random2(142)
     e.kmons("1 =  Blorkula the orcula / Crazy Yiuf / Dowan / Duvessa / Edmund /\
                Erica / Erolcha / Eustachio / Gastronok / Grum / Grinder /\
                Harold / Ijyb / Jessica / Joseph / Josephine / Maurice /\
-               Menkaure / Pikel / Prince Ribbit / Psyche / Pargi / Sigmund /\
+               Menkaure / Pikel / Prince Ribbit / Pargi / Sigmund /\
                Sonja / Sprozz / Terence / Urug / Agnes / Aizul / Azrael /\
                Donald / Frances / Kirke / Louise / Nergalle / Nessos / Nikola /\
                Polyphemus / Roxanne / Rupert / Saint Roka / Snorg /\
                Antaeus / Asmodeus / Boris / Cerebov / Dispater / Dissolution /\
                Ereshkigal / Frederick / Geryon / Gloorx Vloq / Ignacio /\
                Ilsuiw / Jory / Khufu / Lom Lobon / Mara / Margery / Mennas /\
-               Mnoleg / Murray / Nobody / Sojobo / the Enchantress /\
-               the Lernaean hydra / the Serpent of Hell /\
-               the Royal Jelly / Tiamat / Vv / Xtahua / Nellie / Chuck")
+               Mnoleg / Murray / Nobody / Sojobo / Enchantress /\
+               Lernaean hydra / Serpent of Hell /\
+               Royal Jelly / Tiamat / Vv / Xtahua / Nellie / Chuck")
 -- Holy
   else
     e.kmons("1 = daeva / angel / cherub / pearl dragon / ophan / \

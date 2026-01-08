@@ -12,7 +12,7 @@
 #include "macros.h"
 
 // In this case, an x86 CPU will use x87 math for floating point calculations,
-// which uses 80 bit intermediate results, andleads to difference from the
+// which uses 80 bit intermediate results, and leads to difference from the
 // (much more common, in 2019) SSE-based calculations.
 // probably far from the only case where seeding isn't reliable...
 #if defined(TARGET_CPU_X86) && !defined(__SSE__)
@@ -37,8 +37,9 @@
     #endif
 #endif
 
-// max size of inventory array {dlb}:
-#define ENDOFPACK 52
+#define ENDOFPACK 127           // Max size of player inventory array
+constexpr int MAX_GEAR = 52;    // Max number of slots of gear inventory
+                                // (and start of consumable inventory).
 
 // Max ghosts in a bones file.
 const int MAX_GHOSTS = 127;
@@ -186,6 +187,8 @@ const int AGILITY_BONUS = 5;
 
 #define ZOT_ENTRY_RUNES 3
 
+#define MAX_RUNES 15
+
 // Size of unique_items in player class
 #define MAX_UNRANDARTS 150
 
@@ -302,7 +305,6 @@ const char * const THUNDERBOLT_AIM_KEY     = "thunderbolt_aim";
 #define REAPING_DAMAGE_KEY "reaping_damage"
 #define REAPER_KEY "reaper"
 #define BAND_LEADER_KEY "band_leader"
-#define ZIN_ID_KEY "zin_id"
 #define BLAME_KEY "blame"
 #define NO_ANNOTATE_KEY "no_annotate"
 #define BENNU_REVIVES_KEY "bennu_revives"
@@ -346,6 +348,7 @@ const char * const THUNDERBOLT_AIM_KEY     = "thunderbolt_aim";
 #define STICKY_FLAME_AUX_KEY "sticky_flame_aux"
 #define STICKY_FLAME_POWER_KEY "sticky_flame_pow"
 #define WATER_HOLDER_KEY "water_holder"
+#define WATER_HOLDER_NAME_KEY "water_holder_name"
 #define WATER_HOLD_SUBSTANCE_KEY "water_hold_substance"
 #define BLINKITIS_SOURCE_KEY "disjunctioner"
 #define BLINKITIS_AUX_KEY "disjunction_aux"

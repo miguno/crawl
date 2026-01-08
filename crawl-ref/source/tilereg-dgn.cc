@@ -505,7 +505,7 @@ int DungeonRegion::handle_mouse(wm_mouse_event &event)
 
     if (event.event == wm_mouse_event::MOVE)
     {
-        string desc = get_terse_square_desc(gc);
+        string desc = get_cell_mouseover_tag(gc);
         // Suppress floor description
         if (desc == "floor")
             desc = "";
@@ -760,7 +760,8 @@ bool DungeonRegion::update_tip_text(string &tip)
                 tip += make_stringf("HEIGHT(%d)\n", dgn_height_at(gc));
 
             tip += "\n";
-            tip += tile_debug_string(tile_env.fg(ep), tile_env.bg(ep), ' ');
+            tip += tile_debug_string(tile_env.bk_fg(gc), tile_env.bk_bg(gc),
+                                     ' ');
             tip += "\n";
         }
         else
@@ -1065,7 +1066,7 @@ bool DungeonRegion::update_alt_text(string &alt)
     describe_info inf;
     dungeon_feature_type feat = env.map_knowledge(gc).feat();
     if (you.see_cell(gc))
-        get_square_desc(gc, inf);
+        inf.body << get_square_desc(gc);
     else if (feat != DNGN_FLOOR && !feat_is_wall(feat) && !feat_is_tree(feat))
         get_feature_desc(gc, inf);
     else

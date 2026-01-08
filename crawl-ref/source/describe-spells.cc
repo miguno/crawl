@@ -36,7 +36,8 @@
  #include "tilepick.h"
 #endif
 
-static string _effect_string(spell_type spell, const monster_info *mon_owner);
+static string _effect_string(spell_type spell, const monster_info *mon_owner,
+                             bool is_wand = false);
 
 /**
  * Returns a spellset containing the player-known spells for the given item.
@@ -50,7 +51,10 @@ spellset item_spellset(const item_def &item)
     if (!item.has_spells())
         return {};
 
-    return { { "\n", spells_in_book(item) } };
+    spellbook_contents contents;
+    contents.label = "\n";
+    contents.spells = spells_in_book(item);
+    return { contents };
 }
 
 /**
@@ -195,11 +199,8 @@ static void _monster_spellbooks(const monster_info &mi,
 static void _monster_wand_spellbook(const monster_info &mi,
                                 spellset &all_books)
 {
-    if (mi.itemuse() < MONUSE_STARTING_EQUIPMENT)
-        return;
-
-    const item_def* wand = mi.inv[MSLOT_WAND].get();
-    if (!wand)
+    const spell_type wand_spell = mi.get_wand_spell();
+    if (wand_spell == SPELL_NO_SPELL)
         return;
 
     spellbook_contents book;
@@ -208,10 +209,8 @@ static void _monster_wand_spellbook(const monster_info &mi,
         uppercase_first(mi.pronoun(PRONOUN_SUBJECTIVE)).c_str(),
         _booktype_header(MON_SPELL_EVOKE, mi.pronoun_plurality()).c_str());
 
-    const wand_type wandtyp = static_cast<wand_type>(wand->sub_type);
-    ASSERT(wandtyp < NUM_WANDS);
-    book.spells.emplace_back(spell_in_wand(wandtyp));
-
+    book.is_wand = true;
+    book.spells.emplace_back(wand_spell);
     all_books.emplace_back(book);
 }
 
@@ -363,7 +362,7 @@ static string _range_string(const spell_type &spell, const monster_info *mon_own
 {
     auto flags = get_spell_flags(spell);
     int pow = mons_power_for_hd(spell, hd);
-    int range = spell_range(spell, pow, mon_owner && mon_owner->is(MB_PLAYER_SERVITOR));
+    int range = calc_spell_range(spell, pow, mon_owner && mon_owner->is(MB_PLAYER_SERVITOR));
     const bool has_range = mon_owner
                         && range > 0
                         && !testbits(flags, spflag::selfench);
@@ -386,10 +385,12 @@ static string _range_string(const spell_type &spell, const monster_info *mon_own
 }
 
 // TODO: deduplicate with the same-named function in spl-cast.cc
-static dice_def _spell_damage(spell_type spell, int hd)
+//
+// XXX: Passing both HD and power is a little redundant, but some functions
+//      were designed to just take HD and so long as we don't make wands that
+//      replicate them, this will still work fine.
+static dice_def _spell_damage(spell_type spell, int hd, int pow)
 {
-    const int pow = mons_power_for_hd(spell, hd);
-
     switch (spell)
     {
         case SPELL_SCORCH:
@@ -409,6 +410,7 @@ static dice_def _spell_damage(spell_type spell, int hd)
         case SPELL_LRD:
             return base_fragmentation_damage(pow, false);
         case SPELL_AIRSTRIKE:
+        case SPELL_SLEETSTRIKE:
             return base_airstrike_damage(pow);
         case SPELL_ARCJOLT:
             return arcjolt_damage(pow, false);
@@ -425,6 +427,10 @@ static dice_def _spell_damage(spell_type spell, int hd)
             return hellfire_mortar_damage(pow);
         case SPELL_DETONATION_CATALYST:
             return detonation_catalyst_damage(pow, false);
+        case SPELL_BOULDER:
+            return boulder_damage(pow, false);
+        case SPELL_LAUNCH_SPORANGIUM:
+            return mon_explode_dam(MONS_CAUSTIC_SPORANGIUM, 1);
 
         // This is the per-turn *sticky flame* damage against the player.
         // The spell has no impact damage and otherwise uses different numbers
@@ -462,6 +468,7 @@ static colour_t _spell_colour(spell_type spell)
     {
         case SPELL_FREEZE:
         case SPELL_GLACIATE:
+        case SPELL_SLEETSTRIKE:
             return WHITE;
         case SPELL_WATERSTRIKE:
             return LIGHTBLUE;
@@ -472,6 +479,10 @@ static colour_t _spell_colour(spell_type spell)
             return RED;
         case SPELL_ELECTROLUNGE:
             return LIGHTCYAN;
+        case SPELL_BECKONING_GALE:
+            return LIGHTGRAY;
+        case SPELL_LAUNCH_SPORANGIUM:
+            return YELLOW;
         default:
             break;
     }
@@ -492,7 +503,8 @@ static string _describe_living_spells(const monster_info &mon_owner)
 }
 
 
-static string _effect_string(spell_type spell, const monster_info *mon_owner)
+static string _effect_string(spell_type spell, const monster_info *mon_owner,
+                             bool is_wand)
 {
     if (!mon_owner)
         return "";
@@ -501,8 +513,8 @@ static string _effect_string(spell_type spell, const monster_info *mon_owner)
         return _describe_living_spells(*mon_owner);
 
     const int hd = _spell_hd(spell, *mon_owner);
-    if (!hd)
-        return "";
+    const int pow = is_wand ? mons_wand_power(mon_owner->hd, spell)
+                            : mons_power_for_hd(spell, hd);
 
     if (testbits(get_spell_flags(spell), spflag::WL_check))
     {
@@ -518,9 +530,9 @@ static string _effect_string(spell_type spell, const monster_info *mon_owner)
         if (you.immune_to_hex(spell))
             return "(immune)";
 
-        const string hex_str = make_stringf("%d%%", hex_chance(spell, mon_owner));
+        const string hex_str = make_stringf("%d%%", hex_chance(spell, mon_owner, is_wand));
 
-        const dice_def dam = _spell_damage(spell, hd);
+        const dice_def dam = _spell_damage(spell, hd, pow);
         if (!dam.size || !dam.num)
             return make_stringf("(%s)", hex_str.c_str());
         return make_stringf("(%s,%dd%d)", hex_str.c_str(), dam.num, dam.size);
@@ -532,42 +544,36 @@ static string _effect_string(spell_type spell, const monster_info *mon_owner)
     if (spell == SPELL_BRAIN_BITE)
         return "4-8*"; // >_>
 
-    if (spell == SPELL_DRAINING_GAZE)
-    {
-        const int pow = mons_power_for_hd(SPELL_DRAINING_GAZE, hd);
+    if (spell == SPELL_ANTIMAGIC_GAZE)
         return make_stringf("0-%d MP", pow / 8); // >_> >_>
-    }
 
     if (spell == SPELL_WIND_BLAST)
-    {
-        const int pow = mons_power_for_hd(SPELL_WIND_BLAST, hd);
         return make_stringf("2d%d*", default_collision_damage(pow, false).size);
-    }
 
     if (spell == SPELL_FORCE_LANCE)
     {
-        const int pow = mons_power_for_hd(SPELL_FORCE_LANCE, hd);
-            return make_stringf("%dd%d(+%dd%d)",
-                _spell_damage(spell, hd).num,
-                _spell_damage(spell, hd).size,
-                default_collision_damage(pow, false).num,
-                default_collision_damage(pow, false).size);
+        return make_stringf("%dd%d(+%dd%d)",
+            _spell_damage(spell, hd, pow).num,
+            _spell_damage(spell, hd, pow).size,
+            default_collision_damage(pow, false).num,
+            default_collision_damage(pow, false).size);
     }
 
     if (spell == SPELL_HOARFROST_BULLET)
     {
-        const int pow = mons_power_for_hd(spell, hd);
         return make_stringf("3d(%d/%d)",
             zap_damage(ZAP_HOARFROST_BULLET, pow, true, false).size,
             zap_damage(ZAP_HOARFROST_BULLET_FINALE, pow, true, false).size);
     }
 
-    const dice_def dam = _spell_damage(spell, hd);
+    const dice_def dam = _spell_damage(spell, hd, pow);
     if (dam.num == 0 || dam.size == 0)
         return "";
 
     if (spell == SPELL_AIRSTRIKE)
-        return describe_airstrike_dam(dam);
+        return make_stringf("%dd%d+(2/space)", dam.num, dam.size);
+    if (spell == SPELL_SLEETSTRIKE)
+        return make_stringf("%dd%d+(3/space)", dam.num, dam.size);
     if (spell == SPELL_RESONANCE_STRIKE)
         return describe_resonance_strike_dam(dam);
 
@@ -649,7 +655,7 @@ static void _describe_book(const spellbook_contents &book,
                                             ? entry->second : ' ';
 
         const string range_str = _range_string(spell, mon_owner, hd);
-        string effect_str = _effect_string(spell, mon_owner);
+        string effect_str = _effect_string(spell, mon_owner, book.is_wand);
 
         const string dith_marker = mon_owner
                                    && crawl_state.need_save
@@ -773,7 +779,7 @@ static void _write_book(const spellbook_contents &book,
         const char spell_letter = entry != spell_map.end() ? entry->second : ' ';
         tiles.json_write_string("letter", string(1, spell_letter));
 
-        string effect_str = _effect_string(spell, mon_owner);
+        string effect_str = _effect_string(spell, mon_owner, book.is_wand);
         if (!testbits(get_spell_flags(spell), spflag::WL_check))
             effect_str = colourize_str(effect_str, _spell_colour(spell));
         tiles.json_write_string("effect", effect_str);

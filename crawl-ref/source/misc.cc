@@ -28,8 +28,9 @@
 #include "tileview.h"
 #include "traps.h"
 
-// Make the player swap positions with a given monster.
-void swap_with_monster(monster* mon_to_swap)
+// Magically swap the player's position with a given monster, even entangling
+// each one in the other's nets.
+void transpose_with_monster(monster* mon_to_swap)
 {
     monster& mon(*mon_to_swap);
     ASSERT(mon.alive());
@@ -48,40 +49,34 @@ void swap_with_monster(monster* mon_to_swap)
         return;
     }
 
-    const bool mon_caught = mon.caught();
-    const bool you_caught = you.attribute[ATTR_HELD];
+    const caught_type mon_caught = mon.caught_by();
+    const caught_type you_caught = you.caught_by();
 
     mprf("You swap places with %s.", mon.name(DESC_THE).c_str());
 
-    mon.move_to_pos(you.pos(), true, true);
-
-    // XXX: destroy ammo == 1 webs if they don't catch the mons? very rare case
-
-    if (you_caught)
-    {
-        // XXX: this doesn't correctly handle web traps
-        check_net_will_hold_monster(&mon);
-        if (!mon_caught)
-            stop_being_held();
-    }
+    // Must remove nets first (with no drop) so that we don't clone nets during
+    // this swap.
+    mon.stop_being_caught();
+    mon.move_to(you.pos(), MV_TRANSLOCATION | MV_ALLOW_OVERLAP);
 
     // Move you to its previous location.
-    move_player_to_grid(newpos, false);
+    you.stop_being_caught();
+    you.move_to(newpos, MV_TRANSLOCATION | MV_ALLOW_OVERLAP);
 
-    if (mon_caught)
+    // Exchange caught status.
+    if (you_caught != CAUGHT_NONE)
     {
-        // XXX: destroy ammo == 1 webs? (rare case)
-
-        you.attribute[ATTR_HELD] = 1;
-        if (get_trapping_net(you.pos()) != NON_ITEM)
-            mpr("You become entangled in the net!");
+        if (you_caught == CAUGHT_WEB)
+            mon.trap_in_web();
         else
-            mpr("You get stuck in the web!");
-        quiver::set_needs_redraw();
-        you.redraw_evasion = true;
-
-        if (!you_caught)
-            mon.del_ench(ENCH_HELD, true);
+            mon.trap_in_net(you_caught == CAUGHT_NET);
+    }
+    if (mon_caught != CAUGHT_NONE)
+    {
+        if (mon_caught == CAUGHT_WEB)
+            you.trap_in_web();
+        else
+            you.trap_in_net(mon_caught == CAUGHT_NET);
     }
 }
 
@@ -172,9 +167,8 @@ void attacked_monster_list::add(const monster& mons, string adj, string suffix,
 
 string attacked_monster_list::describe() const
 {
-    string mon_name = m_victims.describe(DESC_PLAIN);
-    if (starts_with(mon_name, "the ")) // no "your the Royal Jelly" nor "the the RJ"
-        mon_name = mon_name.substr(4); // strlen("the ")
+    // No "your the Royal Jelly" nor "the the Royal Jelly".
+    string mon_name = remove_prepended_the(m_victims.describe(DESC_PLAIN));
     const char* prefix = "";
     if (!starts_with(m_adj, "your"))
         prefix = "the ";

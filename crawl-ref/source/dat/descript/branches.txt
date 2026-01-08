@@ -16,9 +16,10 @@ exploration grant no piety for exploring the Temple.
 %%%%
 Orcish Mines
 
-The Orcish Mines are filled with the cave orcs native to the Dungeon, their
-humanoid labourers, and piles of freshly mined gold. Enterprising merchants
-have set up trading posts to help relieve the orcs of the latter.
+The Orcish Mines are home to the orcs that have settled in the Dungeon, their
+humanoid allies, and piles of freshly mined gold. Enterprising merchants who
+sell to all comers have set up trading posts among the orcs and their brethren
+to make good use of that gold.
 %%%%
 Elven Halls
 
@@ -74,9 +75,10 @@ away in secret chambers without any entrance.
 %%%%
 Vaults
 
-Possibly constructed by some powerful tyrant, the Vaults are said to be home to
-great treasures. The blood spattered liberally around the entrance suggests
-that there is a certain amount of violence, too.
+The Vaults are said to be home to great treasures and sealed evils alike, its
+origin known only to its guardians: the Ironbound Order. Intruders face an
+organised defence of trained maneuvers, arms and arcana, animated constructs,
+coerced allies, and tamed beasts, all in common cause.
 %%%%
 Crypt
 
@@ -150,12 +152,13 @@ found from the third level onwards, and is more common at greater depths.
 Portals back to the dungeon are scattered throughout the Abyss, and are found
 more commonly at greater depths or while carrying the abyssal rune.
 
-Adventurers who linger in the Abyss will find themselves drawn irresistibly
-deeper. Killing monsters will warp the substance of the Abyss, eventually
-generating a gateway out. Further persistence will wear holes in the Abyss,
-allowing descent into deeper layers. The Abyss remembers its visitors - once
-an adventurer has entered a level, future visits to the Abyss will always
-take them at least that far down.
+Killing monsters will warp the substance of the Abyss, eventually generating a
+gateway out. Further persistence will wear holes in the Abyss, allowing descent
+into deeper layers.
+
+The fabric of the Abyss takes greater notice of the powerful; no matter how
+they arrive, more experienced adventurers will find themselves drawn deeper
+within the maddening expanse of that realm.
 %%%%
 Pandemonium
 
@@ -247,7 +250,7 @@ undead denizens are unlikely to take kindly to looting.
 %%%%
 Bailey
 
-The bailey is the still-occupied and well-guarded fortress of an orcish lord.
+The bailey is the occupied and well-guarded fortress of a ruthless warlord.
 The treasures within are protected by both physical barriers and large numbers
 of well-armed humanoid warriors.
 %%%%

@@ -107,6 +107,7 @@
 #include "options.h"
 #include "output.h"
 #include "player.h"
+#include "player-notices.h"
 #include "player-reacts.h"
 #include "prompt.h"
 #include "quiver.h"
@@ -350,6 +351,9 @@ int main(int argc, char *argv[])
 
 static void _reset_game()
 {
+    clua.close();
+    dlua.close();
+
     clrscr();
     // Unset by death, but not by saving with restart_after_save.
     crawl_state.reset_game();
@@ -368,6 +372,7 @@ static void _reset_game()
     overview_clear();
     clear_message_window();
     note_list.clear();
+    dlua_errors.clear();
     msg::deinitialise_mpr_streams();
     quiver::reset_state();
 
@@ -652,7 +657,7 @@ static void _djinn_announce_spells()
     mprf("You begin with %s%s%s.", equip_str.c_str(), spacer.c_str(), spell_str.c_str());
 
     take_note(Note(NOTE_MESSAGE, 0, 0, you.your_name + " set off with " +
-                                       equip_str + spell_str + "."));
+                                       equip_str + spacer + spell_str + "."));
 }
 
 // Announce to the message log and make a note of the player's starting items,
@@ -1054,6 +1059,19 @@ static void _update_place_stats()
     curr_PlaceInfo.assert_validity();
 }
 
+// How much time should pass this turn because the player cannot act?
+// (Pass time in increments of 10 aut, but never more than our remaining stun duration.)
+static int _stun_delay()
+{
+    int stun_dur = you.duration[DUR_PARALYSIS];
+    stun_dur = max(stun_dur, you.duration[DUR_SLEEP]);
+    stun_dur = max(stun_dur, you.duration[DUR_VEXED]);
+    stun_dur = max(stun_dur, you.duration[DUR_DAZED]);
+    stun_dur = max(stun_dur, you.duration[DUR_PETRIFIED]);
+
+    return min(stun_dur, BASELINE_DELAY);
+}
+
 //
 //  This function handles the player's input. It's called from main(),
 //  from inside an endless loop.
@@ -1107,25 +1125,32 @@ static void _input()
 
     update_monsters_in_view();
 
-    // Monster update can cause a weapon swap.
-    if (you.turn_is_over)
-    {
-        world_reacts();
-        return;
-    }
-
     hints_new_turn();
 
-    if (you.duration[DUR_VEXED])
-        do_vexed_attack(you);
-
-    if (you.cannot_act() || you.duration[DUR_VEXED])
+    if (you.cannot_act())
     {
         if (crawl_state.repeat_cmd != CMD_WIZARD)
         {
             crawl_state.cancel_cmd_repeat("Cannot control self, cancelling command "
                                           "repetition.");
         }
+
+        // If the player has enough Vexed time left to make a proper attack, do
+        // so. Otherwise, just wait out the rest of it.
+        if (you.duration[DUR_VEXED])
+        {
+            const int attk_delay = you.melee_attack_delay().roll();
+            if (you.duration[DUR_VEXED] >= attk_delay)
+            {
+                do_vexed_attack(you);
+                you.time_taken = attk_delay;
+            }
+            else
+                you.time_taken = _stun_delay();
+        }
+        else
+            you.time_taken = _stun_delay();
+
         world_reacts();
         return;
     }
@@ -1343,7 +1368,7 @@ static bool _can_take_stairs(dungeon_feature_type ftype, bool down,
     }
 
     // Immobile
-    if (!you.is_motile())
+    if (you.cannot_move())
     {
         canned_msg(MSG_CANNOT_MOVE);
         return false;
@@ -1408,14 +1433,22 @@ static bool _can_take_stairs(dungeon_feature_type ftype, bool down,
         }
         break;
     case DNGN_ENTER_ZOT:
-        if (runes_in_pack() < 3 && !crawl_state.game_is_descent())
+        if (runes_in_pack() < ZOT_ENTRY_RUNES && !crawl_state.game_is_descent())
         {
-            mpr("You need at least three runes to enter the Realm of Zot.");
+            mprf("You need at least %d runes to enter the Realm of Zot.",
+                 ZOT_ENTRY_RUNES);
             return false;
         }
         break;
     default:
         break;
+    }
+
+    if (player_in_branch(BRANCH_SLIME) && !down && you.depth > 1
+            && !you_worship(GOD_JIYVA) && !you.royal_jelly_dead)
+    {
+        mpr("The stairs are too slimy for you to climb back up!");
+        return false;
     }
 
     return true;
@@ -1488,6 +1521,17 @@ static bool _prompt_stairs(dungeon_feature_type ygrd, bool down, bool shaft)
         // "unsafe", as often you bail at single-digit hp and a wasted turn to
         // an overeager prompt cancellation might be nasty.
         if (!yesno("Are you sure you want to leave this ziggurat?", false, 'n'))
+        {
+            canned_msg(MSG_OK);
+            return false;
+        }
+    }
+
+    // Exiting Troves early.
+    if (ygrd == DNGN_EXIT_TROVE
+        && you.depth == brdepth[BRANCH_TROVE])
+    {
+        if (!yesno("Are you sure you want to leave this trove?", false, 'n'))
         {
             canned_msg(MSG_OK);
             return false;
@@ -1576,6 +1620,18 @@ static bool _prompt_stairs(dungeon_feature_type ygrd, bool down, bool shaft)
         }
     }
 
+    // Only give the slimy stair warning on Slime:1. If below that, they're already stuck anyway.
+    if (down && player_in_branch(BRANCH_SLIME) && you.depth == 1
+        && !you.royal_jelly_dead && !you_worship(GOD_JIYVA))
+    {
+        if (!yesno("You will be unable to climb back up again until you either destroy or join "
+                   "the power ruling this place. Continue?", true, 'n'))
+        {
+            canned_msg(MSG_OK);
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -1604,13 +1660,14 @@ static void _take_transporter()
             mpr("The transporter is blocked by a creature on the other side!");
             return;
         }
+        // Trigger any traps thatmight be at the displaced monster's destination.
+        else
+            mon->trigger_movement_effects(MV_TRANSLOCATION);
     }
 
-    if (you.move_to_pos(dest, true))
-        you.turn_is_over = true;
-
-    if (you.turn_is_over)
+    if (you.move_to(dest, MV_DELIBERATE, true))
     {
+        you.turn_is_over = true;
         place_cloud(CLOUD_TLOC_ENERGY, old_pos, 1 + random2(3), &you);
         transport_followers_from(old_pos);
         if (is_unknown_transporter(old_pos))
@@ -1620,9 +1677,8 @@ static void _take_transporter()
             li->update_transporter(old_pos, you.pos());
             explored_tracked_feature(DNGN_TRANSPORTER);
         }
-        cancel_polar_vortex();
         mpr("You enter the transporter and appear at another place.");
-        id_floor_items();
+        you.finalise_movement();
     }
 }
 
@@ -1638,9 +1694,9 @@ static void _take_stairs(bool down)
     if (!_can_take_stairs(ygrd, down, shaft))
         return;
 
-    if (you.attribute[ATTR_HELD])
+    if (you.caught())
     {
-        free_self_from_net();
+        you.struggle_against_net();
         you.turn_is_over = true;
         return;
     }
@@ -1666,8 +1722,6 @@ static void _take_stairs(bool down)
         // only returns false if no trap was found, which shouldn't happen
         ASSERT(trap_triggered);
         you.turn_is_over = (you.pos() != old_pos);
-        if (you.turn_is_over)
-            id_floor_items();
     }
     else
     {
@@ -2315,15 +2369,7 @@ void process_command(command_type cmd, command_type prev_cmd)
     case CMD_INTERLEVEL_TRAVEL: do_interlevel_travel();      break;
     case CMD_ANNOTATE_LEVEL:    do_annotate();               break;
     case CMD_EXPLORE:           do_explore_cmd();            break;
-
-        // Mouse commands.
-    case CMD_MOUSE_MOVE:
-    {
-        const coord_def dest = crawl_view.screen2grid(crawl_view.mousep);
-        if (in_bounds(dest))
-            terse_describe_square(dest);
-        break;
-    }
+    case CMD_EXPLORE_NO_REST:   do_explore_cmd(true);        break;
 
     case CMD_MOUSE_CLICK:
     {
@@ -2437,7 +2483,7 @@ void process_command(command_type cmd, command_type prev_cmd)
         break;
 
     case CMD_TOGGLE_KEYBOARD:
-        jni_keyboard_control(true);
+        jni_keyboard_control(2);
         break;
 #endif
 
@@ -2466,8 +2512,12 @@ static void _prep_input()
     you.turn_is_over = false;
     you.time_taken = player_speed();
     you.shield_blocks = 0;              // no blocks this round
+    you.reprisals.clear();
+    you.triggers_done.init(0);
+    you.attempted_attack = false;
 
     you.redraw_status_lights = true;
+    you.redraw_title = true;
     if (you.running == 0)
     {
         you.quiver_action.set_needs_redraw();
@@ -2478,7 +2528,6 @@ static void _prep_input()
 
     viewwindow();
     update_screen(); // ???
-    maybe_update_stashes();
     if (check_for_interesting_features() && you.running.is_explore())
         stop_running();
 
@@ -2561,9 +2610,6 @@ void world_reacts()
         update_screen();
     }
 
-    // prevent monsters wandering into view and picking up an item before
-    // our next prep_input
-    maybe_update_stashes();
     update_monsters_in_view();
 
     reset_show_terrain();
@@ -2590,7 +2636,6 @@ void world_reacts()
 
     check_banished();
     _check_sanctuary();
-    _check_trapped();
     check_spectral_weapon(you);
 
     run_environment_effects();
@@ -2631,6 +2676,11 @@ void world_reacts()
 
     handle_time();
     manage_clouds();
+
+    // This needs to happen after `manage_clouds` is called as fog clouds
+    // decaying will affect whether a monster is still in view
+    print_mons_left_view_messages();
+
     if (env.level_state & LSTATE_GOLUBRIA)
         _update_golubria_traps(you.time_taken);
     if (env.level_state & LSTATE_STILL_WINDS)
@@ -2645,7 +2695,10 @@ void world_reacts()
     viewwindow();
     update_screen();
 
-    if (you.cannot_act() && any_messages()
+    _check_trapped();
+
+    if (you.cannot_act()
+        && any_messages()
         && crawl_state.repeat_cmd != CMD_WIZARD)
     {
         more();
@@ -2772,8 +2825,13 @@ static void _swing_at_target(coord_def move)
     dist target;
     target.target = you.pos() + move;
 
-    if (never_harm_monster(&you, monster_at(target.target), true))
-        return;
+    if (monster* mon = monster_at(target.target))
+        if (!could_harm(&you, mon, true, true))
+        {
+            if (!you.can_see(*mon))
+                you.turn_is_over = true;
+            return;
+        }
 
     // Don't warn the player "too injured to fight recklessly" when they
     // explicitly request an attack.
@@ -2979,6 +3037,8 @@ static void _do_cmd_repeat()
         return;
     }
 
+    const bool is_safe = i_feel_safe();
+
     keyseq repeat_keys;
     int i = 0;
     if (cmd != CMD_PREV_CMD_AGAIN)
@@ -2994,7 +3054,15 @@ static void _do_cmd_repeat()
         repeat_keys = crawl_state.prev_cmd_keys;
 
     crawl_state.repeat_cmd                = real_cmd;
-    crawl_state.cmd_repeat_started_unsafe = !i_feel_safe();
+    crawl_state.cmd_repeat_started_unsafe = !is_safe;
+
+    // XXX: If this command repetition was started while safe, a monster may
+    //      have come into view on the first action, before the reptition is
+    //      officially started. Wipe out awareness of all monsters in sight
+    //      to force them to interrupt again, if appropriate.
+    if (is_safe)
+        for (monster_near_iterator mi(you.pos()); mi; ++mi)
+            mi->flags &= ~MF_WAS_IN_VIEW;
 
     int last_repeat_turn;
     for (; i < count && crawl_state.is_repeating_cmd(); ++i)

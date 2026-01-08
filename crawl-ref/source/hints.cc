@@ -1699,11 +1699,8 @@ void learned_something_new(hints_event_type seen_what, coord_def gc)
         }
         print_hint("HINT_YOU_MISCAST");
 
-        if (!player_effectively_in_light_armour()
-            || is_shield(you.shield()))
-        {
+        if (!player_effectively_in_light_armour() || you.shield())
             print_hint("HINT_MISCAST_ARMOUR");
-        }
 
         print_hint("HINT_MISCAST_CONTAMINATION_AND_MP");
         break;
@@ -1712,7 +1709,7 @@ void learned_something_new(hints_event_type seen_what, coord_def gc)
     case HINT_GLOWING:
         print_hint("HINT_GLOWING");
 
-        if (!player_severe_contamination())
+        if (!player_harmful_contamination())
             print_hint("HINT_CONTAMINATION_MILD");
         else
             print_hint("HINT_CONTAMINATION_SEVERE");
@@ -1744,12 +1741,12 @@ void learned_something_new(hints_event_type seen_what, coord_def gc)
             listed.push_back("your spells (<w>%?</w>)");
             cmd.push_back(CMD_CAST_SPELL);
         }
-        if (!your_talents(false).empty())
+        if (!your_talents().empty())
         {
             listed.push_back("your <w>%</w>bilities");
             cmd.push_back(CMD_USE_ABILITY);
         }
-        if (Hints.hints_type != HINT_MAGIC_CHAR || you.how_mutated())
+        if (Hints.hints_type != HINT_MAGIC_CHAR || you.has_any_mutations())
         {
             listed.push_back("your set of mutations (<w>%</w>)");
             cmd.push_back(CMD_DISPLAY_MUTATIONS);
@@ -2044,7 +2041,7 @@ static string _hints_throw_stuff(const item_def &item)
 void check_item_hint(const item_def &item, unsigned int num_old_talents)
 {
     if (Hints.hints_events[HINT_NEW_ABILITY_ITEM]
-        && your_talents(false).size() > num_old_talents)
+        && your_talents().size() > num_old_talents)
     {
         learned_something_new(HINT_NEW_ABILITY_ITEM);
     }

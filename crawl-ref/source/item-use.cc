@@ -39,6 +39,7 @@
 #include "libutil.h"
 #include "macro.h"
 #include "makeitem.h"
+#include "map-knowledge.h"
 #include "melee-attack.h"
 #include "message.h"
 #include "misc.h"
@@ -200,7 +201,7 @@ static string _oper_name(operation_types oper)
     }
 }
 
-static int _default_osel(operation_types oper)
+int default_osel(operation_types oper)
 {
     switch (oper)
     {
@@ -209,7 +210,7 @@ static int _default_osel(operation_types oper)
     case OPER_WEAR:
         return OBJ_ARMOUR;
     case OPER_PUTON:
-        return OBJ_JEWELLERY;
+        return OSEL_JEWELLERY_OR_TALISMAN;
     case OPER_QUAFF:
         return OBJ_POTIONS;
     case OPER_READ:
@@ -221,7 +222,7 @@ static int _default_osel(operation_types oper)
     case OPER_TAKEOFF:
         return OSEL_WORN_ARMOUR;
     case OPER_REMOVE:
-        return OSEL_WORN_JEWELLERY;
+        return OSEL_WORN_JEWELLERY_OR_TALISMAN;
     case OPER_UNEQUIP:
         return OSEL_WORN_EQUIPABLE;
     default:
@@ -262,7 +263,7 @@ bool UseItemMenu::init_modes()
 
         erase_if(available_modes, [cur_oper, this](operation_types o) {
             oper = o;
-            item_type_filter = _default_osel(oper);
+            item_type_filter = default_osel(oper);
             return !populate_list(true);
         });
     }
@@ -304,7 +305,7 @@ bool UseItemMenu::cycle_mode(bool forward)
     oper = *it;
 
     save_hover();
-    item_type_filter = _default_osel(oper);
+    item_type_filter = default_osel(oper);
 
     // always reset display all on mode change
     display_all = false;
@@ -343,7 +344,7 @@ void UseItemMenu::reset(operation_types _oper, const char* prompt_override)
         set_title(_default_use_title(oper));
     // see `item_is_selected` for more on what can be used for item_type.
     if (item_type_filter == OSEL_ANY)
-        item_type_filter = _default_osel(oper);
+        item_type_filter = default_osel(oper);
 
     populate_list();
     populate_menu();
@@ -399,7 +400,7 @@ bool UseItemMenu::populate_list(bool check_only)
             continue;
         }
         // No evoking wands, etc from the floor!
-        if (oper == OPER_EVOKE && it->base_type != OBJ_TALISMANS)
+        if (oper == OPER_EVOKE)
             continue;
 
         // even with display_all, only show matching floor items.
@@ -421,21 +422,6 @@ bool UseItemMenu::empty_check() const
         return false;
     if (any_items_of_type(item_type_filter, -1, oper != OPER_EVOKE))
         return false;
-    // Only talismans can be evoked from the floor.
-    if (oper == OPER_EVOKE)
-    {
-        auto floor_items = item_list_on_square(you.visible_igrd(you.pos()));
-        if (any_of(begin(floor_items), end(floor_items),
-              [=] (const item_def* item) -> bool
-              {
-                  return item->defined()
-                         && item->base_type == OBJ_TALISMANS
-                         && item_is_selected(*item, item_type_filter);
-              }))
-        {
-            return false;
-        }
-    }
 
     mprf(MSGCH_PROMPT, "%s",
         no_selectables_message(item_type_filter).c_str());
@@ -651,9 +637,10 @@ void UseItemMenu::update_sections()
         floor_header->text = "Floor Items";
         if (easy_floor)
         {
-            floor_header->text += make_stringf(" (%s to %s)",
-                    menu_keyhelp_cmd(CMD_MENU_CYCLE_HEADERS).c_str(),
-                        _oper_name(oper).c_str());
+            floor_header->text += make_stringf(
+                "<lightgray> (%s to %s)</lightgray>",
+                menu_keyhelp_cmd(CMD_MENU_CYCLE_HEADERS).c_str(),
+                _oper_name(oper).c_str());
         }
         else if (is_inventory)
             floor_header->text += cycle_hint;
@@ -846,14 +833,15 @@ static operation_types _item_type_to_oper(object_class_type type)
 {
     switch (type)
     {
+        case OBJ_BAUBLES:
         case OBJ_WANDS:
-        case OBJ_TALISMANS:
         case OBJ_MISCELLANY: return OPER_EVOKE;
         case OBJ_POTIONS:    return OPER_QUAFF;
         case OBJ_SCROLLS:    return OPER_READ;
         case OBJ_ARMOUR:     return OPER_WEAR;
         case OBJ_WEAPONS:
         case OBJ_STAVES:     return OPER_WIELD;
+        case OBJ_TALISMANS:
         case OBJ_JEWELLERY:  return OPER_PUTON;
         default:             return OPER_NONE;
     }
@@ -866,12 +854,13 @@ static operation_types _item_type_to_remove_oper(object_class_type type)
     case OBJ_ARMOUR:    return OPER_TAKEOFF;
     case OBJ_WEAPONS:
     case OBJ_STAVES:    return OPER_WIELD;
+    case OBJ_TALISMANS:
     case OBJ_JEWELLERY: return OPER_REMOVE;
     default:            return OPER_NONE;
     }
 }
 
-static operation_types _item_to_oper(item_def *target)
+operation_types item_to_oper(const item_def *target)
 {
     if (!target)
         return OPER_WIELD; // unwield
@@ -983,7 +972,9 @@ static bool _can_generically_use(operation_types oper)
             return false;
         }
         // can't differentiate between these two at this point
-        if (!you_can_wear(SLOT_RING, true) && !you_can_wear(SLOT_AMULET, true))
+        if (you_can_wear(SLOT_RING, true) == false
+            && you_can_wear(SLOT_AMULET, true) == false
+            && you.transform_uncancellable)
         {
             mprf(MSGCH_PROMPT, "You can't %s jewellery%s.",
                 oper == OPER_PUTON ? "wear" : "remove",
@@ -1007,18 +998,6 @@ static bool _can_generically_use(operation_types oper)
     return true;
 }
 
-static bool _evoke_item(item_def &i)
-{
-    ASSERT(i.defined());
-    if (i.base_type != OBJ_TALISMANS && !in_inventory(i))
-    {
-        mprf(MSGCH_PROMPT, "You aren't carrying that!");
-        return false;
-    }
-
-    return evoke_item(i);
-}
-
 bool use_an_item(operation_types oper, item_def *target)
 {
     if (!_can_generically_use(oper))
@@ -1029,7 +1008,7 @@ bool use_an_item(operation_types oper, item_def *target)
     if (!target && oper == OPER_REMOVE && !Options.jewellery_prompt)
     {
         vector<item_def*> jewellery = you.equipment.get_slot_items(SLOT_ALL_JEWELLERY);
-        if (jewellery.size() == 1)
+        if (jewellery.size() == 1 && !you.active_talisman())
             target = jewellery[0];
     }
 
@@ -1040,7 +1019,7 @@ bool use_an_item(operation_types oper, item_def *target)
         return false; // abort menu
 
     if (oper == OPER_EQUIP)
-        oper = _item_to_oper(target);
+        oper = item_to_oper(target);
     else if (oper == OPER_UNEQUIP)
     {
         oper = _item_to_removal(target);
@@ -1057,7 +1036,7 @@ bool use_an_item(operation_types oper, item_def *target)
     case OPER_READ:
         return read(target);
     case OPER_EVOKE:
-        return _evoke_item(*target);
+        return evoke_item(*target);
     case OPER_WIELD:
         if (!target)
             return _try_unwield_weapons();
@@ -1072,31 +1051,6 @@ bool use_an_item(operation_types oper, item_def *target)
     default:
         return false; // or ASSERT?
     }
-}
-
-/**
- * Helper function for try_equip_item
- * @param  item    item on floor (where the player is standing)
- * @param  quiet   print message or not
- * @return boolean can the player move the item into their inventory, or are
- *                 they out of space?
- */
-static bool _can_move_item_from_floor_to_inv(const item_def &item)
-{
-    if (inv_count() < ENDOFPACK)
-        return true;
-    if (!is_stackable_item(item))
-    {
-        mpr("You can't carry that many items.");
-        return false;
-    }
-    for (int i = 0; i < ENDOFPACK; ++i)
-    {
-        if (items_stack(you.inv[i], item))
-            return true;
-    }
-    mpr("You can't carry that many items.");
-    return false;
 }
 
 /**
@@ -1175,15 +1129,53 @@ static item_def* _item_swap_menu(const vector<item_def*>& candidates)
     return nullptr;
 }
 
+static bool _equipment_effectively_identical(const item_def& item1, const item_def& item2)
+{
+    return item1.base_type == item2.base_type
+           && item1.sub_type == item2.sub_type
+           && item1.plus == item2.plus
+           && item1.brand == item2.brand
+           && !item1.cursed() && !item2.cursed()
+           && !is_artefact(item1) && !is_artefact(item2);
+}
+
 static item_def* _item_swap_prompt(const vector<item_def*>& candidates)
 {
+    // If our list contains only identical items, return the first without a
+    // prompt.
+    bool found_non_match = false;
+    for (size_t i = 0; i < candidates.size(); ++i)
+    {
+        item_def* item = candidates[i];
+
+        // If this option is true, all jewellery is considered 'non-matching'
+        if (item->base_type == OBJ_JEWELLERY && Options.jewellery_prompt)
+        {
+            found_non_match = true;
+            break;
+        }
+
+        for (size_t j = i + 1; j < candidates.size(); ++j)
+        {
+            // A single non-match among all candidates is enough to cancel this
+            if (!_equipment_effectively_identical(*item, *candidates[j]))
+            {
+                found_non_match = true;
+                break;
+            }
+        }
+    }
+
+    if (!found_non_match && !candidates.empty())
+        return candidates[0];
+
     // Default to a menu for larger choices
     if (candidates.size() > 3 || ui::has_layout())
         return _item_swap_menu(candidates);
 
     vector<char> slot_chars;
     for (auto item : candidates)
-        slot_chars.push_back(index_to_letter(item->link));
+        slot_chars.push_back(item->slot);
 
     clear_messages();
 
@@ -1328,6 +1320,9 @@ bool warn_about_changing_gear(const vector<item_def*>& to_remove, item_def* to_e
 
 bool try_equip_item(item_def& item)
 {
+    if (item.base_type == OBJ_TALISMANS)
+        return use_talisman(item);
+
     string reason;
     if (!can_equip_item(item, true, &reason))
     {
@@ -1337,8 +1332,11 @@ bool try_equip_item(item_def& item)
 
     // If we're attempting to equip an item on the floor, test if we have room
     // to even pick it up, first
-    if (item.pos != ITEM_IN_INVENTORY && !_can_move_item_from_floor_to_inv(item))
+    if (item.pos != ITEM_IN_INVENTORY && !room_in_inventory(item))
+    {
+        mpr("You can't carry that many items.");
         return false;
+    }
     else if (item_is_equipped(item))
     {
         if (Options.equip_unequip)
@@ -1396,19 +1394,7 @@ bool try_equip_item(item_def& item)
             }
 
             if (candidates.size() == 1)
-            {
-                if (item.base_type == OBJ_JEWELLERY && Options.jewellery_prompt)
-                {
-                    item_def* ret = _item_swap_prompt(candidates);
-
-                    if (ret)
-                        to_remove.push_back(ret);
-                    else
-                        return false;
-                }
-                else
-                    to_remove.push_back(candidates[0]);
-            }
+                to_remove.push_back(candidates[0]);
             else
             {
                 // Save which item was selected to remove.
@@ -1667,6 +1653,9 @@ bool can_unequip_item(item_def& item, bool silent)
 
 bool try_unequip_item(item_def& item)
 {
+    if (item.base_type == OBJ_TALISMANS && you.active_talisman() == &item)
+        return use_talisman(item);
+
     if (!can_unequip_item(item))
         return false;
 
@@ -1885,6 +1874,7 @@ bool oni_drunken_swing()
 
     if (!targets.empty())
     {
+        bool success = false;
         if (you.weapon())
         {
             mprf("You take a swig of the potion and twirl %s.",
@@ -1899,8 +1889,12 @@ bool oni_drunken_swing()
             attk.never_cleave = true;
 
             if (!attk.would_prompt_player())
-                attk.launch_attack_set();
+            {
+                success |= attk.launch_attack_set(true);
+                count_action(CACT_ATTACK, ATTACK_DRUNKEN_BRAWLING);
+            }
         }
+        player_attempted_attack(success);
 
         return true;
     }
@@ -1974,16 +1968,17 @@ bool drink(item_def* potion)
 
     // Drunken master, swing!
     // We do this *before* actually drinking the potion for nicer messaging.
+    bool did_swing = false;
     if (you.has_mutation(MUT_DRUNKEN_BRAWLING)
         && oni_likes_potion(static_cast<potion_type>(potion->sub_type)))
     {
-        oni_drunken_swing();
+        did_swing = oni_drunken_swing();
     }
 
     // Check for Delatra's gloves before potentially melding them.
     bool heal_on_id = you.unrand_equipped(UNRAND_DELATRAS_GLOVES);
 
-    if (!quaff_potion(*potion))
+    if (!quaff_potion(*potion, did_swing))
         return false;
 
     // XXX: maybe being a status-effect potion should be in item-prop.cc?
@@ -2028,11 +2023,13 @@ bool drink(item_def* potion)
     if (in_inventory(*potion))
     {
         dec_inv_item_quantity(potion->link, 1);
-        auto_assign_item_slot(*potion);
+        if (!alreadyknown)
+            auto_assign_item_slot(*potion);
     }
     else
         dec_mitm_item_quantity(potion->index(), 1);
     count_action(CACT_USE, OBJ_POTIONS);
+    count_action(CACT_DRINK, potion->sub_type);
     you.turn_is_over = true;
 
     // This got deferred from PotionExperience::effect to prevent SIGHUP abuse.
@@ -2090,16 +2087,19 @@ static void _rebrand_weapon(item_def& wpn)
                                                2, SPWPN_HEAVY,
                                                2, SPWPN_VENOM,
                                                2, SPWPN_PROTECTION,
+                                               2, NUM_SPECIAL_WEAPONS,
                                                1, SPWPN_DRAINING,
                                                1, SPWPN_ELECTROCUTION,
                                                1, SPWPN_SPECTRAL,
                                                1, SPWPN_VAMPIRISM,
                                                1, SPWPN_CHAOS);
+
+            if (new_brand == NUM_SPECIAL_WEAPONS)
+                new_brand = get_special_brand_for(static_cast<weapon_type>(wpn.sub_type));
         }
     }
 
     set_item_ego_type(wpn, OBJ_WEAPONS, new_brand);
-    convert2bad(wpn);
 }
 
 static string _item_name(item_def &item)
@@ -2175,6 +2175,36 @@ static void _brand_weapon(item_def &wpn)
         mprf("%s acquires a faint afterimage.", itname.c_str());
         break;
 
+    case SPWPN_REBUKE:
+        flash_colour = WHITE;
+        mprf("%s quivers with indignation.", itname.c_str());
+        break;
+
+    case SPWPN_VALOUR:
+        flash_colour = WHITE;
+        mprf("%s thrums with vital power.", itname.c_str());
+        break;
+
+    case SPWPN_ENTANGLING:
+        flash_colour = LIGHTGREEN;
+        mprf("%s erupts in a tangle of vines.", itname.c_str());
+        break;
+
+    case SPWPN_SUNDERING:
+        flash_colour = LIGHTRED;
+        mprf("%s becomes viciously sharp.", itname.c_str());
+        break;
+
+    case SPWPN_CONCUSSION:
+        flash_colour = YELLOW;
+        mprf("%s begins to exert an overwhelming pressure.", itname.c_str());
+        break;
+
+    case SPWPN_DEVIOUS:
+        flash_colour = BLUE;
+        mprf("%s glints wickedly in the shadows.", itname.c_str());
+        break;
+
     default:
         success = false;
         break;
@@ -2240,7 +2270,7 @@ static item_def* _scroll_choose_weapon(bool alreadyknown, const string &pre_msg,
     return target;
 }
 
-// Returns true if the scroll is used up.
+// Returns true if succesful
 static bool _handle_brand_weapon(bool alreadyknown, const string &pre_msg)
 {
     item_def* weapon = nullptr;
@@ -2261,10 +2291,15 @@ static bool _handle_brand_weapon(bool alreadyknown, const string &pre_msg)
         weapon = _scroll_choose_weapon(alreadyknown, pre_msg, SCR_BRAND_WEAPON);
 
     if (!weapon)
-        return !alreadyknown;
+        return false;
 
     _brand_weapon(*weapon);
     return true;
+}
+
+bool uncancel_brand_weapon()
+{
+    return _handle_brand_weapon(false, "");
 }
 
 bool enchant_weapon(item_def &wpn, bool quiet)
@@ -2301,13 +2336,10 @@ bool enchant_weapon(item_def &wpn, bool quiet)
  * @param alreadyknown  Did we know that this was an ID scroll before we
  *                      started reading it?
  * @param pre_msg       'As you read the scroll of foo, it crumbles to dust.'
- * @param link[in,out]  The location of the ID scroll in the player's inventory
- *                      or, if it's on the floor, -1.
- *                      auto_assign_item_slot() may require us to update this.
  * @return  true if the scroll is used up. (That is, whether it was used or
  *          whether it was previously unknown (& thus uncancellable).)
  */
-static bool _identify(bool alreadyknown, const string &pre_msg, int &link)
+static bool _identify(bool alreadyknown, const string &pre_msg)
 {
     item_def* itemp = nullptr;
     string letter = "";
@@ -2318,9 +2350,23 @@ static bool _identify(bool alreadyknown, const string &pre_msg, int &link)
     }
     else if (isalpha(letter.c_str()[0]))
     {
-        item_def &item = you.inv[letter_to_index(letter.c_str()[0])];
-        if (item.defined() && !item.is_identified())
-            itemp = &item;
+        // XXX: It is not guaranteed that each letter maps uniquely to a single
+        //      item (ie: the player could have both an unidentified potion and
+        //      an unidentified scroll on (a)). However, the automatic letter
+        //      assignment tries very hard to avoid this, so it is likely only
+        //      possible if someone has manually changed one of their letters
+        //      in this manner.
+        //
+        //      In either case, we take the first match we find.
+        for (int i = MAX_GEAR; i < ENDOFPACK; ++i)
+        {
+            if (you.inv[i].defined() && you.inv[i].slot == letter.c_str()[0]
+                && !you.inv[i].is_identified())
+            {
+                itemp = &you.inv[i];
+                break;
+            }
+        }
     }
 
     if (!itemp)
@@ -2330,7 +2376,7 @@ static bool _identify(bool alreadyknown, const string &pre_msg, int &link)
     }
 
     if (!itemp)
-        return !alreadyknown;
+        return false;
 
     item_def& item = *itemp;
     if (alreadyknown)
@@ -2338,26 +2384,31 @@ static bool _identify(bool alreadyknown, const string &pre_msg, int &link)
 
     identify_item(item);
 
-    // Output identified item.
-    mprf_nocap("%s", menu_colour_item_name(item, DESC_INVENTORY_EQUIP).c_str());
+    // Output identified item (possible noting which slot it was moved from).
     if (in_inventory(item))
     {
         if (item.base_type == OBJ_WEAPONS && item_is_equipped(item))
             you.wield_change = true;
 
-        const int target_link = item.link;
-        item_def* moved_target = auto_assign_item_slot(item);
-        if (moved_target != nullptr && moved_target->link == link)
+        const char old_slot = item.slot;
+        auto_assign_item_slot(item, true);
+        if (item.slot != old_slot)
         {
-            // auto-swapped ID'd item with scrolls being used to ID it
-            // correct input 'link' to the new location of the ID scroll stack
-            // so that we decrement *it* instead of the ID'd item (10663)
-            ASSERT(you.inv[target_link].defined());
-            ASSERT(you.inv[target_link].is_type(OBJ_SCROLLS, SCR_IDENTIFY));
-            link = target_link;
+            mprf_nocap("%c -> %s", old_slot,
+                        menu_colour_item_name(item, DESC_INVENTORY_EQUIP).c_str());
         }
+        else
+            mprf_nocap("%s", menu_colour_item_name(item, DESC_INVENTORY_EQUIP).c_str());
     }
+    else
+        mprf_nocap("%s", menu_colour_item_name(item, DESC_A).c_str());
+
     return true;
+}
+
+bool uncancel_identify()
+{
+    return _identify(false, "");
 }
 
 static bool _handle_enchant_weapon(bool alreadyknown, const string &pre_msg)
@@ -2383,7 +2434,7 @@ static bool _handle_enchant_weapon(bool alreadyknown, const string &pre_msg)
     }
 
     if (!weapon)
-        return !alreadyknown;
+        return false;
 
     const bool success = enchant_weapon(*weapon, false);
     if (success && weapon->plus == MAX_WPN_ENCHANT)
@@ -2392,6 +2443,11 @@ static bool _handle_enchant_weapon(bool alreadyknown, const string &pre_msg)
         crawl_state.cancel_cmd_repeat();
     }
     return true;
+}
+
+bool uncancel_enchant_weapon()
+{
+    return _handle_enchant_weapon(false, "");
 }
 
 bool enchant_armour(item_def &arm, bool quiet)
@@ -2447,7 +2503,7 @@ static bool _handle_enchant_armour(bool alreadyknown, const string &pre_msg)
     }
 
     if (!target)
-        return !alreadyknown;
+        return false;
 
     // Okay, we may actually (attempt to) enchant something.
     if (alreadyknown)
@@ -2465,6 +2521,11 @@ static bool _handle_enchant_armour(bool alreadyknown, const string &pre_msg)
     }
 
     return true;
+}
+
+bool uncancel_enchant_armour()
+{
+    return _handle_enchant_armour(false, "");
 }
 
 static void _vulnerability_scroll()
@@ -2486,6 +2547,39 @@ static void _vulnerability_scroll()
 
     you.strip_willpower(&you, dur, true);
     mpr("A wave of despondency washes over your surroundings.");
+}
+
+static bool _handle_amnesia(bool alreadyknown)
+{
+    while (true)
+    {
+        bool aborted = cast_selective_amnesia() == -1;
+        if (!aborted)
+            break;
+        if (!alreadyknown)
+        {
+            if (crawl_state.seen_hups)
+                return false;
+            if (!yesno("Really abort (and waste the scroll)?", false, 0))
+                continue;
+        }
+
+        // The scroll has been aborted
+        canned_msg(MSG_OK);
+        return false;
+    }
+    return true;
+}
+
+bool uncancel_amnesia()
+{
+    return _handle_amnesia(false);
+}
+
+bool uncancel_blinking()
+{
+    dist target;
+    return controlled_blink(false, &target) != spret::abort;
 }
 
 static bool _is_cancellable_scroll(scroll_type scroll)
@@ -2511,7 +2605,7 @@ static bool _scroll_will_harm(const scroll_type scr, const actor &m)
 {
     return m.alive() && scr == SCR_TORMENT
         && !m.res_torment()
-        && !never_harm_monster(&you, m.as_monster());
+        && could_harm(&you, &m);
 }
 
 static vector<string> _desc_finite_wl(const monster_info& mi)
@@ -2556,25 +2650,6 @@ public:
         // TODO: if this is ever used for the pain card it will need an
         // override for the player in `is_affected`
         return !bool(mon.resists() & MR_RES_TORMENT);
-    }
-};
-
-class targeter_silence : public targeter_maybe_radius
-{
-    targeter_radius inner_rad;
-public:
-    targeter_silence(int r1, int r2)
-        : targeter_maybe_radius(&you, LOS_DEFAULT, r2),
-          inner_rad(&you, LOS_DEFAULT, r1)
-    {
-    }
-
-    aff_type is_affected(coord_def loc) override
-    {
-        if (inner_rad.is_affected(loc) == AFF_YES)
-            return AFF_YES;
-        else
-            return targeter_maybe_radius::is_affected(loc);
     }
 };
 
@@ -2623,16 +2698,18 @@ static unique_ptr<targeter> _get_scroll_targeter(scroll_type which_scroll)
     {
     case SCR_FEAR:
         return find_spell_targeter(SPELL_CAUSE_FEAR, 1000, LOS_RADIUS);
-    case SCR_BUTTERFLIES: // close enough...
+    // Indicate the knockback radius differently than the butterfly radius.
+    case SCR_BUTTERFLIES:
+        return make_unique<targeter_radius>(&you, LOS_NO_TRANS, 5, 0, 0, 2);
     case SCR_SUMMONING:
         // TODO: shadow creatures targeter doesn't handle band placement very
-        // well, and this is more obvious with the scroll
-        return find_spell_targeter(SPELL_SHADOW_CREATURES, 1000, LOS_RADIUS);
+        //       well, so this is an overestimate.
+        return make_unique<targeter_maybe_radius>(&you, LOS_NO_TRANS, 5, 0, 1);
     case SCR_VULNERABILITY:
     case SCR_IMMOLATION:
         return make_unique<targeter_finite_will>();
     case SCR_SILENCE:
-        return make_unique<targeter_silence>(2, 4); // TODO: calculate from power (or simplify the calc)
+        return find_spell_targeter(SPELL_SILENCE, 30, LOS_RADIUS);
     case SCR_TORMENT:
         return make_unique<targeter_torment>();
     case SCR_POISON:
@@ -2745,6 +2822,12 @@ bool scroll_hostile_check(scroll_type which_scroll)
     return false;
 }
 
+static bool _scroll_has_forced_targeter(scroll_type scroll)
+{
+    return Options.always_use_static_scroll_targeters
+            || Options.force_scroll_targeter.count(scroll) > 0;
+}
+
 /**
  * Read the provided scroll.
  *
@@ -2782,7 +2865,9 @@ bool read(item_def* scroll, dist *target)
 
         const bool bad_item = (is_dangerous_item(*scroll, true)
                                     || is_bad_item(*scroll))
-                            && Options.bad_item_prompt;
+                            && Options.bad_item_prompt
+                            // Don't double-prompt if we're already asking for confirmation.
+                            && !_scroll_has_forced_targeter(static_cast<scroll_type>(scroll->sub_type));
 
         if (stop_attack_prompt(hitfunc, verb_object.c_str(),
                                [which_scroll] (const actor* m)
@@ -2848,19 +2933,30 @@ bool read(item_def* scroll, dist *target)
 
     if (alreadyknown
         && scroll_has_targeter(which_scroll)
-        && which_scroll != SCR_BLINKING // blinking calls its own targeter
-        && !_scroll_targeting_check(which_scroll, target))
+        && which_scroll != SCR_BLINKING) // blinking calls its own targeter
     {
-        // a targeter can't be used for unid'd or uncancellable scrolls, so
-        // we can skip the rest of the function
-        you.turn_is_over = false;
-        return false;
+        dist force_target;
+        if (alreadyknown && !target && _scroll_has_forced_targeter(which_scroll))
+            target = &force_target;
+
+        if (!_scroll_targeting_check(which_scroll, target))
+        {
+            // a targeter can't be used for unid'd or uncancellable scrolls, so
+            // we can skip the rest of the function
+            you.turn_is_over = false;
+            return false;
+        }
     }
+
+    const bool is_loud = you.has_mutation(MUT_BOOMING_VOICE)
+                         && there_are_monsters_nearby(true, true, false);
+    const coord_def original_pos = you.pos();
 
     // For cancellable scrolls leave printing this message to their
     // respective functions.
     const string pre_succ_msg =
-            make_stringf("As you read the %s, it %s.",
+            make_stringf("As you %s the %s, it %s.",
+                          is_loud ? "thunderously recite" : "read",
                           scroll->name(DESC_QUALNAME).c_str(),
                          which_scroll == SCR_FOG ? "dissolves into smoke" : "crumbles to dust");
     if (!_is_cancellable_scroll(which_scroll))
@@ -2887,11 +2983,20 @@ bool read(item_def* scroll, dist *target)
             break;
         }
 
-        cancel_scroll = (controlled_blink(alreadyknown, target)
-                         == spret::abort) && alreadyknown;
+        if (!alreadyknown)
+        {
+            mpr(pre_succ_msg);
 
-        if (!cancel_scroll)
-            mpr(pre_succ_msg); // ordering is iffy but w/e
+            run_uncancel(UNC_BLINKING);
+        }
+        else
+        {
+            cancel_scroll = (controlled_blink(alreadyknown, target)
+                == spret::abort);
+
+            if (!cancel_scroll)
+                mpr(pre_succ_msg); // ordering is iffy but w/e
+        }
     }
         break;
 
@@ -2979,7 +3084,7 @@ bool read(item_def* scroll, dist *target)
             if (have_passive(passive_t::neutral_slimes) && mons_is_slime(**mi))
                 continue;
 
-            if (mi->add_ench(mon_enchant(ENCH_INNER_FLAME, 0, &you)))
+            if (mi->add_ench(mon_enchant(ENCH_INNER_FLAME, &you)))
                 had_effect = true;
         }
 
@@ -3009,9 +3114,12 @@ bool read(item_def* scroll, dist *target)
             mpr(pre_succ_msg);
             mpr("It is a scroll of enchant weapon.");
             // included in default force_more_message (to show it before menu)
-        }
 
-        cancel_scroll = !_handle_enchant_weapon(alreadyknown, pre_succ_msg);
+            run_uncancel(UNC_ENCHANT_WEAPON);
+        }
+        else
+            cancel_scroll = !_handle_enchant_weapon(alreadyknown, pre_succ_msg);
+
         break;
 
     case SCR_BRAND_WEAPON:
@@ -3020,9 +3128,12 @@ bool read(item_def* scroll, dist *target)
             mpr(pre_succ_msg);
             mpr("It is a scroll of brand weapon.");
             // included in default force_more_message (to show it before menu)
-        }
 
-        cancel_scroll = !_handle_brand_weapon(alreadyknown, pre_succ_msg);
+            run_uncancel(UNC_BRAND_WEAPON);
+        }
+        else
+            cancel_scroll = !_handle_brand_weapon(alreadyknown, pre_succ_msg);
+
         break;
 
     case SCR_IDENTIFY:
@@ -3033,15 +3144,12 @@ bool read(item_def* scroll, dist *target)
             // included in default force_more_message (to show it before menu)
             // Do this here so it doesn't turn up in the ID menu.
             identify_item(*scroll);
+
+            run_uncancel(UNC_IDENTIFY);
         }
-        {
-            const int old_link = link;
-            cancel_scroll = !_identify(alreadyknown, pre_succ_msg, link);
-            // If we auto-swapped the ID'd item with the stack of ID scrolls,
-            // update the pointer to the new place in inventory for the ?ID.
-            if (link != old_link)
-                scroll = &you.inv[link];
-        }
+        else
+            cancel_scroll = !_identify(alreadyknown, pre_succ_msg);
+
         break;
 
     case SCR_ENCHANT_ARMOUR:
@@ -3050,8 +3158,12 @@ bool read(item_def* scroll, dist *target)
             mpr(pre_succ_msg);
             mpr("It is a scroll of enchant armour.");
             // included in default force_more_message (to show it before menu)
+
+            run_uncancel(UNC_ENCHANT_ARMOUR);
         }
-        cancel_scroll = !_handle_enchant_armour(alreadyknown, pre_succ_msg);
+        else
+            cancel_scroll = !_handle_enchant_armour(alreadyknown, pre_succ_msg);
+
         break;
 #if TAG_MAJOR_VERSION == 34
     case SCR_CURSE_WEAPON:
@@ -3087,20 +3199,12 @@ bool read(item_def* scroll, dist *target)
             mpr("You feel forgetful for a moment.");
             break;
         }
-        bool done;
-        bool aborted;
-        do
-        {
-            aborted = cast_selective_amnesia() == -1;
-            done = !aborted
-                   || alreadyknown
-                   || crawl_state.seen_hups
-                   || yesno("Really abort (and waste the scroll)?",
-                            false, 0);
-            cancel_scroll = aborted && alreadyknown;
-        } while (!done);
-        if (aborted)
-            canned_msg(MSG_OK);
+
+        if (!alreadyknown)
+            run_uncancel(UNC_AMNESIA);
+        else
+            cancel_scroll = !_handle_amnesia(alreadyknown);
+
         break;
 
     default:
@@ -3123,6 +3227,10 @@ bool read(item_def* scroll, dist *target)
             dec_mitm_item_quantity(scroll->index(), 1);
 
         count_action(CACT_USE, OBJ_SCROLLS);
+        count_action(CACT_READ, scroll->sub_type);
+
+        if (is_loud)
+            noisy(40, original_pos, MID_PLAYER);
     }
 
     if (!alreadyknown
@@ -3165,6 +3273,169 @@ bool read(item_def* scroll, dist *target)
 
     if (!alreadyknown)
         auto_assign_item_slot(*scroll);
+    return true;
+}
+
+class targeter_invisibility : public targeter_multimonster
+{
+public:
+    targeter_invisibility();
+    bool affects_monster(const monster_info& mon) override;
+};
+
+targeter_invisibility::targeter_invisibility()
+    : targeter_multimonster(&you)
+{
+}
+
+bool targeter_invisibility::affects_monster(const monster_info& mon)
+{
+    return !mon.is(MB_FIREWOOD) && !mon.can_see_invisible();
+}
+
+static vector<string> _desc_see_invis(const monster_info& mi)
+{
+    vector<string> r;
+    if (mi.can_see_invisible())
+        r.push_back("can see invisible");
+    else if (!mi.is(MB_CANT_SEE_YOU))
+    {
+        if (!you.backlit())
+            r.push_back("will become unable to see you");
+        else
+            r.push_back("cannot see invisible");
+    }
+    return r;
+}
+
+// Show a targeter indicating what monsters would lose sight of the player if
+// they went invisible right now, and return false if the player wishes to cancel.
+bool invisibility_target_check(const char* prompt)
+{
+    bool found_any = false;
+    bool found_susceptible = false;
+    for (monster_near_iterator mi(&you); mi; ++mi)
+    {
+        if (!mi->wont_attack() && !mi->is_firewood())
+        {
+            found_any = true;
+            if (!mi->can_see_invisible())
+            {
+                found_susceptible = true;
+                break;
+            }
+        }
+    }
+
+    // Allow the player to go invisible outside of LoS of enemies with no prompt.
+    // However, going invisible in LoS of only enemies with sInv is more likely
+    // to be a mistake.
+    if (!found_any)
+        return true;
+    if (!found_susceptible)
+        return yesno("You can't see any enemy this would conceal you from. Use anyway?", true, 'n');
+
+    direction_chooser_args args;
+    unique_ptr<targeter> hitfunc = make_unique<targeter_invisibility>();
+    args.get_desc_func = _desc_see_invis;
+    args.mode = TARG_ANY;
+    args.self = confirm_prompt_type::cancel;
+    args.hitfunc = hitfunc.get();
+    args.target_prefix = prompt;
+    scroll_targeting_behaviour beh;
+    args.behaviour = &beh;
+
+    dist target;
+    direction(target, args);
+    return target.isValid && !target.isCancel;
+}
+
+string cannot_put_on_talisman_reason(const item_def& talisman, bool temp)
+{
+    ASSERT(talisman.base_type == OBJ_TALISMANS);
+
+    if (talisman.sub_type == TALISMAN_PROTEAN)
+    {
+        if (temp && you.skill(SK_SHAPESHIFTING) < 6)
+        {
+            return "you lack the shapeshifting skill to coax this "
+                    "talisman into a stable form.";
+        }
+        else if (species_apt(SK_SHAPESHIFTING) == UNUSABLE_SKILL)
+            return "you can never gain the skill to use this talisman.";
+        else
+            return "";
+    }
+
+    const transformation trans = form_for_talisman(talisman);
+    const string form_unreason = cant_transform_reason(trans, false, temp);
+    if (!form_unreason.empty())
+        return lowercase_first(form_unreason);
+
+    if (you.form != you.default_form && temp)
+        return "you need to leave your temporary form first.";
+
+    if (trans == transformation::hive)
+    {
+        if (you_worship(GOD_OKAWARU))
+            return "you have forsworn all allies in Okawaru's name.";
+        if (you.get_mutation_level(MUT_NO_LOVE))
+            return "you are loveless.";
+    }
+
+    return "";
+}
+
+bool use_talisman(item_def& talisman)
+{
+    string reason = cannot_put_on_talisman_reason(talisman);
+    if (!reason.empty())
+    {
+        mpr(reason);
+        return false;
+    }
+
+    if (talisman.pos != ITEM_IN_INVENTORY && !room_in_inventory(talisman))
+    {
+        mpr("You can't carry that many items.");
+        return false;
+    }
+
+    item_def& real_item = you.inv[_get_item_slot_maybe_with_move(talisman)];
+
+    if (real_item.sub_type == TALISMAN_PROTEAN)
+    {
+        const talisman_type new_type = random_choose(TALISMAN_RIMEHORN,
+                                                     TALISMAN_SCARAB,
+                                                     TALISMAN_MEDUSA,
+                                                     TALISMAN_MAW);
+
+        mprf("%s responds to your shapeshifting skill and transforms into a %s!",
+             real_item.name(DESC_YOUR).c_str(), talisman_type_name(new_type).c_str());
+
+        real_item.sub_type = new_type;
+        seen_item(real_item);
+        return use_talisman(real_item);
+    }
+
+    const transformation trans = you.active_talisman() == &real_item
+                                    ? transformation::none
+                                    : form_for_talisman(real_item);
+    if (!check_transform_into(trans, false, &real_item))
+        return false;
+    if (transforming_is_unsafe(trans))
+        return false;
+    if (!i_feel_safe(true) && !yesno("Still begin transforming?", true, 'n'))
+    {
+        canned_msg(MSG_OK);
+        return false;
+    }
+
+    count_action(CACT_FORM, (int)trans);
+    start_delay<TransformDelay>(trans, &real_item);
+    if (god_despises_item(real_item, you.religion))
+        excommunication();
+    you.turn_is_over = true;
     return true;
 }
 
@@ -3239,6 +3510,10 @@ void tile_item_use(int idx)
     case OBJ_MISSILES:
         if (check_warning_inscriptions(item, OPER_FIRE))
             quiver::slot_to_action(idx)->trigger(); // TODO: anything more interesting?
+        return;
+
+    case OBJ_TALISMANS:
+        try_equip_item(item);
         return;
 
     case OBJ_WEAPONS:

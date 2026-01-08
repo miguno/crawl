@@ -78,6 +78,7 @@ static const char *daction_names[] =
     "upgrade ancestor",
     "remove Ignis altars",
     "cleanup Beogh vengeance markers",
+    "cleanup Bane of Mortality summons",
 };
 #endif
 
@@ -137,6 +138,9 @@ bool mons_matches_daction(const monster* mon, daction_type act)
                && mon->get_ench(ENCH_VENGEANCE_TARGET).degree
                   <= you.props[BEOGH_VENGEANCE_NUM_KEY].get_int();
 
+    case DACT_BANE_MORTALITY_CLEANUP:
+        return mon->was_created_by(MON_SUMM_MORTALITY);
+
     default:
         return false;
     }
@@ -179,7 +183,7 @@ void apply_daction_to_mons(monster* mon, daction_type act, bool local,
 {
     // Transiting monsters exist outside the normal monster list (env.mons or
     // env.mons for short). Be careful not to write them into the monster grid, by,
-    // for example, calling monster::move_to_pos on them.
+    // for example, calling monster::move_to() on them.
     // See _daction_hog_to_human for an example.
     switch (act)
     {
@@ -233,10 +237,8 @@ void apply_daction_to_mons(monster* mon, daction_type act, bool local,
         {
             simple_monster_message(*mon, " departs this earthly plane.");
             if (!in_transit)
-            {
-                check_place_cloud(CLOUD_BLACK_SMOKE, mon->pos(),
-                                                random_range(3, 5), nullptr);
-            }
+                place_cloud(CLOUD_BLACK_SMOKE, mon->pos(), random_range(3, 5), nullptr);
+
             // The monster disappears.
             monster_die(*mon, KILL_RESET, NON_MONSTER);
             break;
@@ -271,6 +273,10 @@ void apply_daction_to_mons(monster* mon, daction_type act, bool local,
         case DACT_BEOGH_VENGEANCE_CLEANUP:
             mon->del_ench(ENCH_VENGEANCE_TARGET);
             mon->patrol_point.reset();
+            break;
+
+        case DACT_BANE_MORTALITY_CLEANUP:
+            monster_die(*mon, KILL_RESET, NON_MONSTER);
             break;
 
         // The other dactions do not affect monsters directly.
@@ -337,6 +343,7 @@ static void _apply_daction(daction_type act)
     case DACT_BRIBE_TIMEOUT:
     case DACT_SET_BRIBES:
     case DACT_BEOGH_VENGEANCE_CLEANUP:
+    case DACT_BANE_MORTALITY_CLEANUP:
         for (monster_iterator mi; mi; ++mi)
         {
             if (mons_matches_daction(*mi, act))
@@ -445,13 +452,13 @@ static void _daction_hog_to_human(monster *mon, bool in_transit)
     *mon = orig;
 
     // If the hog is in transit, then it is NOT stored in the normal
-    // monster list (env.mons or env.mons for short). We cannot call move_to_pos
-    // on such a hog, because move_to_pos will attempt to update the
-    // monster grid (env.mgrid or env.mgrid for short). Since the hog is not
-    // stored in the monster list, this will corrupt the grid. The transit code
-    // will update the grid properly once the transiting hog has been placed.
+    // monster list (env.mons or env.mons for short). We cannot call move_to()
+    // on such a hog, because move_to() will attempt to update the
+    // monster grid (ie: env.mgrid). Since the hog is not stored in the monster
+    // list, this will corrupt the grid. The transit code will update the grid
+    // properly once the transiting hog has been placed.
     if (!in_transit)
-        mon->move_to_pos(pos);
+        mon->move_to(pos, MV_INTERNAL);
     // "else {mon->position = pos}" is unnecessary because the transit code will
     // ignore the old position anyway.
     mon->enchantments = enchantments;

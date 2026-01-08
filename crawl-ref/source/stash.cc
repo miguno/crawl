@@ -31,6 +31,7 @@
 #include "item-status-flag-type.h"
 #include "items.h"
 #include "libutil.h" // map_find
+#include "makeitem.h"
 #include "menu.h"
 #include "message.h"
 #include "notes.h"
@@ -226,6 +227,7 @@ static bool _grid_is_interesting(const coord_def& pos)
     const auto feat = env.grid(pos);
     if (feat_is_staircase(feat)
        || feat_is_escape_hatch(feat)
+       || feat_is_runed(feat)
        || (is_notable_terrain(feat)
             // Count shops as boring features, because they are
             // handled separately.
@@ -248,15 +250,6 @@ static bool _grid_is_interesting(const coord_def& pos)
         || trap == TRAP_GOLUBRIA
         || trap == TRAP_ALARM
         || trap == TRAP_SHAFT;
-}
-
-bool Stash::unmark_trapping_nets()
-{
-    bool changed = false;
-    for (auto &item : items)
-        if (item_is_stationary_net(item))
-            item.net_placed = false, changed = true;
-    return changed;
 }
 
 void Stash::update()
@@ -297,7 +290,10 @@ void Stash::update()
         ash_id_item(*si);
         maybe_identify_base_type(*si);
         if (!(si->flags & ISFLAG_UNOBTAINABLE))
+        {
+            lucky_upgrade_item(*si);
             add_item(*si);
+        }
 
         if ((si->base_type == OBJ_STAVES || si->flags & ISFLAG_COSMETIC_MASK)
             && !is_useless_item(*si))
@@ -764,14 +760,6 @@ bool LevelStashes::update_stash(const coord_def& c)
     return true;
 }
 
-bool LevelStashes::unmark_trapping_nets(const coord_def &c)
-{
-    if (Stash *s = find_stash(c))
-        return s->unmark_trapping_nets();
-    else
-        return false;
-}
-
 void LevelStashes::move_stash(const coord_def& from, const coord_def& to)
 {
     ASSERT(from != to);
@@ -1001,14 +989,6 @@ void StashTracker::move_stash(const coord_def& from, const coord_def& to)
 {
     if (LevelStashes *lev = find_current_level())
         lev->move_stash(from, to);
-}
-
-bool StashTracker::unmark_trapping_nets(const coord_def &c)
-{
-    if (LevelStashes *lev = find_current_level())
-        return lev->unmark_trapping_nets(c);
-    else
-        return false;
 }
 
 void StashTracker::remove_level(const level_id &place)
@@ -1819,10 +1799,7 @@ bool StashTracker::display_search_results(
             me->add_tile(tile_def(tileidx_feature_base(res.feat)));
         }
         else
-        {
-            const dungeon_feature_type feat = feat_by_desc(res.match);
-            me->add_tile(tile_def(tileidx_feature_base(feat)));
-        }
+            me->add_tile(tile_def(tileidx_feature_base(res.feat)));
 
         stashmenu.add_entry(me);
         hotkey++;

@@ -252,7 +252,12 @@ local function get_monster_info(dx,dy,no_move)
     -- firing can often be preempted by melee etc, but we have been called by
     -- CMD_AUTOFIRE, so force firing.
     -- TODO: refactor so that this is less hacky
-    info.attack_type = AF_FIRE
+    info.attack_type = you.see_cell_no_trans(dx,dy) and AF_FIRE or AF_FAILS
+  end
+
+  -- We can possibly move towards warded enemies, but not attack them while immune
+  if m:is_damage_immune() and m:is("warding") then
+    info.attack_type = AF_MOVES
   end
 
   if info.attack_type == AF_MOVES and not will_tab(0,0,dx,dy) then
@@ -261,8 +266,8 @@ local function get_monster_info(dx,dy,no_move)
   info.can_attack = (info.attack_type > 0) and 1 or info.attack_type
   info.safe = m:is_safe() and -1 or 0
   info.constricting_you = m:is_constricting_you() and 1 or 0
-  -- Only prioritize top-tier stabs: sleep, petrification, and paralysis.
-  info.very_stabbable = (m:stabbability() >= 1) and 1 or 0
+  info.good_stab = you.has_good_stab() and m:stabbability() or 0
+  info.poor_stab = (m:stabbability() >= 1) and 1 or 0
   info.injury = m:damage_level()
   info.threat = m:threat()
   info.orc_priest_wizard = (name == "orc priest" or name == "orc wizard") and 1 or 0
@@ -273,7 +278,9 @@ end
 local function compare_monster_info(m1, m2)
   flag_order = autofight_flag_order
   if flag_order == nil then
-    flag_order = {"bullseye_target", "can_attack", "safe", "distance", "constricting_you", "very_stabbable", "injury", "threat", "orc_priest_wizard"}
+    flag_order = {"bullseye_target", "can_attack", "safe", "good_stab",
+                  "distance", "constricting_you", "poor_stab", "injury",
+                  "threat", "orc_priest_wizard"}
   end
   for i,flag in ipairs(flag_order) do
     if m1[flag] > m2[flag] then
@@ -285,7 +292,7 @@ local function compare_monster_info(m1, m2)
   return false
 end
 
-local function is_candidate_for_attack(x,y)
+local function is_candidate_for_attack(x,y, no_move)
   m = monster.get_monster_at(x, y)
   --if m then crawl.mpr("Checking: (" .. x .. "," .. y .. ") " .. m:name()) end
   if not m then
@@ -300,6 +307,9 @@ local function is_candidate_for_attack(x,y)
     if string.find(m:name(), "ballistomycete") then
       return true
     end
+    return false
+  end
+  if m:is_damage_immune() and (no_move or not m:is("warding")) then
     return false
   end
   if m:attitude() == ATT_HOSTILE
@@ -317,7 +327,7 @@ local function get_target(no_move)
   best_info = nil
   for x = -los_radius,los_radius do
     for y = -los_radius,los_radius do
-      if is_candidate_for_attack(x, y) then
+      if is_candidate_for_attack(x, y, no_move) then
         new_info = get_monster_info(x, y, no_move)
         if (not best_info) or compare_monster_info(new_info, best_info) then
           bestx = x

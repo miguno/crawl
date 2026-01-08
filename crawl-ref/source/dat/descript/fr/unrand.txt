@@ -20,10 +20,6 @@ quiconque le possède en prune. Heureusement, la malédiction agit très lenteme
 et, une personne peut l'utiliser brièvement sans conséquence plus grave que
 d'obtenir une peau légèrement violette et quelques rides.
 %%%%
-Sword of Power
-
-Elle récompense les puissants par la puissance et les faibles par la faiblesse.
-%%%%
 Staff of Olgreb
 
 C'était l'arme magique portée par le puissant magicien Olgreb avant qu'il ne
@@ -141,7 +137,7 @@ crossbow "Hellfire"
 Une arbalète enflammée, forgée dans les feux des Enfers ; elle imprègne les
 carreaux qu'elle tire avec la puissance brute du même nom.
 %%%%
-sword of the Doom Knight
+sword of the Dread Knight
 
 Une grande épée d'adamantine.
 %%%%
@@ -315,7 +311,7 @@ celui d'un dragon.
 robe of Night
 
 Une longue robe noire faite d'un étrange matériau brillant. Selon la légende,
-elle fut le don de Ratri la déesse de la Nuit à un de ses fidèles.
+elle fut le don de Rutra la déesse de la Nuit à un de ses fidèles.
 %%%%
 scales of the Dragon King
 

@@ -247,6 +247,9 @@ enum class passive_t
 
     // Immunity to spectral mist clouds
     r_spectral_mist,
+
+    // Immunity to misery clouds
+    r_misery,
 };
 
 enum ru_interference
@@ -266,7 +269,7 @@ bool have_passive(passive_t passive);
 bool will_have_passive(passive_t passive);
 int rank_for_passive(passive_t passive);
 
-int chei_stat_boost(int piety = you.piety);
+int chei_stat_boost(int piety = you.piety());
 
 void jiyva_eat_offlevel_items();
 
@@ -284,7 +287,7 @@ void gozag_move_level_gold_to_top();
 void gozag_move_gold_to_top(const coord_def p);
 void gozag_count_level_gold();
 
-int qazlal_sh_boost(int piety = you.piety);
+int qazlal_sh_boost(int piety = you.piety());
 void qazlal_storm_clouds();
 void qazlal_element_adapt(beam_type flavour, int strength);
 
@@ -296,19 +299,19 @@ monster* dithmenos_get_player_shadow();
 monster* create_player_shadow(coord_def pos, bool friendly = true,
                               spell_type spell_known = SPELL_NO_SPELL);
 void dithmenos_shadow_melee(actor* target);
-void dithmenos_shadow_shoot(const dist &d, const item_def &item);
+void dithmenos_shadow_shoot(const coord_def& targ, const item_def* thrown_projectile = nullptr);
 void dithmenos_shadow_spell(spell_type spell);
 
 void uskayaw_prepares_audience();
 void uskayaw_bonds_audience();
 
-void wu_jian_trigger_serpents_lash(bool wall_jump, const coord_def& old_pos);
+void wu_jian_trigger_serpents_lash(bool wall_jump);
 void wu_jian_heaven_tick();
 void wu_jian_decrement_heavenly_storm();
 void wu_jian_end_heavenly_storm();
 monster *wu_jian_wall_jump_monster_at(const coord_def &pos);
 bool wu_jian_wall_jump_triggers_attacks(const coord_def &pos);
-bool wu_jian_wall_jump_effects();
+void wu_jian_wall_jump_effects();
 bool wu_jian_has_momentum(wu_jian_attack_type);
 bool wu_jian_post_move_effects(bool did_wall_jump,
                                const coord_def& initial_position);

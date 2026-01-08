@@ -30,7 +30,7 @@
 {{
 -- Functionality for some Grunt vaults.
 function grunt_ministairs_setup(e, hatches)
-  e.tags("luniq_generic_threat_stair")
+  e.tags("luniq_generic_threat_stair buniq_grunt_ministairs")
   if you.in_branch("Crypt") or you.in_branch("Zot") then
     e.shuffle("GT")
     if you.in_branch("Crypt") then
@@ -180,7 +180,7 @@ WEIGHT: 1
 KMONS:  12 = butterfly
 : door_vault_setup(_G)
 : if you.in_branch("D") or you.in_branch("Depths") or you.in_branch("Vaults") then
-FTILE:  12 = floor_lair
+FTILE:  12 = floor_grass_dark
 :   decorative_floor(_G, '12', "flower patch")
 : end
 MAP
@@ -334,8 +334,9 @@ ENDMAP
 
 NAME:   minmay_worlds_worst_comb
 TAGS:   transparent
-DEPTH:  D:1-2
-MONS:   giant cockroach / nothing
+DEPTH:  D:3-5
+MONS:   clockroach
+NSUBST: 1 = 1:1 / 1:. / * = 1.
 MAP
    ....
   ..xx.
@@ -349,23 +350,6 @@ MAP
  ..1xx.
   .xx..
   ....
-ENDMAP
-
-NAME:    nzn_masters_of_martial_movement
-TAGS:    no_pool_fixup no_monster_gen
-DEPTH:   Lair
-KFEAT:   D = altar_wu_jian
-KFEAT:   E = altar_uskayaw
-MONS:    patrolling boulder beetle
-SUBST:   W : W:50 w:40 l
-MAP
- x...@...x
-xxW.W.W.Wxx
-.W.W.W.W.W.
-@.W.D1E.W.@
-.W.W.W.W.W.
-xxW.W.W.Wxx
- x...@...x
 ENDMAP
 
 NAME:   nzn_sisyphean_effort
@@ -385,14 +369,14 @@ NAME:   hellmonk_scarab_ruin
 TAGS:   ruin
 DEPTH:  Crypt, Depths
 MONS:   death scarab band
-FTILE:  1.c = floor_sandstone
+FTILE:  .$1c = floor_sandstone
 TILE:   c = wall_tomb
-NSUBST: ' = 3 = 1.. / *:.
+NSUBST: ' = 2 = 1.. / *:.
 MAP
    ccccc
  ccc...ccc
-cc..c.c..cc
-ccc..1..ccc
+cc..c$c..cc
+ccc.$1$.ccc
 @...ccc...@
 ccc.....ccc
 c.ccc.ccc.c
@@ -455,6 +439,8 @@ ENDMAP
 NAME:    regret_index_collectors'_demense
 TAGS:    no_monster_gen vaults_room vaults_orient_s no_pool_fixup no_wall_fixup
 DEPTH:   D:5-, Swamp, Vaults, !Vaults:$, Depths
+SHUFFLE: ABCD
+SUBST:   AB : y, C : y., D : y., z : x., Z : x., c : cccct
 : if you.in_branch("D") then
 :   if you.depth() < 8 then
 MONS:    dart slug, ribbon worm, bombardier beetle / scorpion w:3
@@ -477,10 +463,13 @@ MONS:    boulder beetle / tarantella w:2, wolf spider
 MONS:    rakshasa / occultist
 NSUBST:  % = 1:d / 2 = *% / *:%
 :   end
+SUBST:   W = ., X = x
 : elseif you.in_branch("Swamp") then
 MONS:    hornet / vampire mosquito, swamp worm / tyrant leech
 MONS:    shambling mangrove, spriggan druid / fenstrider witch w:2
 NSUBST:  10 = 2:., % = 1:d / 1:dde / 1:| / 1:* / *:%
+NSUBST:  ' = 2:w / 2:tw / 2 = W. / *:W, " = 2 = tw / 2 = W. / *:W
+NSUBST:  x = 2:. / 2:t / *:x, X = 2:x / *:t
 TILE:    x = wall_brick_vines
 : elseif you.in_branch("Vaults") then
 MONS:    redback / boulder beetle / wolf spider w:2 / tarantella w:2
@@ -488,12 +477,14 @@ MONS:    swamp worm perm_ench:glowing_shapeshifter / \
          steelbarb worm perm_ench:glowing_shapeshifter
 MONS:    entropy weaver, ironbound preserver / necromancer
 NSUBST:  0 = 1:. / *:0, % = 1:ddde / 3:% / *:.
+CLEAR:   X
 : else -- Depths
 MONS:    orb spider perm_ench:glowing_shapeshifter / \
          swamp worm perm_ench:glowing_shapeshifter
 MONS:    spriggan rider, spark wasp
 MONS:    spriggan berserker / lich / alderking w:2
 NSUBST:  10 = 2:3 / 1:2, % = 1:| / 1:* / 1:e / * = *%%
+SUBST:   W = ., X = x
 : end
 ITEM:    throwing net q:1 no_pickup / rapier ego:venom no_pickup w:12 / \
          scimitar ego:venom no_pickup w:8 / \ any hex wand charges:8 no_pickup / \
@@ -504,18 +495,7 @@ ITEM:    throwing net q:2 no_pickup / quick blade ego:venom randart w:12 / \
          swamp dragon scales randart / potion of ambrosia q:2 w:3 pre_id / \
          potion of curing w:3 q:3 pre_id / hive talisman / \
          randbook numspells:6 spells:launch_clockwork_bee&&summon_forest w:6
-: if you.in_branch("Vaults") then
-SUBST:   "'@W = .
-CLEAR:   X
-: elseif you.in_branch("Swamp") then
-NSUBST:  ' = 2:w / 2:tw / 2 = W. / *:W, " = 2 = tw / 2 = W. / *:W
-NSUBST:  x = 2:. / 2:t / *:x, X = 2:x / *:t
-: else
-SUBST:   W = ., X = x
-: end
 KFEAT:   y = x
-SHUFFLE: ABCD
-SUBST:   AB : y, C : y., D : y., z : x., Z : x., c : cccct
 NSUBST:  0 = 3:1 / 2:2 / 1:3 / 1:. / * = 11223
 TILE:    y = wall_wax
 MAP
@@ -584,7 +564,7 @@ NAME:  minmay_rat_hole
 DEPTH: D:2-4
 MONS:  rat, quokka
 ITEM:  stone / nothing w:30
-KFEAT: C = cache of baked goods
+KFEAT: C = cache_of_baked_goods
 MAP
  xxx
 xxCx
@@ -621,7 +601,7 @@ xxxx+xxxxx...xxxxx+xxxx
 ENDMAP
 
 NAME:   goddamned_bats
-DEPTH:  D:3-5
+DEPTH:  D:4-5
 # Sadly, for size-based ones, only mega, micro and giga exist.  Lack of kilo
 # and tera is understandable, but come on, even mili is lacking.
 KMONS:  1 = bat name:megabat n_rpl n_des n_spe n_noc hd:2 tile:mons_megabat
@@ -630,14 +610,14 @@ KMONS:  4 = bat name:giga n_adj n_des n_spe n_noc hd:4 col:brown tile:mons_gigab
 # Way harder than the rest here.
 KMONS:  5 = vampire bat
 # In RL, they sit put, not moving a finger.  Lazy bastards.
-KMONS:  6 = bat skeleton name:skeletal_bat n_rpl n_des n_spe n_zom
+KMONS:  6 = bat draugr name:skeletal_bat n_rpl n_des n_spe n_zom ; dagger plus:-4
 # The only here without a basis in reality.
 KMONS:  7 = bat simulacrum name:ice_bat n_rpl n_des n_spe n_zom
 # There are actual "ghost bats" too, but near-extinct, while ghost-faceds
 # have a number of species and are widespread.
 KMONS:  8 = spectral bat name:ghost-faced_bat n_rpl n_des n_spe n_zom
 # Just an US WW2 military project, but that's good enough.
-KMONS:  9 = fire bat hd:1
+KMONS:  9 = fire bat
 KMONS:  0 = bat zombie name:rotten_bat n_rpl n_des n_spe n_zom
 # Correction, this one, added because of a tile, is not real as well.
 KMONS:  3 = bat name:phase n_adj n_des n_spe col:lightgreen \
@@ -739,28 +719,28 @@ TAGS:  no_monster_gen
 DEPTH: D:10-, Lair
 KMONS: p = plant w:30 / fungus
 : if you.in_branch("D") then
-:     if you.depth() < 13 then
+:   if you.depth() < 13 then
 MONS:  bullfrog / water moccasin / river rat / cane toad w:2 \
        / blink frog w:2 / komodo dragon w:2
 MONS:  vampire mosquito / swamp drake w:3
 # For earlier Dungeon and Lair, 50% chance of a Lair set or a Swamp set.
 SUBST: 1 : 12
-:     else
+:   else
 # For post-Lair Dungeon, always use the Swamp set.
-MONS:  vampire mosquito / swamp drake w:2 / swamp dragon w:3 / hydra w:3 \
-       / will-o-the-wisp w:2
-:     end
+MONS:  vampire mosquito / swamp drake w:2 / swamp dragon w:3 / hydra w:3 / \
+       will-o-the-wisp w:2
+:   end
 # Lair
 : else
-:     if you.depth() < 4 then
-MONS:  bullfrog / water moccasin / river rat / blink frog / cane toad \
-       / komodo dragon
+:   if you.depth() < 4 then
+MONS:  bullfrog / water moccasin / river rat / blink frog / cane toad / \
+       komodo dragon
 MONS:  vampire mosquito / swamp drake w:3 / swamp dragon w:1 / hydra w:1
-:     else
+:   else
 MONS:  blink frog / cane toad / komodo dragon / torpor snail w:5
 MONS:  vampire mosquito / swamp drake w:3 / swamp dragon w:2 / hydra w:2 \
        / will-o-the-wisp w:1
-:     end
+:   end
 SUBST: 1 : 12
 : end
 SUBST: ! : w., 1 = 1., 2 = 2., . = . p:1
@@ -801,6 +781,7 @@ KMONS:   1 = hell knight
 KMONS:   2 = hellion / balrug
 KMONS:   3 = hellephant
 NSUBST:  2 = 2=1 / 23 / 3
+:  vaults_hard_standard(_G)
 : elseif you.in_branch("Crypt") then
 KMONS:   1 = hell knight
 KMONS:   2 = hellion / balrug
@@ -895,13 +876,16 @@ TAGS:   transparent
 DEPTH:  D:12-, Depths, Elf, Snake
 WEIGHT: 5
 MONS:  patrolling guardian serpent
-: local b = crawl.random2(10)
-: if b > 7 then
-ITEM:  any good_item / any mimic
-: elseif b > 1 then
-ITEM:  any good_item w:1 / any mimic w:3
-: else
-ITEM:  any mimic
+: if you.in_branch("Depths") then
+KMONS:  D = quicksilver dragon
+KITEM:  D = $ q:55 / barding good_item w:5
+NSUBST: d = 1:D / *:d
+: end
+ITEM:  any good_item / any mimic, any good_item w:1 / any mimic w:3, any mimic
+: if crawl.x_chance_in_y(3, 5) then
+SUBST: d = e
+: elseif crawl.one_chance_in(2) then
+SUBST: d = f
 : end
 MAP
 ...........
@@ -917,12 +901,12 @@ ENDMAP
 NAME:   minmay_serpent_palace
 TAGS:   no_monster_gen no_item_gen transparent
 DEPTH:  Depths
-MONS:   naga w:1 / salamander w:1 / naga warrior w:8 / naga mage w:4
-MONS:   nagaraja / guardian serpent, water moccasin w:5 / black mamba
+MONS:   salamander w:2 / naga ritualist w:8 / naga mage w:4
+MONS:   nagaraja / guardian serpent, salamander mystic / salamander tyrant
 MONS:   mana viper w:5 / anaconda / anaconda simulacrum w:5 / sea snake
 MONS:   lindwurm, quicksilver dragon
 SUBST:  c : cv
-NSUBST: 3 = 1:6 / 3:3 / 5:4 / 8 = 344... / *:.
+NSUBST: 3 = 1:6 / 2:3 / 5:4 / 8 = 444... / *:.
 NSUBST: 2 = 1:6 / *:2, 1 = 1:2 / 1:12 / 4:. / *:11.
 KMASK:  5 = opaque
 MAP
@@ -1128,7 +1112,7 @@ TAGS:    patrolling no_monster_gen transparent
 TAGS:    layout_rooms layout_corridors
 DEPTH:   D:11-
 MONS:    rat, bat, frilled lizard, dart slug, endoplasm
-MONS:    giant cockroach, jackal
+MONS:    clockroach, jackal
 KMONS:   8 = ball python / adder w:8
 KMONS:   A = river rat
 KMONS:   B = vampire bat / fire bat w:8
@@ -1272,10 +1256,10 @@ NAME:   wander_ebering_terrifying_dragon_lair
 TAGS:   no_monster_gen
 DEPTH:  D:1-3
 MONS:   frilled lizard
-NSUBST:  $ = $ / 4=$.. / *:.
-NSUBST:  D = 3:d / 3=d.. / *:.
-NSUBST:  E = e / 2=e. / .
-ITEM:    human skeleton
+ITEM:   human skeleton
+NSUBST: $ = $ / 4=$.. / *:.
+NSUBST: D = 3:d / 3=d.. / *:.
+NSUBST: E = e / 2=e. / .
 : dgn.delayed_decay(_G, 'e', 'human corpse')
 MAP
    xxxxx
@@ -1384,7 +1368,7 @@ KITEM:  s = | w:70 / gold good_item
 KITEM:  S- = any armour randart / any weapon randart / any jewellery randart
 KMONS:  Q = three-headed hydra
 KMONS:  R = nine-headed hydra
-KMONS:  S = the Lernaean Hydra
+KMONS:  S = Lernaean Hydra
 KFEAT:  $%*|PQRS`s- = . / W w:5
 KFEAT:  t = mangrove
 NSUBST: O = s / O
@@ -1408,9 +1392,9 @@ ENDMAP
 NAME:   tekkud_yamata_no_oroachi
 TAGS:   no_monster_gen
 DEPTH:  D:12-, !D:$, Lair, !Lair:$
-MONS:   eight-headed hydra, patrolling giant cockroach, plant
+MONS:   eight-headed hydra, patrolling clockroach, plant
 ITEM:   long sword good_item / scimitar good_item w:6, human skeleton
-KFEAT:  C = cache of fruit
+KFEAT:  C = cache_of_fruit
 SUBST:  ` = @'''', ' = x', " = x.
 NSUBST: . = 4:2 / *:.
 CLEAR:  '
@@ -1500,10 +1484,9 @@ ENDMAP
 # Sigmund has been educating the oppressed masses in guerrilla warfare.
 NAME:    sigmund_army
 DEPTH:   D:4-7
-: local s = "halberd itemname:scythe tile:wpn_scythe wtile:scythe . robe"
-: mons("gnoll ; " .. s)
-: mons("hobgoblin ; " .. s)
-: mons("orc ; " .. s)
+: mons("gnoll ; " .. scythe() .. " . robe")
+: mons("hobgoblin ; " .. scythe() .. " . robe")
+: mons("orc ; " .. scythe() .. " . robe")
 MONS:    Sigmund
 SUBST:   n = 1:20 n:5
 SHUFFLE: x+1 / x+1 / x+1 / y-5
@@ -1702,9 +1685,7 @@ KITEM:   e = rat skeleton
 KITEM:   f = frilled lizard skeleton
 MONS:    rat / frilled lizard
 KFEAT:   m = iron_grate
-MARKER:  P = lua:fog_machine { cloud_type = "flame", \
-             pow_min = 1000, pow_max = 1000, delay = 1, \
-             size = 1, walk_dist = 0, start_clouds = 1, excl_rad = 0 }
+: single_cloud(_G, "P", "flame", false)
 MARKER:  P = lua:fog_machine { cloud_type = "grey smoke", \
              pow_min = 3, pow_max = 3, delay = 100, \
              size = 1, walk_dist = 1, start_clouds = 1 }
@@ -1746,6 +1727,7 @@ SUBST:  * = %, G : GG.
 : end
 NSUBST: A = 2 = 122 / *:2, B = 2 = 122 / *:2
 : decorative_floor(_G, 'F', "orcish standard")
+: vaults_hard_standard(_G)
 MAP
 ..................
 .wwwwwww..wwwwwww.
@@ -1771,11 +1753,7 @@ KMONS:  2 = generate_awake merfolk impaler ; trident ego:distortion w:5 | \
                                              trident ego:draining . robe
 KITEM:  > = |
 KFEAT:  > = escape_hatch_down
-MARKER: ! = lua:fog_machine { \
-                cloud_type = "foul pestilence", \
-                pow_min = 100, pow_max = 100, delay = 10, \
-                size = 1, walk_dist = 0, start_clouds = 1 \
-            }
+: single_cloud(_G, "!", "foul pestilence", true)
 SUBST:  ! = .
 MAP
 ccccccccccc
@@ -1801,7 +1779,7 @@ ITEM:    randbook numspells:3 title:Forking_Paths owner:Ts'ui_Pên \
 ITEM:    randbook numspells:2 title:Sand
 KITEM:   % = any potion
 KFEAT:   ^ = shaft trap
-KFEAT:   % = cache of baked goods
+KFEAT:   % = cache_of_baked_goods
 : if you.branch() == "D" and you.depth() < 12 then
 NSUBST:  1 = 1:. / *:1
 : else
@@ -1871,7 +1849,7 @@ NAME:   centaur_isle
 TAGS:   no_monster_gen no_pool_fixup no_rotate no_descent
 DEPTH:  D:6-12, Shoals
 MONS:   centaur, yaktaur, faun, centaur warrior
-KFEAT:  d = cache of baked goods
+KFEAT:  d = cache_of_baked_goods
 : if you.absdepth() > 11 then
 NSUBST: 1 = 1:4 / 2:33 / * = 123
 : end
@@ -1911,7 +1889,7 @@ NSUBST: ' = 1:6 / 1:% / *:1, 1 = 3:2 / * = 25..
 : else
 NSUBST: ' = 1:6 / 1:%* / 1:. / *:1, 1 = 2:3 / * = 223.
 : end
-FTILE:  .t123456%@ = floor_moss
+FTILE:  .t123456%*@ = floor_moss
 MAP
 ttttt       tttt@t
 tttttt tt ttttt1tt
@@ -1977,6 +1955,7 @@ ITEM:   potion of enlightenment pre_id q:3
 KFEAT:  ' = floor
 KMASK:  .123*< = opaque
 KPROP:  .123*< = no_tele_into
+TILE:   c = wall_stone_scorched
 MAP
 '''''''''''''''
 'ccccccccccccc'
@@ -2008,11 +1987,10 @@ KFEAT:  _ = altar_trog
 SUBST:  C : c', B : +', D : +', E : +c
 SUBST:  F = ccc+
 COLOUR: # = red
-FTILE:  *|_1+'c = floor_hall
+FTILE:  *|_1'c = floor_sprouting_squares
+FTILE:  +t = floor_moss
 FTILE:  # = floor_rough_lightred
-MARKER:  # = lua:fog_machine { cloud_type = "flame", \
-                pow_min = 10, pow_max = 10, delay = 10, \
-                size = 1, walk_dist = 0, start_clouds = 1, excl_rad = 0 }
+: single_cloud(_G, "#", "flame", false)
 SUBST:  '# = .
 MAP
 .................
@@ -2081,7 +2059,7 @@ NAME:    hangedman_summoners_spam
 TAGS:    no_monster_gen patrolling
 DEPTH:   Depths, Elf, Crypt, Abyss
 MONS:    boggart, orc high priest, kobold demonologist
-MONS:    shadow demon, deep elf demonologist, vampire mage
+MONS:    shadow demon, deep elf demonologist, glowing orange brain, vampire mage
 KMONS:   8 = mummy priest
 ITEM:    book of callings w:5 / book of the wilderness w:20 / \
          grand grimoire w:5 / randbook disc:summoning numspells:6
@@ -2094,6 +2072,7 @@ KITEM:   _ = any ally scroll pre_id, any ally scroll pre_id / nothing
 KFEAT:   _ = altar_sif_muna
 KFEAT:   ? = altar_lugonu
 KFEAT:   < = exit_abyss
+KFEAT:   C = c
 KMASK:   "'@ = !no_monster_gen
 SHUFFLE: 12, 34, 12 / 34
 NSUBST:  ' = 1:@ / * = .@
@@ -2105,11 +2084,12 @@ SUBST:   %efg = $, * = <, _ = ?
 SUBST:   5 = 7, 6 = 8
 : else
 SHUFFLE: 56 / 78
+TILE:    C = wall_stone_magic_shelf
 : end
 MAP
 ccccccccccccccc
-c24c5de6fd5c32c
-c%%c*g...g*c%2c
+c24C5de6fd5C32c
+c%%C*g...g*C%2c
 c..cccc+cccc..c
 c.............c
 c%cG..%_%..Gc%c
@@ -2140,6 +2120,7 @@ COLOUR:  F = red
 SUBST:   7 = &
 : end
 FTILE:   F = floor_pebble_lightred
+TILE:    c = wall_stone_magic_shelf
 {{
   local fog = chained_fog_machine {
                             cloud_type = 'flame', pow_min = 6, pow_max = 6,
@@ -2150,7 +2131,7 @@ FTILE:   F = floor_pebble_lightred
 MAP
 @@xxxxxxxxxxx
 ..xxxxxxxxxxx
-.5xx1xx2xxxxx
+.5xx1xx2xxcxx
 .5xx++++xx9xx
 ..x..60..xexx
 ..x.F..F.x+xx
@@ -2159,7 +2140,7 @@ MAP
 ..x.F..F.x+xx
 ..x..60..xdxx
 .5xx++++xx8xx
-.5xx3xx4xxxxx
+.5xx3xx4xxcxx
 ..xxxxxxxxxxx
 @@xxxxxxxxxxx
 ENDMAP
@@ -2253,6 +2234,7 @@ DEPTH:   Depths
 MONS:    fire giant, frost giant, titan
 SHUFFLE: 12
 KMASK:   l = no_monster_gen
+FTILE:   =.123*|+ = floor_mystic_chasm
 MAP
 bbbbbbbbbbb
 b.......bbb
@@ -2264,7 +2246,7 @@ b.l2b.....b
 b.bbbb.3..b
 b.b**+....b
 b=b|*bbbbbb
-.@nbbbbbbbb
+'@nbbbbbbbb
 ENDMAP
 
 NAME:   lightli_church_of_beogh
@@ -2291,6 +2273,7 @@ SUBST:  4 = 9, 5 = 990, 1 = 3
 NSUBST: 0 = 1:8 / 1:893 / 2:3 / 2:6 / 2 = 30. / *:.
 SUBST:  C- = ., c = x, * = *%
 :   decorative_floor(_G, 'D', "orcish standard")
+FTILE:  .+_%*D3456098I = floor_metal_gold
 : end
 MAP
 ccccccccccccccccccccC
@@ -2310,8 +2293,8 @@ DEPTH:  D:6-11, Orc, Vaults
 WEIGHT: 5 (Vaults), 10
 MONS:   orc warrior, orc, orc warlord, orc knight w:14 / lindwurm w:1
 KITEM:  d = stone q:1 no_pickup
-KFEAT:  e = cache of meat
-KFEAT:  f = cache of baked goods
+KFEAT:  e = cache_of_meat
+KFEAT:  f = cache_of_baked_goods
 : if you.in_branch("Vaults") then
 SUBST:  1 = 3, 2 = 4, @ = ., d = f, g = h
 : else
@@ -2337,7 +2320,8 @@ TAGS:     vaults_hard vaults_orient_s no_monster_gen patrolling
 DEPTH:    Depths, Vaults, !Vaults:$
 : if you.in_branch("Vaults") then
 MONS:     lich, arcanist / ogre mage / deep elf annihilator, tengu reaver
-SUBST:    c : vvb, @ = .
+SUBST:    c : vvb, @' = .
+:  vaults_hard_standard(_G)
 : else
 MONS:     lich, occultist / tengu conjurer / nagaraja, tengu reaver
 NSUBST:   ' = 1:2 / 1:2. / *:.
@@ -2376,20 +2360,22 @@ MONS:    kobold fleshcrafter w:40 / tengu conjurer w:20 / \
 ITEM:    book of annihilations, book of power, book of conjurations
 ITEM:    randbook disc:conjuration, staff of conjuration
 KFEAT:   _ = altar_vehumet
+KFEAT:   z = c
 SHUFFLE: efgh
+: tile("z = " .. crackle_def(_G))
 MAP
    xxxxxxxxxxx
-  xxcccccccccxxxxxxxxx
+  xxczccccczcxxxxxxxxx
   xcc2ccccc2cccccccccxx
   xc.c.ccc.c.ccbbbbbccx
  @xc.c.ccc.c.cbbe.fbbcx
-.3.c.c.ccc.c.cb.2...bcx
+.3.c.c.czc.c.cb.2...bcx
 @U..3.3...3.3.=.._1dbcx
-.3.cccc.c.ccccb.2...bcx
+.3.cczc.c.czccb.2...bcx
  @xcccc.c.ccccbbg.hbbcx
   xcccc.c.cccccbbbbbccx
   xccccc2ccccccccccccxx
-  xxcccccccccxxxxxxxxx
+  xxcccczccccxxxxxxxxx
    xxxxxxxxxxx
 ENDMAP
 
@@ -2416,8 +2402,8 @@ MONS:    plant / bush
 KMONS:   S = Sigmund
 KMONS:   E = Edmund
 KITEM:   ( = flail / any armour
-KITEM:   s = halberd itemname:scythe tile:wpn_scythe wtile:scythe / robe
-KFEAT:   F = cache of meat / cache of fruit
+: kitem("s = " .. scythe() .. " / robe")
+KFEAT:   F = cache_of_meat / cache_of_fruit
 SHUFFLE: SE, 1' / 'F
 NSUBST:  S = 1:S / *:., E = 1:E / *:., 1 = 1:1 / * = 1.
 SUBST:   ' = .
@@ -2445,12 +2431,13 @@ KFEAT: S = shaft trap
 : if you.depth() > 2 then
 SUBST: 1 = 2
 : end
+TILE:  c = wall_stone_magic_shelf
 MAP
 ...@...
 ..P.P..
 xxx+xxx
 x%+...x
-xxx1.1x
+xcx1.1x
 xS+.3.x
 xxxxxxx
 ENDMAP
@@ -2486,17 +2473,19 @@ ENDMAP
 NAME:  lightli_wizard_tower
 TAGS:  no_monster_gen patrolling
 DEPTH: D:9-
-MONS:  crimson imp, arcanist, occultist
+MONS:  crimson imp / drude w:2, arcanist, occultist
 ITEM:  any book, any scroll
 : if you.depth() > 11 then
 SUBST: 2 = 23
 : end
+SUBST: c : c.
+TILE:  c = wall_stone_magic_shelf
 MAP
    bbbb
   bbdebb
  bb....bb
 bb......bb
-b...12...b
+b.c.12.c.b
 b........b
 bb......bb
  bb....bb
@@ -2555,7 +2544,7 @@ ENDMAP
 # Very hungry Elvish explorers and their campfire, mounts and pet.
 # Sometimes they have starved to death.
 NAME:   beargit_elvish_explorers
-DEPTH:  D:12-, Depths, Swamp, Snake, Spider, Crypt
+DEPTH:  D:12-, Depths, Crypt
 TAGS:   transparent patrolling no_monster_gen no_trap_gen
 : if you.in_branch("D") then
 :     if you.depth() < 14 then
@@ -2570,14 +2559,6 @@ MONS:   deep elf knight; lajatang good_item . scale mail good_item
 MONS:   elephant / dire elephant, warg / hell hound / raiju
 :     end
 MONS:   plant / fungus, nothing
-: elseif you.in_branch("Swamp") or you.in_branch("Spider")
-:        or you.in_branch("Snake") then
-MONS:   deep elf archer; longbow good_item . quarterstaff \
-            . robe good_item
-MONS:   deep elf knight; lajatang good_item . chain mail good_item
-MONS:   dire elephant
-MONS:   hell hound / raiju
-MONS:   fungus / nothing, nothing
 : elseif you.in_branch("Crypt") then
 KITEM:  1 = longbow good_item, quarterstaff, robe good_item
 KITEM:  2 = lajatang good_item, chain mail good_item
@@ -2587,6 +2568,7 @@ KMONS:  3 = spectral hellephant
 KMONS:  4 = spectral shadow dragon
 KMONS:  6 = deep elf death mage w:30 / vampire mage / \
             lich / ancient lich / dread lich
+KITEM:  P = rat skeleton
 SUBST:  5 = -
 : else
 # The elves have mastered the dungeon and allied with the darkness.
@@ -2603,22 +2585,14 @@ COLOUR: t = brown
 TILE:   t = dngn_tree_dead
 : set_feature_name("tree", "dead tree")
 FTILE:  - = floor_crypt
-: elseif you.in_branch("Swamp") then
-SUBST:  - = --....W, x = t
-FTILE:  -123456t = floor_grass
-: elseif you.in_branch("Spider") then
-SUBST:  t = x
 : else
-FTILE:  -123456t = floor_grass
+FTILE:  -123456t = floor_grass_dark
 FTILE:  P = floor_sand
 : end
-MARKER: P = lua:fog_machine { cloud_type = "flame", \
-            pow_min = 1000, pow_max = 1000, delay = 1, \
-            size = 1, walk_dist = 0, start_clouds = 1, excl_rad = 0 }
+: single_cloud(_G, "P", "flame", true)
 MARKER: P = lua:fog_machine { cloud_type = "grey smoke", \
             pow_min = 3, pow_max = 3, delay = 100, \
             size = 1, walk_dist = 1, start_clouds = 1 }
-KITEM:  P = rat skeleton
 MAP
     xx.@.xxx
     xt----tx
@@ -2647,10 +2621,10 @@ ENDMAP
 
 NAME:   the_bakery
 DEPTH:  D:7-14
-MONS:   spriggan col:white name:baker n_suf ; robe . dagger
+MONS:   spriggan col:white name:baker n_suf n_noc ; robe . dagger
 # It's a chef's hat. Maybe we should get a tile for that?
 ITEM:   hat
-KFEAT:  e = cache of baked goods
+KFEAT:  e = cache_of_baked_goods
 : if crawl.one_chance_in(8) then
 SUBST:  = = +
 :   dgn.delayed_decay(_G, 'f', 'spriggan name:baked n_adj n_spe n_des corpse')
@@ -2670,7 +2644,7 @@ TAGS:   no_monster_gen no_pool_fixup patrolling
 DEPTH:  D:9-14
 KMONS:  A = merfolk ; spear
 ITEM:   throwing net / spear
-KFEAT:  % = cache of meat
+KFEAT:  % = cache_of_meat
 KFEAT:  e = shallow_water
 :       dgn.delayed_decay(_G, 'e', 'electric eel corpse')
 MAP
@@ -2697,11 +2671,9 @@ DEPTH:  D:7-14
   end
 }}
 ITEM:   throwing net
-KFEAT:  % = cache of meat
+KFEAT:  % = cache_of_meat
 KITEM:  g = orc skeleton / human skeleton / elf skeleton / dwarf skeleton
-MARKER: O = lua:fog_machine { cloud_type = "flame", pow_min = 10, \
-                              pow_max = 10, delay = 10, size = 1, \
-                              walk_dist = 0, excl_rad = 0 }
+: single_cloud(_G, "O", "flame", false)
 MAP
  xxxxx
 xxxxxxx
@@ -2722,7 +2694,7 @@ DEPTH:    D:5-11
 MONS:     kobold brigand ; wand of flame pre_id . short sword . \
                            dart ego:poisoned | dart ego:curare w:5
 ITEM:     potion of moonshine w:50 pre_id / potion of ambrosia pre_id
-KFEAT:    e = cache of fruit
+KFEAT:    e = cache_of_fruit
 SUBST:    e : e.
 : decorative_floor(_G, 'V', "floral vase")
 MAP
@@ -2782,7 +2754,7 @@ NSUBST: - = 2 / -
 : end
 NSUBST: - = 1 / p```
 SUBST:  P = pp`, . = ...`
-FTILE:  `p12 = floor_grass
+FTILE:  `p12 = floor_grass_dark
 MAP
  .......
 ..PPPPP..
@@ -2833,8 +2805,7 @@ NSUBST: . = 2=1 / 3=1. / 2 / 1=2. / .
 KMONS:  p = fungus
 COLOUR: pc = brown
 FTILE:  p' = floor_mud
-MARKER: ! = lua:fog_machine { cloud_type='flame', pow_min = 10, pow_max = 10, \
-                              delay = 10, size = 1, excl_rad = 0 }
+: single_cloud(_G, "!", "flame", false)
 MAP
 ..............
 .pppppp.ccccc.
@@ -2873,9 +2844,9 @@ NSUBST: . = 2=1 / 3=1. / .
 MARKER: A = lua:fog_machine { cloud_type='rain', pow_min = 10, \
                               pow_max = 10, delay = 10, size = 1 }
 : else
-MARKER: A = lua:fog_machine { cloud_type='thunder', pow_min = 10, \
-                              pow_max = 10, delay = 10, size = 1 }
+:   single_cloud(_G, "A", "thunder", false)
 : end
+FTILE: .1A = floor_pebble_cyan
 MAP
  ...
 .....
@@ -2951,8 +2922,11 @@ ITEM:    manual of maces & flails / manual of axes / manual of polearms / \
 ITEM:    great mace randart / battleaxe randart / glaive randart / \
          lajatang randart / rapier randart / great sword randart
 KITEM:   C = wand of digging charges:1
+# Autoexplore will stop to look at a mediocre non-mundane weapon,
+# so players with instant autoexplore can see they've entered a vault.
+KITEM:   ? = mace good_item / falchion good_item
 SHUFFLE: 23 / 45 / 67 / 89, fi / gh
-FTILE:   `"C23456789defghixn+ = floor_sand
+FTILE:   `"C23456789defghi?xn+ = floor_sand
 KMASK:   13579defghi = opaque
 KPROP:   13579defghi = no_tele_into
 MAP
@@ -2963,7 +2937,7 @@ MAP
   .+```v```nddv
  ..+```+``2nddvv
  ..v```+```nddfv
-@..v```+``Cxxxxv
+@..v`?`+``Cxxxxv
  ..v```+```neeiv
  ..+```+``4neevv
   .+```v```neev
@@ -3029,7 +3003,7 @@ NSUBST: 1 = 12:1 / 4 = 12. / *:.
 TILE:   G = dngn_statue_depths_zot_tentacles
 : end
 ITEM:   throwing net q:1, javelin
-KFEAT:  B = cache of baked goods
+KFEAT:  B = cache_of_baked_goods
 MARKER: G = lua:fog_machine { cloud_type='translocational energy',  \
                               pow_min = 7, pow_max = 10, delay = 50, \
                               size = 4, walk_dist = 1 }
@@ -3359,29 +3333,30 @@ xxxxxxxxxxxxxxxxxxxx
 ENDMAP
 
 NAME:   hangedman_tell_no_tales
-DEPTH:  D:9-, !D:$
 TAGS:   no_monster_gen no_item_gen patrolling
-MONS:   spriggan skeleton
-MONS:   troll skeleton
+DEPTH:  D:11-, !D:$
+MONS:   spriggan draugr, troll draugr
 KMONS:  A = unseen horror
+KFEAT:  def = cache_of_baked_goods
 SUBST:  D : DDDDE
 NSUBST: D = 1 = A:4 .:1 / 2:d / 2:e / 1:1, E = 2:d / 2:e / 2:1
 KPROP:  def = bloody
 MAP
  cccccccccc
-ccxx1x1+DDc
+ccxx+x1+DDc
 c.x.x..mDDc
 @.d.x2.mDDc
 c.x.x..cc+c
-ccxx1x.c1fc
+ccxx+x1c*fc
  cccccccccc
 ENDMAP
 
 NAME:   hangedman_weighted_door
 TAGS:   extra
 DEPTH:  D:9-, Crypt
-MONS:   zombie / skeleton
-KMONS:  A = spectral thing / simulacrum
+MONS:   zombie / simulacrum
+KMONS:  A = spectral thing
+KMONS:  P = pile of debris
 KITEM:  A = any good_item
 KMASK:  .%* = no_monster_gen
 KITEM:  * = star_item
@@ -3392,18 +3367,20 @@ cccc cccc
 c11ccc%*c
 c11cAc$%c
 cn+++++nc
-c@.....@c
+cPPPPPPPc
+c@..$..@c
 ENDMAP
 
 NAME:   hangedman_blasphemy
 TAGS:   no_monster_gen vaults_hard
 DEPTH:  Vaults, !Vaults:$, Crypt
-MONS:   phantasmal warrior, apis skeleton, pearl dragon zombie
+MONS:   phantasmal warrior, apis draugr, pearl dragon zombie
 MONS:   patrolling profane servitor, death knight
 COLOUR: t = brown, c = white
 FTILE:  t' = floor_pebble_brown
 : if you.in_branch("Vaults") then
 SUBST:  @ = .
+FTILE:  .1234V$%* = floor_metal_gold
 CLEAR:  X
 : else
 SUBST:  X = x
@@ -3411,9 +3388,7 @@ SUBST:  X = x
 TILE:   G = dngn_statue_angel
 TILE:   t = dngn_tree_dead, c = wall_stone_gray
 KFEAT:  _ = altar_yredelemnul
-MARKER: _ = lua:fog_machine { cloud_type = "foul pestilence", \
-                              pow_min = 5, pow_max = 10, delay = 30, \
-                              size = 1, walk_dist = 0, excl_rad = 0 }
+: single_cloud(_G, "_", "foul pestilence", true)
 : decorative_floor(_G, 'V', "broken floral vase")
 TILE:   V = dngn_flower_pot_broken / dngn_dark_flower_pot_broken
 : set_feature_name("tree", "dead tree")
@@ -3443,7 +3418,7 @@ WEIGHT:  5
 MONS:    obsidian statue, lesser demon, common demon
 MONS:    efreet / large abomination / rakshasa
 MONS:    shadow demon / green death / blizzard demon / balrug / cacodemon / \
-         sin beast / hellion / reaper / tormentor
+         sin beast / hellion / reaper / tormentor / zykzyl w:2
 KITEM:   | = superb_item / any good_item / randbook disc:summoning w:5
 : if you.in_branch("Depths") then
 SUBST:   2 = 3, 4 = 5, v = c
@@ -3474,7 +3449,7 @@ NAME:    hangedman_batty
 TAGS:    patrolling no_monster_gen no_item_gen
 DEPTH:   D:11-, Crypt, !Crypt:$
 WEIGHT:  5
-MONS:    bat, phantom, vampire, unseen horror
+MONS:    vampire bat, phantom, vampire, unseen horror
 MONS:    phantasmal warrior, vampire knight, jiangshi
 KMONS:   8 = vampire bloodprince
 KFEAT:   8 = fountain_blood
@@ -3523,6 +3498,7 @@ SUBST:   @ = ., - = |||*d
 NSUBST:  1 = 1:2 / 2:1 / *:.
 TILE:    x = wall_undead
 FTILE:   `?VY = floor_w_marble
+FTILE:   .12dDE*| = floor_metal_gold
 : elseif not you.in_branch("D") then
 :   if you.in_branch("Depths") then
 MONS:    vampire mage / chonchon w:3
@@ -3572,6 +3548,7 @@ NSUBST:  D = 2=1 / ., E = 2=1 / .
 : if you.in_branch("D") then
 SUBST:   1 = 1..
 : end
+FTILE:   .{[(1G = floor_mystic_chasm
 MAP
 xxxxxxxxxxxxxxxxx
 xGD..D..1..E..EGx
@@ -3587,41 +3564,62 @@ ENDMAP
 # Another NetHack-inspired vault, based on the top floor of Vlad's Tower.
 NAME:  nicolae_nh_vlads_tower
 TAGS:  transparent patrolling
-DEPTH: D:11-, Crypt
-KITEM: | = |
-KITEM: _ = * / sanguine talisman
-KITEM: 1 = %
-: if you.absdepth() < 13 then
-KMONS: _ = vampire mage
-KMONS: 1 = vampire
+DEPTH: D:10-, Crypt
+: if you.in_branch("D") then
+:   if you.absdepth() < 12 then
+KMONS:  _ = vampire
+KMONS:  1 = vampire bat
+:   elseif you.absdepth() < 14 then
+KMONS:  _ = vampire mage
+KMONS:  1 = vampire
+:   else
+KMONS:  _ = vampire mage / vampire knight
+KMONS:  1 = vampire / jiangshi
+:   end
+TILE:   c = dngn_stone_wall_darkgray
+NSUBST: z = 2:yzz / *:y
 : else
-KMONS: _ = vampire mage / vampire knight
-KMONS: 1 = vampire / jiangshi
+KMONS:  _ = vampire bloodprince
+KMONS:  1 = vampire mage / vampire knight / jiangshi
+SUBST:  c = v
 : end
-KFEAT: _ = altar_dithmenos / altar_kikubaaqudgha / altar_makhleb / \
-           altar_yredelemnul
+KITEM:  | = |
+KITEM:  _ = * / sanguine talisman
+KITEM:  1 = %
+KFEAT:  yz = c
+KFEAT:  _ = altar_dithmenos / altar_kikubaaqudgha / altar_makhleb / \
+            altar_yredelemnul
+TILE:   y = dngn_stone_wall_red
+TILE:   z = wall_stone_magic_shelf
 MAP
 xxxxxxxxxxxxxxxxx
-xxxcccxcccxcccxxx
+xxxczcxczcxczcxxx
 xxxc1cxc1cxc1cxxx
 xccc+ccc+ccc+cccx
 xc.......+.+...cx
 xccc+ccccc.ccc+cx
-xxxc..._|c.+1c..@
+xxxc..._|y.+1c..@
 xccc+ccccc.cccccx
 xc.......+.+...cx
 xccc+ccc+ccc+cccx
 xxxc1cxc1cxc1cxxx
-xxxcccxcccxcccxxx
+xxxczcxczcxczcxxx
 xxxxxxxxxxxxxxxxx
 ENDMAP
 
 NAME:   nicolae_demonic_statue_gallery
 TAGS:   transparent
-DEPTH:  D:9-12
+DEPTH:  D:9-13
 KMONS:  5 = lesser demon
-KMONS:  4 = common demon
-NSUBST: D = 2=4 / 2=45 / 2=5 / .5
+KMONS:  4 = orange demon / hellwing / ice devil / \
+            rust devil / red devil / chaos spawn
+KMONS:  3 = soul eater / sun demon / sixfirhy / \
+            smoke demon / neqoxec / ynoxinul
+: if you.depth() > 11 then
+NSUBST: D = 1:3 / 1:34 / 1:345 / 1:45 / 3=5 / * = 5.
+: else
+NSUBST: D = 2:4 / 2:45 / 2:5 / * = 5.
+: end
 MAP
  ccGl@lGcc
 ccGl...lGcc
@@ -3670,24 +3668,26 @@ DEPTH:   D:9-12
 KMONS:   3 = neqoxec
 KMONS:   4 = chaos spawn / hellwing / ice devil / orange demon / red devil / \
              rust devil
-NSUBST:  3 = 2=3 / 4
-SUBST:   4 = 44., % = %%%*
+KFEAT:   z = c
+NSUBST:  3 = 2:3 / 1:4 / * = 44.
+SUBST:   % = %%%*, z : zzc
+TILE:    z = wall_stone_magic_shelf
 MAP
            cccccc
          cccccccccc
        cccc......cccc
   cc@@ccc..........ccc@@cc
  cc...cc....cccc....cc...cc
- cc..cc...cccccccc...cc..cc
+ cc..cc...cccczccc...cc..cc
 cc...cc..ccc%..%ccc..cc...cc
 cc..cc.......3.3.cc.......cc
 cc..cc.....3......cc......cc
-cc..cccccc...GG.3.cccccc..cc
-cc..cccccc.3.GG...cccccc..cc
+cc..ccczcc...GG.3.cccccc..cc
+cc..cccccc.3.GG...cczccc..cc
 cc......cc......3.....cc..cc
 cc.......cc.3.3.......cc..cc
 cc...cc..ccc%..%ccc..cc...cc
- cc..cc...cccccccc...cc..cc
+ cc..cc...ccczcccc...cc..cc
  cc...cc....cccc....cc...cc
   cc@@ccc..........ccc@@cc
        cccc......cccc
@@ -3753,9 +3753,7 @@ KFEAT:  C = altar_kikubaaqudgha / altar_yredelemnul
 MARKER: F = lua:fog_machine{ cloud_type = "black smoke", \
             pow_min = 24, pow_max = 32, delay_min = 280, delay_max = 320, \
             size_min = 1, size_max = 2, start_clouds = 2, size_buildup_amnt = 1 }
-MARKER: l = lua:fog_machine { cloud_type = "flame", \
-            pow_min = 1000, pow_max = 1000, delay = 1, \
-            size = 1, walk_dist = 0, start_clouds = 1, excl_rad = 0 }
+: single_cloud(_G, "l", "flame", false)
 MAP
     v
    vvv
@@ -3967,7 +3965,7 @@ ENDMAP
 
 # Rather shallow depth but you cannot randomly teleport in there.
 NAME:    minmay_crystal_box
-TAGS:    no_monster_gen patrolling transparent no_descent vaults_hard allow_dup
+TAGS:    no_monster_gen patrolling transparent no_descent vaults_hard
 DEPTH:   D:12-, Vaults, !Vaults:$
 MONS:    crystal guardian, thermic dynamo
 MONS:    orange crystal statue, ironbound mechanist
@@ -3977,6 +3975,8 @@ SUBST:   . = .:80 %$*|
 SUBST:   14 = 0, + = =
 KPROP:   .$%*|023 = no_tele_into
 CLEAR:   `
+: else
+FTILE:   .1234$%*|+ = floor_crystal
 : end
 MAP
 ````````````````
@@ -3999,13 +3999,17 @@ ENDMAP
 NAME:  minmay_more_statues
 DEPTH: D:12-
 MONS:  ice statue w:5 / obsidian statue / orange crystal statue
+KFEAT: z = c
+TILE:  c = dngn_stone_wall_darkgray
+TILE:  b = dngn_crystal_lightred
+: tile("z = " .. crackle_def(_G))
 MAP
 cccbcccccbcccccbccc
-c.....c%*|*%c.....c
+c.....z%*|*%z.....c
 c.................c
 b..1.....G.....1..b
 c.................c
-c.....c.....c.....c
+c.....z.....z.....c
 cccbcccc.@.ccccbccc
 ENDMAP
 
@@ -4177,30 +4181,31 @@ NAME:   hangedman_incinerator
 TAGS:   no_item_gen no_monster_gen
 DEPTH:  D:8-14
 MONS:   fire bat, lava snake, fire elemental, hell hound, thermic dynamo
-NSUBST: ' = 4:' / *:.
+NSUBST: ' = 4:F / *:.
 : if you.depth() > 11 then
 NSUBST: 1 = 1:335 / *:1
 : end
-MARKER: ' = lua:fog_machine { cloud_type = "flame", pow_min = 25, \
-            pow_max = 75, delay = 50, size = 1, walk_dist = 0, excl_rad = 0 }
+: single_cloud(_G, "F", "flame", true)
 KPROP:  l = no_cloud_gen
+TILE:   c = wall_stone_scorched
 MAP
-xxxxxxxxx
-xl.1xx23x
-x1l''x|2x
-x.l''4xxx
-x.ll'''xx
-x.lll''1x
-x'.llll.x
-x.'...1lx
-+xxxxxxxx
+xxxxxxxxxx
+xxxxxccccx
+xl.1xc23cx
+x1l''c|2cx
+x.l''4cccx
+x.ll'''xxx
+x.lll''1xx
+x'.llll.xx
+x.'...1lxx
++xxxxxxxxx
 ENDMAP
 
 NAME:   hangedman_eye_storm
 TAGS:   no_monster_gen no_item_gen patrolling
 DEPTH:  Depths, !Depths:$, Abyss
-MONS:   golden eye, ophan, glass eye, eye of devastation
-MONS:   great orb of eyes / shining eye w:2
+MONS:   golden eye, eye of draining, glass eye, eye of devastation
+MONS:   great orb of eyes / shining eye w:3
 ITEM:   scroll of vulnerability q:1 pre_id / orb ego:guile randart w:4 / \
         book of the spheres w:4 / potion of enlightenment q:2 pre_id
 KFEAT:  m = iron_grate
@@ -4211,8 +4216,8 @@ SUBST:  c = c:4 v:1 b:1, '| = d
 : end
 MAP
      c++cccc
-   ccc..c3.ccc
-  cc'c..c+m..cc
+   ccc..c3%ccc
+  cc'c..c+m.%cc
  cc'mm..c.mmm.cc
  c.mm...c...mm.c
 cc.m....c.5..m.cc
@@ -4231,16 +4236,20 @@ ENDMAP
 
 NAME:    hangedman_cracks_in_the_wall
 TAGS:    no_monster_gen patrolling transparent
-DEPTH:   D:12-, Depths, !Depths:$
-MONS:    earth elemental
+DEPTH:   D:9-, Depths, !Depths:$
 : if you.in_branch("D") then
-MONS:    cyclops, basilisk, catoblepas
+:   if you.depth() < 12 then
+MONS:    rock fish, kobold geomancer, basilisk, cyclops
+SUBST:   * = $%%, | = *
+:   else
+MONS:    gargoyle, cyclops, basilisk, catoblepas
 SUBST:   * = %%***, | = *|, c = x
+:   end
 : else
-MONS:    stone giant, catoblepas, iron dragon
+MONS:    deep troll earth mage, stone giant, iron dragon, caustic shrike
 SUBST:   c : cxx
 : end
-SUBST:   5 = 111..
+SUBST:   5 = 1.
 MAP
 xxxxxxxxxxxxxx.@@
 xxxxcccccccxxx..@
@@ -4300,25 +4309,28 @@ f=wEndnE+.5nen5<bt
 ENDMAP
 
 NAME:   lightli_elemental_guards
-DEPTH:  D:10-14
-TAGS:   no_pool_fixup
-MONS:   earth elemental
+TAGS:   no_pool_fixup no_monster_gen
+DEPTH:  D:10-, !D:$
 MONS:   air elemental
+MONS:   earth elemental
 KMONS:  F = fire elemental
-KFEAT:  F = lava
 KMONS:  W = water elemental
+KFEAT:  F = lava
 KFEAT:  W = deep_water
+KPROP:  %*12wWlF = no_tele_into
 MAP
-xxxxxxxxxx
-x%x.....2x
-xx1......x
-x........x
-x...x*...x
-x...wl...x
-x........x
-xww....llx
-xWw....lFx
-xxxx==xxxx
+xxxxxxxxxxxx
+x==========x
+x=*%=..=x%=x
+x=%1=..=2x=x
+x====..====x
+x=...$x...=x
+x=...wl...=x
+x====..====x
+x=ww=..=ll=x
+x=Ww=..=lF=x
+x====..====x
+xxxxx@@xxxxx
 ENDMAP
 
 # So he drove out the man; and he placed at the east of the garden of Eden
@@ -4329,14 +4341,15 @@ TAGS:    no_monster_gen
 DEPTH:   Elf
 MONS:    patrolling cherub, patrolling dancing weapon ; great sword ego:flaming
 KMONS:   p = plant
-KFEAT:   C = cache of fruit
+KFEAT:   C = cache_of_fruit
 ITEM:    randbook title:Forbidden_Fruit owner:the_Tempter \
          numspells:2 spells:summon_mana_viper&discord
 NSUBST:  1 = 2:1 / *:.
 NSUBST:  d = 1:d / 1:C. /  *:.
 SUBST:   3 = 33.
 RTILE:   x = wall_lair
-FTILE:   12p.dCt@ = floor_lair
+FTILE:   12p.dCt@ = floor_grass_dark
+FTILE:   @ = floor_moss
 MAP
        xxx
   xxx xxpxx
@@ -4362,7 +4375,7 @@ DEPTH:   D:11-, Elf, Depths, Crypt
 : kmons("5 = dancing weapon ; demon blade ego:" .. evilegos[3] )
 : kmons("6 = dancing weapon ; demon trident ego:" .. evilegos[1] )
 KFEAT:   D = altar_uskayaw
-KFEAT:   E = altar_dithmenos / altar_kikubaaqudgha / altar_lugonu / \
+KFEAT:   E = altar_kikubaaqudgha / altar_lugonu / \
              altar_makhleb / altar_yredelemnul
 KFEAT:   + = closed_clear_door
 SHUFFLE: FH
@@ -4433,6 +4446,49 @@ cc---cc
 c-----c
 c.....c
 cc+++cc
+ENDMAP
+
+NAME:   tekkud_crystal_farm
+TAGS:   no_monster_gen patrolling
+DEPTH:  Crypt, Depths
+WEIGHT: 5 (Crypt), 10
+: if you.branch() == "Crypt" then
+MONS:   screaming refraction
+MONS:   death knight / ancient champion w:5 / vampire knight / eidolon
+MONS:   lich / bone dragon / curse skull w:5
+NSUBST: ' = 3:1 / *=1...
+NSUBST: ~ = 3:2 / 3=2.. / 1:3 / 1:3.. / 2:* / 4:$ / 2 = $$*.. / *:.
+FTILE:  123O-. = floor_crystal_squares
+: else -- Depths
+MONS:   crystal guardian / crystal echidna w:3 / walking crystal tome w:2
+MONS:   deep troll earth mage w:15 / tengu reaver / fire giant / frost giant /\
+        hell knight w:5 / glass eye w:5
+MONS:   ancient lich / golden dragon
+NSUBST: ' = 4:1 / *=1....
+NSUBST: ~ = 5:2 / 3=2.. / 1:3 / 1:3.. / 3:* / 6:$ / 3 = *$$.. / *:.
+FTILE:  123O-. = floor_marble
+: end
+NSUBST: - = b.
+KMONS:  O = orange crystal statue
+MAP
+    bbb-  -@@@b@
+   bbbbb-b@b--.-@
+   b'bbbb.-..-.-b
+  bb''b-.bbb-.b@
+  b-''bb-.--..b@
+ bb-'bb-....b-@
+bb-'bb...---.b-
+b-.-b-.--bbbbbb
+b-.-b..bbbbbbbbb
+bb-....b-bb----b
+ b-..-bb.bb-~~-bb
+ b-...--.-b-~~~-b
+ bb-......-~~~-bb
+  bb-..O..~~~~-b
+   b-.....~~~--b
+  bb-.---.---bbb
+   bb-bbb-bbbbb
+    bbb bbb
 ENDMAP
 
 ###################################################################
@@ -4507,6 +4563,9 @@ NAME:   minmay_divided_ellipse
 TAGS:   transparent
 DEPTH:  D:2-6
 WEIGHT: 5
+: if you.depth() < 5 then
+SUBST:  9 = 0
+: end
 MAP
       .......
    ....xx+xx....
@@ -4635,6 +4694,10 @@ WEIGHT: 3 (Elf), 10
 DEPTH:  D:6-, Depths, Vaults, Elf
 SUBST:  x : xcvmnt
 SUBST:  X : GtTU
+: if you.in_branch("Vaults") then
+FTILE:  t = floor_pebble_brown
+:  vaults_hard_standard(_G)
+: end
 MAP
    ...   ...
   ..x.. ..x..
@@ -4736,16 +4799,17 @@ KMONS:   f = demonic crawler
 KMONS:   g = glowing shapeshifter
 KMONS:   h = shadow wraith
 KMONS:   i = hell rat
-KMONS:   j = giant cockroach
-KMONS:   k = phantom
+KMONS:   j = clockroach
+KMONS:   k = bes kemwar
 KMONS:   l = large abomination
-KMONS:   m = scorpion
+KMONS:   m = emperor scorpion
 KMONS:   n = small abomination
 KMONS:   o = unseen horror
-KMONS:   p = hornet
+KMONS:   p = spark wasp
 KMONS:   q = goliath frog
 KMONS:   r = wolf spider
-KITEM:   e = any armour good_item / any weapon good_item / \
+KITEM:   abcdfghjiklmnopqr = $
+KITEM:   e = $ q:66, any armour good_item / potion of experience q:1 pre_id / \
              scroll of acquirement pre_id
 SHUFFLE: bcdfghjklnopqr
 MAP
@@ -4768,7 +4832,7 @@ TAGS:    ruin_abyss transparent no_descent
 DEPTH:   D:8-, !D:$, Depths:2-, !Depths:$, Abyss
 ITEM:    wand of digging pre_id
 ITEM:    scroll of teleportation pre_id q:2
-ITEM:    randbook disc:earth numspells:1 / any ring / any talisman w:2
+ITEM:    parchment disc:earth / any ring / any talisman w:2
 SHUFFLE: vcb, AB? / CD!, d<>, de
 SUBST:   AD = 9, B = 8, C = 0
 SUBST:   ? = %:10 *:50 |:60, ! = %:90 *:30 |:10
@@ -4810,7 +4874,7 @@ MONS:   arcanist w:25 / occultist w:25 / necromancer w:20 / \
 ITEM:   scroll of identify w:2 / any scroll w:8 / any book w:4
 : else
 MONS:   arcanist w:25 / deep elf pyromancer w:25 / orc sorcerer / \
-        naga mage w:5 / kobold demonologist w:15
+        kobold geomancer w:5 / kobold demonologist w:15
 ITEM:   scroll of identify w:3 / scroll of amnesia w:2 / \
         any scroll w:5 / randbook numspells:2 w:3
 : end
@@ -4921,8 +4985,8 @@ NAME:   wad_dig_loot
 TAGS:   transparent no_descent
 DEPTH:  D:8-, Elf, Depths, !Depths:$
 WEIGHT: 4
-KPROP:  %*8DEF = no_tele_into
-KMASK:  %*|8aDEF' = opaque
+KPROP:  %*8DEeF = no_tele_into
+KMASK:  %*|8aDEeF' = opaque
 KITEM:  EF = *
 KMONS:  EF = 8
 KMONS:  p = plant
@@ -4936,8 +5000,9 @@ KMONS:  D = deep troll earth mage
 SUBST:  EF = '
 : elseif you.in_branch("Elf") then
 KITEM:  D = |
-KMONS:  D = deep elf elementalist
-SUBST:  F = '
+KMONS:  D = patrolling cacodemon
+KMONS:  e = patrolling deep elf demonologist
+SUBST:  E = e, F = '
 : elseif you.in_branch("Depths") then
 KITEM:  D = |
 KMONS:  D = deep troll earth mage / cacodemon
@@ -4945,8 +5010,14 @@ KMONS:  D = deep troll earth mage / cacodemon
 : else
 SUBST:  DE = v, F = '
 : end
+: if you.in_branch("Elf") then
+TILE:   v = dngn_metal_wall_red
+FTILE:  " = floor_infernal_blank
+COLOUR: " = red
+: else
 FTILE:  " = floor_pebble_brown
 COLOUR: " = brown
+: end
 MAP
 @....vvvvv..G.@
 .""".vvvvvp....
@@ -6296,9 +6367,9 @@ DEPTH:  D:3-4, Orc
 SUBST:  $ = $.
 : if you.in_branch("Orc") then
 KMONS:  1 = orc high priest band
-:else
+: else
 KMONS:  1 = orc priest band
-:end
+: end
 KFEAT:  1 = altar_beogh
 TILE:   x = wall_zot_yellow
 MAP
@@ -6338,42 +6409,46 @@ MAP
 ENDMAP
 
 NAME:   kennysheep_underground_church
-TAGS:   no_pool_fixup misc_elf_vault transparent
-DEPTH:  Depths, Elf, Zot
-: if not you.in_branch("Zot") then
+TAGS:   no_pool_fixup no_wall_fixup misc_elf_vault vaults_hard vaults_orient_s
+DEPTH:  Vaults, !Vaults:$, Elf, Zot
+: if you.in_branch("Elf") then
 MONS:   deep elf high priest, deep elf pyromancer / deep elf zephyrmancer
-:else
-MONS:   draconian stormcaller, base draconian
-:end
-COLOUR: x = white
-TILE:   x = wall_church
-FTILE:  xmwFt12|*+. = floor_limestone
-MARKER: F = lua:fog_machine { cloud_type = "flame", pow_min = 100, \
-                              pow_max = 100, delay = 10, size = 1, \
-                              walk_dist = 0, excl_rad = -1 }
+SUBST:  - = +
+: elseif you.in_branch("Vaults") then
+KMONS:  1| = deep elf high priest
+KMONS:  2 = orc knight / ironbound preserver / war gargoyle
+: else -- Zot
+MONS:   draconian stormcaller, base draconian / draconian monk w:2
+KFEAT:  t = petrified_tree
+SUBST:  - = +
+: end
+COLOUR: c = white
+TILE:   c = wall_church
+FTILE:  -.mcwFt12|*+ = floor_limestone
+: single_cloud(_G, "F", "flame", false)
 KPROP:  wF = no_tele_into
+KMASK:  wF = no_monster_gen
 SUBST:  F = w
 KMASK:  w = opaque
 MAP
- xxxxxxxxxxx
- xwwwwwwwwwx
-xxwwwmmmwwwxx
-xwwFmm|mmFwwx
-xwwmm*1*mmwwx
-xxxx*222*xxxx
-xtxx.....xxtx
-x2.xx+++xx.2x
-x...........x
-xx.........xx
- xxxx...xxxx
-    xx+xx
+ ccccccccccc
+ cwwwwwwwwwc
+ccwwwmmmwwwcc
+cwwFmm|mmFwwc
+cwwmm*1*mmwwc
+cccc*222*cccc
+ctcc.....cctc
+c2.cc+++cc.2c
+c...........c
+cc.........cc
+ cccc...cccc
+    cc-cc
 ENDMAP
 
 NAME:  kennysheep_potato
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
   cccFcccc
  ccwwHwwwccc
@@ -6394,9 +6469,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_2
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 cccccccFccccccc
 cwwwwwwHwwwwwwc
@@ -6417,9 +6491,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_3
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
   ccFFcc
  ccwHHwcc
@@ -6435,9 +6508,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_4
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 ccccFFcccc
 cwwwHHwwwc
@@ -6453,9 +6525,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_5
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 ccccFFcccc
 cwwwHHwwwc
@@ -6471,9 +6542,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_6
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 ccccFFcccc
 cwwwHHwwwc
@@ -6489,9 +6559,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_7
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 ccccFFcccc
 cwwwHHwwwc
@@ -6507,9 +6576,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_8
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 ccccFcccc
 cwwwHwwwc
@@ -6524,9 +6592,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_9
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 ccccFcccc
 cwwwHwwwc
@@ -6541,9 +6608,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_10
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 ccccFcccc
 cwwwHwwwc
@@ -6558,9 +6624,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_11
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 ccccFcccc
 cwwwHwwwc
@@ -6575,9 +6640,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_12
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 cccFFccc
 cwwHHwwc
@@ -6591,9 +6655,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_13
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 cccFccc
 cww.wwc
@@ -6607,7 +6670,7 @@ ENDMAP
 NAME:  kennysheep_generic_room_14
 DEPTH: D:2-, Depths, !D:$, !Depths:$
 SUBST: 0 = 0.
-: ks_random_setup(_G)
+: ks_random_setup(_G, true)
 MAP
 cccFcc
 cwwHwc
@@ -6619,9 +6682,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_15
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 cccFFccc
 cwwHHwwc
@@ -6635,9 +6697,8 @@ ENDMAP
 
 NAME:  kennysheep_generic_room_16
 DEPTH: D:2-, Depths, !D:$, !Depths:$
-SUBST: % = %.
-SUBST: 0 = 0.
-: ks_random_setup(_G)
+SUBST: % = %., 0 = 0.
+: ks_random_setup(_G, true)
 MAP
 cccccccFccccccc
 cwwwwwwHwwwwwwc
@@ -6658,7 +6719,7 @@ ENDMAP
 
 NAME:  kennysheep_small_circle
 DEPTH: D:4-, Depths, !D:$, !Depths:$
-: ks_random_setup(_G)
+: ks_random_setup(_G, true)
 : if crawl.coinflip() then
 SUBST: * : %
 SUBST: % = %$..
@@ -6670,7 +6731,7 @@ KFEAT: O = any shop
 SUBST: 0 = 0.
 MAP
   ccDcc
- cwEwcc
+ ccwEwcc
 ccww0wwcc
 cwwt*twwc
 FH0*%*0HF
@@ -6682,7 +6743,7 @@ ENDMAP
 
 NAME:  kennysheep_small_square
 DEPTH: D:4-, Depths, !D:$, !Depths:$
-: ks_random_setup(_G)
+: ks_random_setup(_G, true)
 : if crawl.coinflip() then
 SUBST: * : %
 SUBST: % = %$..
@@ -6706,7 +6767,7 @@ ENDMAP
 
 NAME:   kennysheep_inner_square
 DEPTH:  D:14-, Depths, !Depths:$
-: ks_random_setup(_G)
+: ks_random_setup(_G, false)
 NSUBST: % : 1:|
 SUBST:  % = *
 SUBST:  9 = 9900.
@@ -6729,10 +6790,9 @@ ccww..xtx..wwcc
 ENDMAP
 
 NAME:   kennysheep_dice
-SUBST:  % = %$.
-SUBST:  0 = 0.
 DEPTH:  D:4-, Depths, !D:$, !Depths:$
-: ks_random_setup(_G)
+SUBST:  % = %$., 0 = 0.
+: ks_random_setup(_G, false)
 MAP
 ccccccccDDcccccccc
 cwwwwwwwEEwwwwwwwc
@@ -6756,10 +6816,9 @@ ENDMAP
 
 NAME:   kennysheep_two_boxes
 DEPTH:  D:14-, Depths, !Depths:$
-: ks_random_setup(_G)
+: ks_random_setup(_G, false)
 NSUBST: % : 1:|
-SUBST:  % = *
-SUBST:  9 = 9900.
+SUBST:  % = *,  9 = 9900.
 MAP
 ccccccDcccccc
 ctwwwwEwwwwtc
@@ -6777,9 +6836,8 @@ cccccc+cccccc
 ENDMAP
 
 NAME:  kennysheep_diamond
-TAGS:  extra
 DEPTH: D:4-, Depths, !D:$, !Depths:$
-: ks_random_setup(_G)
+: ks_random_setup(_G, true)
 : if crawl.coinflip() then
 SUBST: * : %
 SUBST: % = %$..
@@ -6824,7 +6882,7 @@ SUBST:  w:.
 : else
 SUBST:  t:w
 : end
-: ks_random_setup(_G, true)
+: ks_random_setup(_G, true, true)
 MAP
   ccccc
  ccwwwcc
@@ -6840,7 +6898,7 @@ ENDMAP
 NAME:  kennysheep_nondecorative_pillar
 TAGS:  transparent
 DEPTH: Depths:2-, !Depths:$
-: ks_random_setup(_G, true)
+: ks_random_setup(_G, false, true)
 MAP
      ...xtx....
     .....x......
@@ -7592,11 +7650,13 @@ ccc
 ENDMAP
 
 NAME:   amcnicky_mini_pool_medium
+TAGS:   no_pool_fixup
 WEIGHT: 5
 DEPTH:  D:5-, Depths, Lair
-TAGS:   no_pool_fixup ruin_depths
-SUBST:  p:wwwWWl
-SUBST:  q=.0
+SUBST:  p : wwwWWl, q = 0.
+: if you.in_branch("Depths") then
+SUBST:  x = c
+: end
 MAP
   xx...xx
  xx..p..xx
@@ -7681,6 +7741,7 @@ NSUBST:  D = + / c, E = + / c, F = + / c, H = + / c
 SHUFFLE: {[(<<
 # Generates between 8 and 16 monsters
 NSUBST:  . = 8=1 / 8=1. / .
+FTILE:   .'{[(<1+G = floor_mystic_chasm
 MAP
 cccc   cccc   cccc
 cccccDccccccDccccc
@@ -7818,7 +7879,7 @@ SUBST:   0 = 122, z = c
 : if you.in_branch("D") then
 :   if you.depth() < 8 then
 MONS:    dart slug / jackal zombie w:1
-MONS:    shadow imp / howler monkey w:2, bullfrog zombie / jelly w:5
+MONS:    shadow imp / howler monkey w:2 / drude w:2, bullfrog zombie / jelly w:5
 NSUBST:  g = 1:g$$ / *:$, * = 1:% / *:$
 :   elseif you.depth() < 11 then
 MONS:    ufetubus / wight w:5, sky beast / sleepcap, hornet zombie / marrowcuda
@@ -7840,10 +7901,10 @@ ITEM:    centaur skeleton / spriggan skeleton
 MONS:    warg, troll / deep troll w:3, obsidian bat
 ITEM:    dwarf skeleton / elf skeleton w:1
 : elseif you.in_branch("Vaults") then
-MONS:    large slime creature / deep troll w:2 / necromancer w:2
+MONS:    large slime creature / crawling flesh cage w:4
 MONS:    formless jellyfish, entropy weaver
 ITEM:    troll skeleton / ogre skeleton w:6
-NSUBST:  W = 2:1 / * = ef, g = 1:g / 1:h, . = 1:3, % = 1:|*% / *:%
+NSUBST:  W = 2:1 / * = ef, g = 1:g / 1:h, . = 1:3, % = 1:|*%% / *:%
 : else -- Zot
 MONS:    spectral base draconian / death cob w:5
 MONS:    shadow dragon / green draconian monk
@@ -7856,6 +7917,7 @@ NSUBST:  @ = 2:. / *:x, & = 2:. / *:x
 SUBST:   t = e, }) = .
 CLEAR:   X
 FTILE:   'V = floor_hall
+FTILE:   .defgh%*|CDG123 = floor_pebble_brown
 TILE:    c = wall_stone_smooth
 : else
 :   if you.in_branch("Zot") then
@@ -7864,6 +7926,9 @@ NSUBST:  . = 1:2 / 1:3 / *:.
 SHUFFLE: })]<>
 TILE:    n = dngn_transparent_stone_magenta
 :   else
+:     if you.in_branch("Lair") then
+FTILE:   .defgh%*|CDG123 = floor_sprouting_stone
+:     end
 KMONS:   t = toadstool / fungus w:2
 SUBST:   }) = t
 FTILE:   'tV = floor_pebble_green
@@ -7874,6 +7939,8 @@ SUBST:   X = x
 KMONS:   D = pile of debris
 ITEM:    any weapon mundane damaged no_pickup
 ITEM:    robe mundane damaged no_pickup
+# XXX: Light ego would normally be on a helmet, but this is specifically
+#      referencing Monk starting items.
 ITEM:    robe good_item / quarterstaff good_item / orb ego:light pre_id / \
          amulet of faith pre_id / \
          potion of ambrosia q:1 pre_id / scroll of revelation q:1 pre_id
@@ -7937,6 +8004,7 @@ TAGS:   no_monster_gen no_item_gen transparent vaults_hard
 WEIGHT: 3
 : if you.in_branch("Vaults") then
 SUBST:  v = x
+:   vaults_hard_standard(_G)
 : end
 MONS:   patrolling iron troll
 KMONS:  d = patrolling iron dragon
@@ -7966,9 +8034,13 @@ DEPTH:  D:12-, Depths, Crypt
 TAGS:   no_monster_gen no_item_gen transparent
 WEIGHT: 3
 : if you.in_branch("Depths") then
-MONS:   place:Depths:$ zombie / place:Depths:$ skeleton, bone dragon
+MONS:   place:Depths:$ spectre / place:Depths:$ draugr, bone dragon
+: elseif you.in_branch("Crypt") then
+MONS:   spectral storm dragon / spectral ettin / golden dragon draugr / \
+        juggernaut draugr w:5 / ancient champion w:5
+MONS:   bone dragon
 : else
-MONS:   place:D:$ zombie / place:D:$ skeleton, bone dragon
+MONS:   place:D:$ spectre / place:D:$ draugr, ghoul
 : end
 ITEM:   skull_of_zonguldrok no_pickup
 MAP
@@ -8016,90 +8088,6 @@ MAP
 ...............
 ENDMAP
 
-# Crown of Dyrovepreva
-#
-NAME:   minmay_guarded_unrand_dyrovepreva
-TAGS:   no_monster_gen no_item_gen transparent
-DEPTH:  Depths
-WEIGHT: 3
-MONS:   patrolling crystal guardian
-MONS:   orange crystal statue
-ITEM:   crown_of_dyrovepreva no_pickup
-KPROP:  12d' = no_tele_into
-SUBST:  ' = .
-MAP
-        .............
-       ...............
-      ...bb.......bb...
-     ...bbbb.....bbbb...
-    ...bbbbbb...bbbbbb...
-   ...bbbbbbbb2bbbbbbbb...
-  ...bb'''bbb'''bbb'''bb...
- ...bb'''''b'''''b'''''bb...
-...bbb''''1'''''''1''''bbb...
-..bbbb'''''b'''''b'''''bbbb..
-..bbbbb'''bbb'''bbb'''bbbbb..
-...bbbbb'bbbbbbbbbbb'bbbbb...
-....bbb''.bbb'''bbb'''bbb....
-.....b'''''b''1''b'''''b.....
-.....b'''''b''d''b'''''b.....
-.....b'''''b''1''b'''''b.....
-....bbb'''bbb'''bbb'''bbb....
-...bbbbb'bbbbb'bbbbb'bbbbb...
-..bbbbb'''bbb'''bbb'''bbbbb..
-..bbbb'''''b'''''b'''''bbbb..
-...bbb''''1'''''''1''''bbb...
- ...bb'''''b'''''b'''''bb...
-  ...bb'''bbb'''bbb'''bb...
-   ...bbbbbbbbbbbbbbbbb...
-    ...bbbbbb...bbbbbb...
-     ...bbbb.....bbbb...
-      ...bb.......bb...
-       ...............
-        .............
-ENDMAP
-
-# Ring of the Mage
-#
-NAME:   minmay_guarded_unrand_mage
-TAGS:   no_monster_gen no_item_gen transparent
-DEPTH:  Depths
-WEIGHT: 3
-MONS:   occultist, orange crystal statue / obsidian statue
-KMONS:  3 = lich w:40 / ancient lich / dread lich
-KITEM:  3 = ring_of_the_mage no_pickup
-KPROP:  32'+ = no_tele_into
-KFEAT:  ' = floor
-MAP
-.......             .......
-.ccccc..           ..ccccc.
-.c...c...         ...c...c.
-.c.1.+....       ....+.1.c.
-.c...c.....     .....c...c.
-.cc+cc......   ......cc+cc.
-...........................
- ......WWWWWWWWWWWWW......
-  .....WwwwwwwwwwwwW.....
-   ....WwccncccnccwW....
-    ...Wwc'''c'''cwW...
-     ..Wwn'3'+'2'nwW..
-      .Wwc'''c'''cwW.
-      .Wwcccccc+ccwW.
-      .Wwc'''c'''cwW.
-     ..Wwn'2'+'2'nwW..
-    ...Wwc'''c'''cwW...
-   ....Wwcc=cccnccwW....
-  .....WwwwWwwwwwwwW.....
- ......WWWWWWWWWWWWW......
-...........................
-.cc+cc......   ......cc+cc.
-.c...c.....     .....c...c.
-.c.1.+....       ....+.1.c.
-.c...c...         ...c...c.
-.ccccc..           ..ccccc.
-.......             .......
-ENDMAP
-
 # There's a sword stuck inside a stone. Some knights are milling around
 # wondering how to get it out. If you can dig through rock and tame the
 # sword's enchantment, you could become the monarch! Or not..... (by Shiori)
@@ -8121,7 +8109,7 @@ KMONS:   A = gnoll sergeant ; trident . scale mail | chain mail . kite shield
 : kmons("B = wight ; " .. ls .. " | nothing")
 : kmons("C = Eustachio / orc warrior ; " .. ss .. ", " ..
 :            "orc warrior ; " .. ss .. " / nothing")
-: kmons("D = Blorkula the Orcula / orc warrior ; " .. gs .. ", " ..
+: kmons("D = Blorkula the orcula / orc warrior ; " .. gs .. ", " ..
 :           "orc warrior ; " .. gs .. " / nothing")
 : kmons("E = Maurice / kobold brigand ; dart ego:poisoned . " .. ss .. ", " ..
 :           "kobold brigand ; dart ego:poisoned . " .. ss .. " / nothing")
@@ -8172,6 +8160,7 @@ SUBST:   k = KLMNO
 SUBST:   k = OPQR
 : end
 KMASK:   Ss = opaque
+KPROP:   s = no_tele_into
 FTILE:   ABCDEFGHJIKLMNOPQRS. = floor_limestone
 FTILE:   m = floor_pebble_darkgray
 MAP
@@ -8192,8 +8181,7 @@ DEPTH:  D:$, Depths
 WEIGHT: 3
 MONS:   obsidian statue
 MONS:   patrolling hell knight
-MONS:   sun demon / soul eater / smoke demon / neqoxec / \
-        ynoxinul / chaos spawn
+MONS:   sun demon / soul eater / smoke demon / neqoxec / ynoxinul / chaos spawn
 MONS:   ice devil / rust devil / orange demon / red devil / hellwing / \
         sixfirhy
 SUBST:  b : bbc
@@ -8201,9 +8189,7 @@ KPROP:  ._-cGO12345 = bloody / nothing w:20
 KFEAT:  _ = altar_makhleb
 KFEAT:  - = altar_makhleb
 KITEM:  - = obsidian_axe no_pickup
-MARKER: O = lua:fog_machine { cloud_type = "flame", pow_min = 10, \
-                              pow_max = 10, delay = 10, size = 1, \
-                              walk_dist = 0, excl_rad = 0}
+: single_cloud(_G, "O", "flame", false)
 TILE:   b = bedevilled_crystal_gehenna / bedevilled_crystal_dis
 : set_feature_name("crystal_wall", "bedevilled crystal wall")
 MAP
@@ -8223,16 +8209,14 @@ MAP
  ...............
 ENDMAP
 
-# sword of the Doom Knight
+# sword of the Dread Knight
 # A temple to Yredelemnul, with a champion wielding the blade designate.
-NAME:   grunt_guarded_unrand_doom_knight
+NAME:   grunt_guarded_unrand_dread_knight
 TAGS:   no_monster_gen no_item_gen patrolling
 DEPTH:  Depths, Crypt
 WEIGHT: 3
-MONS:   death knight ; \
-        sword_of_the_doom_knight . \
-        chain mail w:7 | \
-        plate armour w:1
+MONS:   death knight ; sword_of_the_dread_knight . chain mail w:7 | \
+                       plate armour w:1
 MONS:   profane servitor, bone dragon, ghoul, death cob, skeletal warrior
 MONS:   freezing wraith / phantasmal warrior / \
         jiangshi / flayed ghost / skeletal warrior
@@ -8268,7 +8252,7 @@ WEIGHT:  3
 MONS:    minotaur, fire giant, frost giant, spriggan defender, \
          deep elf blademaster
 SHUFFLE: 12345
-ITEM:    autumn_katana
+ITEM:    autumn_katana no_pickup
 SUBST:   u = t.
 TILE:    t = DNGN_TREE_YELLOW / DNGN_TREE_LIGHTRED w:5 / DNGN_TREE_RED / \
              DNGN_TREE_DEAD w:5
@@ -8291,10 +8275,12 @@ ttttttttttttttttttttt
 ENDMAP
 
 NAME:    minmay_guarded_unrand_brilliance
+TAGS:    transparent
 DEPTH:   D:13-, Depths
 MONS:    profane servitor
-SUBST:   1 = 1.
 ITEM:    brilliance no_pickup
+KFEAT:   _ = altar_yredelemnul
+SUBST:   1 = 1.
 MAP
          ...
          .c.
@@ -8307,7 +8293,7 @@ MAP
     .cn.nc.cn.nc.
    ...cn1n1n1nc...
 ....ncncn...ncncn....
-.ncnc*..1...1..*cncn.
+.ncnc*..1._.1..*cncn.
 ....ncncn...ncncn....
    ...cn1n1n1nc...
     .cn.nc.cn.nc.
@@ -8361,7 +8347,7 @@ NAME:    minmay_guarded_unrand_variability
 TAGS:    transparent
 DEPTH:   D:8-
 WEIGHT:  3
-ITEM:    mace_of_variability no_pickup pre_id
+ITEM:    mace_of_variability no_pickup
 MONS:    chaos spawn
 KFEAT:   _ = altar_xom
 # walls are carefully placed and guarantee no islands
@@ -8385,7 +8371,7 @@ NAME:    minmay_guarded_unrand_staff_of_olgreb
 TAGS:    no_monster_gen no_trap_gen transparent
 DEPTH:   D:5-
 WEIGHT:  3
-ITEM:    staff_of_olgreb no_pickup pre_id
+ITEM:    staff_of_olgreb no_pickup
 : if you.depth() < 9 then
 MONS:    scorpion / redback w:5
 MONS:    killer bee
@@ -8803,10 +8789,10 @@ DEPTH:  D:9-
 WEIGHT: 3
 ITEM:   cigotuvi's_embrace no_pickup
 : if you.depth() < 13 then
-MONS:   zombie place:D:15 / skeleton place:D:15, hellwing
+MONS:   zombie place:D:15, hellwing
 SUBST:  1 = 1.
 : else
-MONS:   zombie place:Depths:1 / skeleton place:Depths:1, soul eater
+MONS:   zombie place:Depths:1 / draugr place:D:$, soul eater
 : end
 KPROP:  D = no_tele_into
 : dgn.delayed_decay(_G, 'D', 'human corpse')
@@ -8918,6 +8904,7 @@ NSUBST: 9 = 9 / .
 # Only one entrance in Vaults, and any door is handled by the layout.
 SUBST:  va = x, @+ = .
 CLEAR:  p'
+FTILE:  ^-.19d = floor_metal_gold
 : end
 KFEAT:  ^ = alarm trap
 SUBST:  - = ^...., ' = ^, a = +, p = @
@@ -9174,7 +9161,7 @@ MONS:   phantasmal warrior
 : end
 SUBST:  D = FFW, H : JF, J : cx
 NSUBST: F = 1 / 1. / 9 / 9=0.. / .
-FTILE:  .019d = floor_grass
+FTILE:  .019d = floor_grass_dark
 FTILE:  E = floor_ice
 COLOUR: E = white
 MAP
@@ -9376,7 +9363,7 @@ TAGS:   no_monster_gen
 DEPTH:  D:2-6
 WEIGHT: 3
 KFEAT:  - = broken_door
-ITEM:   delatra's gloves, any potion no_pickup / any scroll no_pickup
+ITEM:   delatra's gloves no_pickup, any potion no_pickup / any scroll no_pickup
 MONS:   orc, orc wizard, orc warrior
 : if you.depth() < 4 then
 SUBST:  1 = 1..
@@ -9407,7 +9394,7 @@ NAME:   pf_guarded_unrand_woodcutter
 TAGS:   no_monster_gen
 DEPTH:  D:2-8
 WEIGHT: 3
-ITEM:   woodcutter's axe, hand axe
+ITEM:   woodcutter's axe no_pickup, hand axe
 MONS:   gnoll, gnoll bouda, gnoll sergeant
 : if you.depth() < 4 then
 SUBST:  2 = 1
@@ -9466,8 +9453,10 @@ NAME:   dilly_guarded_unrand_throatcut
 TAGS:   no_monster_gen
 DEPTH:  D:3-9
 WEIGHT: 3
-ITEM:   throatcutter no_pickup
 MONS:   kobold, kobold brigand, kobold demonologist
+ITEM:   throatcutter no_pickup
+KITEM:  "- = orc skeleton / goblin skeleton / hobgoblin skeleton /\
+             gnoll skeleton
 KFEAT:  a = x
 KFEAT:  p = c
 : if you.depth() < 5 then
@@ -9480,8 +9469,6 @@ NSUBST: 1 = 2--, 2 = 223
 SUBST:  " = "..., - = -., x = axx, c = pcc
 KPROP:  ap = bloody
 TILE:   cp = DNGN_STONE_DARK
-KITEM:  "- = orc skeleton / goblin skeleton / hobgoblin skeleton /\
-             gnoll skeleton
 MAP
    ccccc
   cc...cc
@@ -9507,13 +9494,13 @@ ENDMAP
 # Natasha misses her master
 NAME:   dilly_guarded_unrand_morg
 TAGS:   no_monster_gen
-DEPTH:  D:2-9
+DEPTH:  D:3-9
 WEIGHT: 3
-ITEM:   dagger randart ego:pain pre_id no_pickup, w:30 book of necromancy / w:5 book of decay \
-        / w:5 book of death
 KMONS:  p = withered plant
-MONS:   skeleton / zombie, spectral thing / simulacrum, weeping skull, phantom
-MONS:   wraith
+MONS:   kobold draugr / zombie, spectral thing / simulacrum
+MONS:   weeping skull, phantom, wraith
+ITEM:   dagger randart ego:pain pre_id no_pickup
+ITEM:   book of necromancy w:30 / book of decay w:5 / book of death w:5
 : if you.depth() < 5 then
 KMONS:  D = natasha, phantom
 SUBST:  3 = 2, 2 = 1112
@@ -9521,7 +9508,7 @@ SUBST:  3 = 2, 2 = 1112
 KMONS:  D = wight band w:30 / wraith
 SUBST:  3 = 34
 : else
-KMONS:  D = skeletal warrior w:30 / death knight
+KMONS:  D = skeletal warrior w:30 / draugr
 SUBST:  1 = 2, 3 = 5
 : end
 SUBST:  p = .ppp
@@ -9725,8 +9712,9 @@ WEIGHT: 3
 : if you.in_branch("Swamp") then
 MONS:   skeletal warrior ; captain's cutlass . swamp dragon scales
 MONS:   shard shrike zombie, kraken zombie / kraken simulacrum
-MONS:   bog body / freezing wraith / spriggan berserker skeleton
-KMONS:  56 = bloated husk / hydra skeleton
+MONS:   bog body / freezing wraith / spriggan berserker zombie / \
+        spriggan draugr w:2
+KMONS:  56 = bloated husk / hydra zombie
 KMONS:  7 = ghost crab / will-o-the-wisp
 NSUBST: w = 1:3 / 4:6 / 1:67 / 1:7 / *:w
 SUBST:  ~ = t, ? = 4
@@ -9736,8 +9724,8 @@ TAGS:   water_ok no_pool_fixup
 # Shoals doesn't have any default undead themes, so instead have
 # mostly wildlife that picked the crew's bones clean.
 MONS:   skeletal warrior ; captain's cutlass . scale mail . buckler
-MONS:   shard shrike skeleton, kraken
-MONS:   merfolk impaler skeleton / snapping turtle skeleton w:4
+MONS:   harpy draugr, kraken
+MONS:   merfolk draugr / spectral snapping turtle w:4
 KMONS:  56 = wind drake / manticore
 KMONS:  7 = alligator snapping turtle
 KMONS:  0 = harpy / sea snake / snapping turtle
@@ -9748,7 +9736,7 @@ KITEM: Z = human skeleton / merfolk skeleton
 MONS:   ancient champion ; captain's cutlass . scale mail . kite shield
 MONS:   shard shrike simulacrum / spectral shard shrike, spectral kraken
 MONS:   skeletal warrior / jiangshi / vampire knight w:4 / \
-        alligator snapping turtle skeleton w:2 / sea snake simulacrum w:2
+        alligator snapping turtle draugr w:2 / sea snake draugr w:2
 KMONS:  56 = flayed ghost / vampire mage
 KMONS:  7 = curse skull
 SUBST:  ~ = xw, ? = 2
@@ -9758,8 +9746,8 @@ KITEM: Z = spriggan skeleton / merfolk skeleton
 MONS:   ancient champion ; captain's cutlass . plate armour
 MONS:   caustic shrike simulacrum / spectral caustic shrike
 MONS:   kraken / kraken simulacrum / spectral kraken
-MONS:   jiangshi / spriggan defender skeleton / vampire knight w:4
-KMONS:  56 = phantasmal warrior / storm dragon skeleton
+MONS:   jiangshi / spriggan defender zombie / vampire knight w:4
+KMONS:  56 = phantasmal warrior / spectral storm dragon
 KMONS:  7 = flayed ghost / merfolk javelineer
 NSUBST: w = 3:3 / 3:6 / 3:7 / 4 = 67w / *:w
 SUBST:  ~ = xw, ? = 2
@@ -10059,6 +10047,7 @@ ITEM:    staff of air randart / staff of fire randart / \
          fire dragon scales randart / storm dragon scales randart
 KFEAT:   u = x
 NSUBST:  z = 2:x. / * = x., . = 1:0 / *:.
+: vaults_hard_standard(_G)
 TILE:    u = wall_pebble_red
 TILE:    v = dngn_metal_wall_lightcyan
 MAP
@@ -10079,6 +10068,71 @@ X..u.......vvuvv.......vvuvv....X
 X20..$xzx$.......$xzx$........xxX
 Xx1.xxxxxxx..z..xxxxxxx...z...x
  xxxx     xxxxxxx     xx@x@x@xx
+ENDMAP
+
+# Justicar's Regalia
+# Bad guys in jail
+NAME:    tekkud_guarded_unrand_justicar
+TAGS:    no_monster_gen no_item_gen no_trap_gen vaults_hard vaults_orient_n
+DEPTH:   Elf:2-, Vaults, !Vaults:$, Depths
+WEIGHT:  3
+MONS:    angel / cherub, fravashi / daeva
+ITEM:    justicar's_regalia no_pickup, any amulet no_pickup
+KFEAT:   m = iron_grate
+: if you.in_branch("Elf") then
+MONS:    deep elf pyromancer / deep elf zephyrmancer / \
+         deep elf archer / deep elf knight
+MONS:    deep elf elementalist / deep elf blademaster / deep elf master archer
+MONS:    deep elf high priest / deep elf death mage / deep elf demonologist /\
+         deep elf annihilator / balrug w:5 / blizzard demon w:5
+SUBST:   2 = 2.
+: elseif you.in_branch("Vaults") then
+MONS:    vault guard w:30 / vault sentinel / peacekeeper w:5
+MONS:    crystal guardian / vault warden / titan
+MONS:    entropy weaver / death knight / polterguardian w:5 /\
+         glowing orange brain w:8 / boggart w:8 / dread lich w:2
+# if no_convoke ever gets added as a vault tag,
+# this won't need the reduced holies subst.
+SUBST:   1 = 1.., 2 = 2.., @ = .
+: else -- Depths
+MONS:    tengu warrior / spriggan defender w:8 / fire giant / \
+         frost giant / stone giant / guardian sphinx w:14
+MONS:    ophan / walking divine tome / pearl dragon w:5
+MONS:    hell knight / rakshasa / chonchon / vampire mage / vampire knight / \
+         alderking / dread lich / shadow demon / glowing orange brain
+: end
+NSUBST:  y = 3:3 / 2=33. / *:.
+NSUBST:  z = 1:5 / 2=5. / *:.
+TILE:    c = wall_stone_smooth
+TILE:    v = dngn_metal_wall_white
+COLOUR:  v = white
+FTILE:   =+Gdeu.mn12345 = floor_pebble_darkgray
+: vault_metal_statue_setup(_G, "G", "silver statue")
+MAP
+         @@@@@
+      cccc+++cccc
+      c.........c
+      c.vvnnnvv.c
+      c.vG...Gv.c
+      c.v.....v.c
+      c.v..d..v.c
+ccccccc.v.....v.ccccccc
+c....y..vG...Gv..y....c
+c.vvvvvvnvv+vvnvvvvvv.c
+c.vG...zm.2.2.=....Gv.c
+c.v.....m3...3m..z..v.c
+cyn5.e..m..4..m..e5.nyc
+c.v.....m1...1m..z..v.c
+c.vG...z=.3.3.m....Gv.c
+c.vvvvvvnmmmm+nvvvvvv.c
+c....y..v.....v..y....c
+ccccccc.v..3..v.ccccccc
+      c.n..G..n.c
+      cyv.....vyc
+      c.v.....v.c
+      c.vn===nv.c
+      c....y....c
+      ccccccccccc
 ENDMAP
 
 ###################################################################
@@ -10393,19 +10447,20 @@ KMONS:  1 = tormentor / hellion / shadow demon / tzitzimitl / \
 KMONS:  1 = tormentor / hellion / balrug / brimstone fiend w:15 / \
             oni incarcerator / ancient lich / dread lich / place:Geh:$ w:20
 : elseif you.in_branch("Tar") then
-KMONS:  1 = doom hound w:15 / death drake / bone dragon / tormentor / \
+KMONS:  1 = oblivion hound w:15 / death drake / undertaker / tormentor / \
             shadow demon / tzitzimitl w:15 / ancient lich / dread lich / \
             place:Tar:$ w:27
 : elseif you.in_branch("Coc") then
 KMONS:  1 = shard shrike w:15 / titan / blizzard demon / tormentor / \
             ice fiend w:15 / ancient lich / dread lich / place:Coc:$ w:24
 : elseif you.in_branch("Zot") then
-KMONS:  1 = nonbase draconian / orb of fire / electric golem / \
+KMONS:  1 = nonbase draconian / orb of appropriateness / electric golem / \
             killer klown / ancient lich / dread lich / curse toe / \
             protean progenitor / place:Zot:$ w:20
 # Dungeon, Vaults, and Depths get 8 spawns.
 : else
 KMONS:  1 = 8
+:   vaults_hard_standard(_G)
 : end
 KMONS:  2 = 9
 : door_vault_setup(_G)
@@ -10477,6 +10532,13 @@ NAME:    minivault_13
 TAGS:    ruin_abyss transparent
 DEPTH:   D:9-, Elf, Abyss
 KMONS:   F = orange crystal statue / obsidian statue / ice statue
+: if you.in_branch("Elf") then
+KMONS:   9 = air elemental / thermic dynamo / dancing weapon / \
+             deep elf annihilator / deep elf high priest
+KMONS:   8 = deep elf sorcerer / deep elf death mage / \
+             deep elf demonologist / deep elf elementalist / \
+             deep elf blademaster w:5 / deep elf master archer w:5
+: end
 ITEM:    robe good_item / scale mail good_item
 SHUFFLE: AB, CD, EH/FG
 SUBST:   F = G:99 F:1, ABCD = $'
@@ -10618,7 +10680,7 @@ MONS:   human ; animal skin . hand axe
   end
 }}
 KFEAT:  K = iron_grate
-KFEAT:  F = cache of meat
+KFEAT:  F = cache_of_meat
 KFEAT:  - = open_door
 MAP
 .xxxxxxx
@@ -10646,13 +10708,12 @@ KMONS:   H = crimson imp
 KITEM:   1 = stone q:1 w:50 no_pickup / large rock q:1 w:24 / \
              mundane hand axe w:1 no_pickup
 KITEM:   b = gold / nothing w:12
-KFEAT:   1 = cache of fruit / cache of meat
+KFEAT:   1 = cache_of_fruit / cache_of_meat
 KFEAT:   Yab = shallow_water
 KMASK:   1Yac = no_monster_gen
 MARKER:  Y = lua:fog_machine { cloud_type = "steam", pow_min = 1, \
                  pow_max = 10, delay = 60, size = 1, walk_dist = 0 }
-MARKER:  Z = lua:fog_machine { cloud_type = "flame", pow_min = 100, pow_max = 100, \
-                 delay = 10, size = 1, walk_dist = 0, excl_rad = 0 }
+: single_cloud(_G, "Z", "flame", false)
 NSUBST:  c = 2:a / *:b
 SHUFFLE: ABCDEFGH
 MAP
@@ -10677,7 +10738,7 @@ KMONS:    D = kobold brigand
 KMONS:    E = kobold brigand ; falchion ego:flaming | hand axe ego:flaming
 KMONS:    F = plant
 KITEM:    E = halberd
-KFEAT:    H = cache of meat
+KFEAT:    H = cache_of_meat
 KFEAT:    EF = shallow_water
 TILE:     H = dngn_cache_of_pizza
 MAP
@@ -10699,12 +10760,10 @@ NAME:   grunt_pizzeria
 DEPTH:  D:8-11
 TAGS:   no_monster_gen no_trap_gen extra patrolling
 MONS:   human ; short sword | rapier / orc warrior ; dagger / spriggan ; dagger
-KFEAT:  d = cache of meat
-KFEAT:  e = cache of baked goods
+KFEAT:  d = cache_of_meat
+KFEAT:  e = cache_of_baked_goods
 TILE:   d = dngn_cache_of_pizza
-MARKER: O = lua:fog_machine { cloud_type = "flame", pow_min = 10, \
-                              pow_max = 10, delay = 10, size = 1, \
-                              walk_dist = 0, excl_rad = 0 }
+: single_cloud(_G, "O", "flame", false)
 MAP
 xxxxxxx
 xvvvdex
@@ -10764,7 +10823,6 @@ ENDMAP
 
 NAME:   special_room_vaults
 TAGS:   allow_dup luniq unrand no_item_gen vaults_hard
-CHANCE: 1%
 DEPTH:  Vaults, !Vaults:$
 {{
     local width = 6 + crawl.random2avg(3, 2)

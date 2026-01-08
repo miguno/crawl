@@ -20,7 +20,8 @@ const int TRANSLUCENT_SKIN_TO_HIT_MALUS = -2;
 
 const int BULLSEYE_TO_HIT_DIV = 6;
 
-const int REPEL_MISSILES_EV_BONUS = 15;
+const int REPEL_MISSILES_EV_BONUS = 15;     // Players
+const int DEFLECT_MISSILES_EV_BONUS = 24;   // Monsters
 
 class attack
 {
@@ -33,7 +34,6 @@ public:
     // or a monster if this is a reflected ranged attack.
     actor *responsible;
 
-    bool    attack_occurred;
     bool    cancel_attack;
     bool    did_hit;
     bool    needs_message;
@@ -65,9 +65,6 @@ public:
     const item_def  *weapon;
     brand_type      damage_brand;
     skill_type      wpn_skill;
-
-    // If weapon is an artefact, its properties.
-    artefact_properties_t art_props;
 
     // If a weapon is an unrandart, its unrandart entry.
     const unrandart_entry *unrand_entry;
@@ -111,16 +108,16 @@ public:
 
 // Private Methods
 protected:
-    virtual void init_attack(skill_type unarmed_skill, int attack_number);
+    virtual void init_attack(int attack_number);
 
     /* Attack Phases */
     virtual bool handle_phase_attempted();
-    virtual bool handle_phase_dodged() = 0;
-    virtual bool handle_phase_blocked();
+    virtual void handle_phase_dodged() = 0;
+    virtual void handle_phase_blocked();
     virtual bool handle_phase_hit() = 0;
     virtual bool handle_phase_damaged();
-    virtual bool handle_phase_killed();
-    virtual bool handle_phase_end();
+    virtual void handle_phase_killed();
+    virtual void handle_phase_end();
 
     /* Combat Calculations */
     virtual bool using_weapon() const = 0;
@@ -137,10 +134,9 @@ protected:
     int apply_defender_ac(int damage, int damage_max = 0,
                           ac_type ac_rule = ac_type::normal) const;
     // Determine if we're blocking (partially or entirely)
-    virtual bool attack_shield_blocked(bool verbose);
-    virtual bool ignores_shield(bool verbose)
+    virtual bool attack_shield_blocked();
+    virtual bool ignores_shield()
     {
-        UNUSED(verbose);
         return false;
     }
     virtual bool apply_damage_brand(const char *what = nullptr);

@@ -179,6 +179,8 @@ Ringing Laughter
 
 Sleight of Hands
 
+Taradiddle
+
 Temerity
 
 Wantonness
@@ -186,6 +188,7 @@ Wantonness
 Whimsicality
 %%%%
 _time_name_
+
 Autumn
 
 Dawn
@@ -199,6 +202,8 @@ Eternal Night
 Eternal Winter
 
 Eternity
+
+Evenfall
 
 Midnight
 
@@ -247,7 +252,6 @@ the Past
 the Present
 
 the Solstice
-
 %%%%
 _sky_colour_name_
 
@@ -369,6 +373,8 @@ Dishonesty
 
 Dishonour
 
+Equivocation
+
 Foolhardiness
 
 Immorality
@@ -389,7 +395,11 @@ Sin
 
 Spite
 
+Tergiversation
+
 Untruth
+
+Vice
 
 Youthful Indiscretion
 

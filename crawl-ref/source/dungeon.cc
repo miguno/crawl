@@ -62,6 +62,7 @@
 #include "random.h"
 #include "religion.h"
 #include "show.h"
+#include "spl-book.h"
 #include "spl-transloc.h"
 #include "stairs.h"
 #include "state.h"
@@ -106,6 +107,7 @@ static int _place_uniques();
 static void _place_traps();
 static void _prepare_water();
 static void _check_doors();
+static void _adjust_slime_stairs();
 
 static void _add_plant_clumps(int rarity, int clump_sparseness,
                               int clump_radius);
@@ -234,6 +236,7 @@ typedef FixedArray< coloured_feature, GXM, GYM > dungeon_colour_grid;
 static unique_ptr<dungeon_colour_grid> dgn_colour_grid;
 
 static string branch_epilogues[NUM_BRANCHES];
+FixedVector<string_set, NUM_BRANCHES> branch_uniq_map_tags;
 
 set<string> &get_uniq_map_tags()
 {
@@ -457,6 +460,8 @@ static bool _build_level_vetoable(bool enable_random_maps)
     mapstat_report_map_build_start();
 #endif
 
+    // Copy uniq tags for previous floors in this branch
+    env.branch_uniq_map_tags = branch_uniq_map_tags[you.where_are_you];
     dgn_reset_level(enable_random_maps);
 
     if (player_in_branch(BRANCH_TEMPLE))
@@ -513,6 +518,9 @@ static bool _build_level_vetoable(bool enable_random_maps)
     env.level_layout_types.clear();
     env.level_uniq_maps.clear();
     env.level_uniq_map_tags.clear();
+    // Copy final tags set back over to the branch list
+    branch_uniq_map_tags[you.where_are_you] = env.branch_uniq_map_tags;
+
     _dgn_map_colour_fixup();
 
     // Call the branch epilogue, if any.
@@ -740,12 +748,14 @@ player to a level or regenerates a level.
 */
 void dgn_reset_player_data()
 {
-
     // vaults and map stuff
     you.uniq_map_tags.clear();
     you.uniq_map_names.clear();
     you.uniq_map_tags_abyss.clear();
     you.uniq_map_names_abyss.clear();
+    for (auto branch : branch_uniq_map_tags)
+        branch.clear();
+
     you.vault_list.clear();
     you.branches_left.reset();
     you.zigs_completed = 0;
@@ -769,7 +779,7 @@ void dgn_reset_player_data()
 
     // item stuff that can interact with the builder
     you.runes.reset();
-    you.obtainable_runes = 15;
+    you.obtainable_runes = MAX_RUNES;
     initialise_item_sets(true);
     you.unique_items.init(UNIQ_NOT_EXISTS);
     you.octopus_king_rings = 0x00;
@@ -853,6 +863,8 @@ static void _dgn_register_vault(const string &name, const unordered_set<string> 
             get_uniq_map_tags().insert(tag);
         else if (starts_with(tag, "luniq_"))
             env.level_uniq_map_tags.insert(tag);
+        else if (starts_with(tag, "buniq_"))
+            env.branch_uniq_map_tags.insert(tag);
     }
 }
 
@@ -877,6 +889,8 @@ static void _dgn_unregister_vault(const map_def &map)
             get_uniq_map_tags().erase(tag);
         else if (starts_with(tag, "luniq_"))
             env.level_uniq_map_tags.erase(tag);
+        else if (starts_with(tag, "buniq_"))
+            env.branch_uniq_map_tags.erase(tag);
     }
 
     for (const subvault_place &sub : map.subvault_places)
@@ -1265,20 +1279,6 @@ static void _dgn_place_feature_at_random_floor_square(dungeon_feature_type feat,
                                                       unsigned mask = MMT_VAULT)
 {
     coord_def place = _dgn_random_point_in_bounds(DNGN_FLOOR, mask, DNGN_FLOOR);
-    if (player_in_branch(BRANCH_SLIME))
-    {
-        int tries = 100;
-        while (!place.origin()  // stop if we fail to find floor.
-               && (dgn_has_adjacent_feat(place, DNGN_ROCK_WALL)
-                   || dgn_has_adjacent_feat(place, DNGN_SLIMY_WALL))
-               && tries-- > 0)
-        {
-            place = _dgn_random_point_in_bounds(DNGN_FLOOR, mask, DNGN_FLOOR);
-        }
-
-        if (tries < 0)  // tries == 0 means we succeeded on the last attempt
-            place.reset();
-    }
     if (place.origin())
         throw dgn_veto_exception("Cannot place feature at random floor square.");
     else
@@ -1678,6 +1678,9 @@ static int _num_mons_wanted()
     int mon_wanted = roll_dice(3, _mon_die_size());
     if (mon_wanted > 60)
         mon_wanted = 60;
+
+    if (level_id::current() == level_id(BRANCH_ZOT, 5))
+        mon_wanted = max(10, mon_wanted - 4);
     return mon_wanted;
 }
 
@@ -1697,17 +1700,6 @@ static void _fixup_walls()
     case BRANCH_DIS:
         wall_type = DNGN_METAL_WALL;
         break;
-
-    case BRANCH_VAULTS:
-    {
-        // Everything but the branch end is handled in Lua.
-        if (you.depth == branches[BRANCH_VAULTS].numlevels)
-        {
-            wall_type = random_choose_weighted(1, DNGN_CRYSTAL_WALL,
-                                               9, DNGN_METAL_WALL);
-        }
-        break;
-    }
 
     case BRANCH_CRYPT:
         wall_type = DNGN_STONE_WALL;
@@ -2439,7 +2431,7 @@ static void _build_overflow_temples()
                 }
 
                 if (num_gods == 1
-                    && get_uniq_map_tags().find("uniq_altar_" + name)
+                    && get_uniq_map_tags().find("buniq_altar_" + name)
                        != get_uniq_map_tags().end())
                 {
                     // We've already placed a specialized temple for this
@@ -2608,6 +2600,7 @@ static void _ruin_level(Iterator iter,
                 // isolated transparent or rtele_into square.
                 env.level_map_mask(p) |= cfeat.mask;
                 env.pgrid(p) |= cfeat.prop;
+                tile_clear_flavour(p);
                 _set_grd(p, replacement);
             }
 
@@ -2760,6 +2753,9 @@ static void _build_dungeon_level()
         // Ruination and plant clumps.
         _post_vault_build();
 
+        if (player_in_branch(BRANCH_SLIME))
+            _adjust_slime_stairs();
+
         // XXX: Moved this here from builder_monsters so that
         //      connectivity can be ensured
         _place_uniques();
@@ -2768,6 +2764,9 @@ static void _build_dungeon_level()
             _place_feature_mimics();
 
         _place_traps();
+
+        if (!dgn_make_transporters_from_markers())
+            throw dgn_veto_exception("Transporter placement failed.");
 
         // Any vault-placement activity must happen before this check.
         _dgn_verify_connectivity(nvaults);
@@ -2784,6 +2783,9 @@ static void _build_dungeon_level()
         // Do ruination and plant clumps even in funny game modes, if
         // they happen to have the relevant branch.
         _post_vault_build();
+
+        if (!dgn_make_transporters_from_markers())
+            throw dgn_veto_exception("Transporter placement failed.");
     }
 
     // Translate stairs for pandemonium levels.
@@ -2791,9 +2793,6 @@ static void _build_dungeon_level()
         _fixup_pandemonium_stairs();
 
     _fixup_branch_stairs();
-
-    if (!dgn_make_transporters_from_markers())
-        throw dgn_veto_exception("Transporter placement failed.");
 
     fixup_misplaced_items();
     link_items();
@@ -3621,6 +3620,111 @@ static void _place_traps()
     }
 }
 
+// Unique stair-placement function for Slime.
+// Ensures that all up stairs are non-adjacent to walls, and that all down stairs
+// are at least 12 tiles away from any up stair.
+static void _adjust_slime_stairs()
+{
+    const int stair_start = DNGN_STONE_STAIRS_DOWN_I;
+    const int stair_count = DNGN_STONE_STAIRS_UP_III - stair_start + 1;
+
+    FixedVector < coord_def, stair_count > existing;
+    int down_stairs_needed = at_branch_bottom() ? 0 : 3;
+
+    // Find all existing stairs, removing those which are not in vaults and
+    // noting those which are, so that we know which we need to place ourselves.
+    for (rectangle_iterator ri(0); ri; ++ri)
+    {
+        if (feat_is_stone_stair(env.grid(*ri)))
+        {
+            if (map_masked(*ri, MMT_VAULT))
+            {
+                existing[env.grid(*ri) - stair_start] = *ri;
+                if (feat_is_stone_stair_down(env.grid(*ri)))
+                    --down_stairs_needed;
+            }
+            else
+                _set_grd(*ri, DNGN_FLOOR);
+        }
+    }
+
+    // Up stairs should be placed first.
+    const int num_upstairs = you.depth == 1 ? 1 : 3;
+    for (int i = DNGN_STONE_STAIRS_UP_I; i < DNGN_STONE_STAIRS_UP_I + num_upstairs; ++i)
+    {
+        // Stair already exists on the floor, so no need to place.
+        if (!existing[i - stair_start].origin())
+            continue;
+
+        int tries = 100;
+        coord_def place = _dgn_random_point_in_bounds(DNGN_FLOOR, MMT_VAULT, DNGN_FLOOR);
+        while (!place.origin()  // stop if we fail to find floor.
+                && (dgn_has_adjacent_feat(place, DNGN_ROCK_WALL)
+                    || dgn_has_adjacent_feat(place, DNGN_SLIMY_WALL))
+               && tries-- > 0)
+        {
+            place = _dgn_random_point_in_bounds(DNGN_FLOOR, MMT_VAULT, DNGN_FLOOR);
+        }
+
+        // If we can't place a stair by now, give up.
+        if (place.origin())
+            return;
+        else
+        {
+            _set_grd(place, static_cast<dungeon_feature_type>(i));
+            existing[i - stair_start] = place;
+        }
+    }
+
+    if (down_stairs_needed == 0)
+        return;
+
+    // Now place down stairs. We're a little more exhaustive about determining possible
+    // positions, since some configurations of up stairs may exclude much of the floor.
+    vector<coord_def> valid;
+    for (rectangle_iterator ri(0); ri; ++ri)
+    {
+        // Only floor outside of vaults is valid.
+        if (env.grid(*ri) != DNGN_FLOOR || map_masked(*ri, MMT_VAULT))
+            continue;
+
+        if (!dgn_has_adjacent_feat(*ri, DNGN_FLOOR))
+            continue;
+
+        // Check that we're a sufficient distance from all up stairs.
+        bool too_close = false;
+        for (int i = DNGN_STONE_STAIRS_UP_I - stair_start; i < DNGN_STONE_STAIRS_UP_I + num_upstairs - stair_start; ++i)
+        {
+            if (grid_distance(*ri, existing[i]) < 12)
+            {
+                too_close = true;
+                break;
+            }
+        }
+
+        if (!too_close)
+            valid.push_back(*ri);
+    }
+
+    if ((int)valid.size() < down_stairs_needed)
+        throw dgn_veto_exception("Cannot place sufficient down stairs.");
+
+    for (int i = DNGN_STONE_STAIRS_DOWN_I; i <= DNGN_STONE_STAIRS_DOWN_III; ++i)
+    {
+        // Stair already exists on the floor, so no need to place.
+        if (!existing[i - stair_start].origin())
+            continue;
+
+        // Pick a random valid spot, then mark it unused.
+        int rng = random2(valid.size());
+        while (valid[rng].origin())
+            rng = random2(valid.size());
+
+        _set_grd(valid[rng], static_cast<dungeon_feature_type>(i));
+        valid[rng].reset();
+    }
+}
+
 // Create randomly-placed stone stairs.
 void dgn_place_stone_stairs(bool maybe_place_hatches)
 {
@@ -3637,7 +3741,7 @@ void dgn_place_stone_stairs(bool maybe_place_hatches)
 
     int pair_count = 3;
 
-    if (maybe_place_hatches && coinflip())
+    if (maybe_place_hatches && !player_in_branch(BRANCH_SLIME) && coinflip())
         pair_count++;
 
     for (int i = 0; i < pair_count; ++i)
@@ -3877,6 +3981,17 @@ static void _place_branch_entrances(bool use_vaults)
                 if (_place_vault_by_tag(entry_tag))
                     // Placed this entrance, carry on to subsequent branches
                     continue;
+                // If placing a normal Temple entrance failed, try again to
+                // place the smallest possible one, and if that also fails, veto
+                // the level (to ensure Zot orb statues are always placed.)
+                else if (it->id == BRANCH_TEMPLE)
+                {
+                    const map_def* dummy = find_map_by_name("temple_entry_dummy");
+                    if (dummy && _build_secondary_vault(dummy))
+                        continue;
+
+                    throw dgn_veto_exception("Failed to place Temple entry.");
+                }
             }
 
             // Otherwise place a single stair feature.
@@ -4023,7 +4138,7 @@ static void _place_aquatic_in(vector<coord_def> &places, const vector<pop_entry>
         {
             mg.base_type = mg.cls;
             const int skel_chance = mons_has_skeleton(mg.cls) ? 2 : 0;
-            mg.cls = random_choose_weighted(skel_chance, MONS_SKELETON,
+            mg.cls = random_choose_weighted(skel_chance, MONS_DRAUGR,
                                             8,           MONS_ZOMBIE,
                                             1,           MONS_SIMULACRUM);
         }
@@ -4100,7 +4215,7 @@ static void _place_assorted_zombies()
     int num_zombies = random_range(6, 12, 3);
     for (int i = 0; i < num_zombies; ++i)
     {
-        bool skel = coinflip();
+        bool skel = x_chance_in_y(2, 5);
         monster_type z_base;
         do
         {
@@ -4109,7 +4224,7 @@ static void _place_assorted_zombies()
         while (skel && !mons_has_skeleton(z_base));
 
         mgen_data mg;
-        mg.cls = (skel ? MONS_SKELETON : MONS_ZOMBIE);
+        mg.cls = (skel ? MONS_DRAUGR : MONS_ZOMBIE);
         mg.base_type = z_base;
         mg.behaviour = BEH_SLEEP;
         mg.map_mask |= MMT_NO_MONS;
@@ -4732,7 +4847,8 @@ static int _dgn_item_corpse(const item_spec &ispec, const coord_def where)
 }
 
 static bool _apply_item_props(item_def &item, const item_spec &spec,
-                              bool allow_useless, bool monster)
+                              bool allow_useless, bool monster,
+                              int item_level)
 {
     const CrawlHashTable props = spec.props;
 
@@ -4829,6 +4945,24 @@ static bool _apply_item_props(item_def &item, const item_spec &spec,
         item_colour(item);
     }
 
+    if (item.is_type(OBJ_BOOKS, BOOK_PARCHMENT))
+    {
+        if (spec.plus > 0)
+            item.plus = spec.plus;
+        else
+        {
+            spschool school = spschool::none;
+            int force_level = 0;
+            if (spec.props.exists(RANDBK_DISC1_KEY))
+                school = static_cast<spschool>(spec.props[RANDBK_DISC1_KEY].get_short());
+
+            if (spec.props.exists(RANDBK_SLVLS_KEY))
+                force_level = spec.props[RANDBK_SLVLS_KEY].get_short();
+
+            item.plus = choose_parchment_spell(item_level, school, force_level);
+        }
+    }
+
     if (item.base_type == OBJ_RUNES)
     {
         if (you.runes[item.sub_type])
@@ -4909,7 +5043,7 @@ static object_class_type _superb_object_class()
             1, OBJ_TALISMANS);
 }
 
-static int _concretize_level(int spec_level, int dgn_level)
+int concretize_item_level(int spec_level, int dgn_level)
 {
     if (spec_level >= 0)
         return spec_level;
@@ -4971,7 +5105,7 @@ int dgn_place_item(const item_spec &spec,
     if (spec.base_type == OBJ_UNASSIGNED)
         return NON_ITEM;
 
-    const int level = _concretize_level(spec.level, dgn_level);
+    const int level = concretize_item_level(spec.level, dgn_level);
     const object_class_type base_type = _concretize_type(spec);
 
     int useless_tries = 0;
@@ -4983,7 +5117,7 @@ int dgn_place_item(const item_spec &spec,
         {
             item_made = acquirement_create_item(base_type,
                                                 spec.acquirement_source,
-                                                true, where);
+                                                true, where, spec.ego);
         }
 
         // Both normal item generation and the failed "acquire foo" fallback.
@@ -5012,7 +5146,7 @@ int dgn_place_item(const item_spec &spec,
         item_def &item(env.item[item_made]);
         item.pos = where;
 
-        if (_apply_item_props(item, spec, useless_tries >= 10, false))
+        if (_apply_item_props(item, spec, useless_tries >= 10, false, level))
         {
             dprf(DIAG_DNGN, "vault spec: placing %s at %d,%d",
                 env.item[item_made].name(DESC_INVENTORY, false, true).c_str(),
@@ -5088,8 +5222,8 @@ static void _dgn_give_mon_spec_items(mons_spec &mspec, monster *mon)
                 spec.ego = SP_FORBID_EGO;
         }
 
-        const int item_level = _concretize_level(spec.level,
-                                                 mspec.place.absdepth());
+        const int item_level = concretize_item_level(spec.level,
+                                                     mspec.place.absdepth());
         for (int useless_tries = 0; true; useless_tries++)
         {
             int item_made;
@@ -5114,7 +5248,7 @@ static void _dgn_give_mon_spec_items(mons_spec &mspec, monster *mon)
             {
                 item_def &item(env.item[item_made]);
 
-                if (_apply_item_props(item, spec, (useless_tries >= 10), true))
+                if (_apply_item_props(item, spec, (useless_tries >= 10), true, item_level))
                 {
                     // Mark items on summoned monsters as such.
                     if (mspec.summon_duration != 0)
@@ -5368,6 +5502,8 @@ monster* dgn_place_monster(mons_spec &mspec, coord_def where,
 
     for (const mon_enchant &ench : mspec.ench)
         mons->add_ench(ench);
+
+    mons->origin_level = level_id::current();
 
     return mons;
 }
@@ -5686,6 +5822,7 @@ void dgn_replace_area(const coord_def& p1, const coord_def& p2,
                 env.map_knowledge(*ri).set_feature(feature, 0,
                                                    get_trap_type(*ri));
 #ifdef USE_TILE
+                // XXX: this will not be the correct tile for the feature...
                 tile_env.bk_bg(*ri) = feature;
 #endif
             }
@@ -6072,6 +6209,10 @@ static int _shop_num_items(const shop_spec &spec)
         return (int) spec.items.size();
     }
 
+    // "normal" book shop containing parchments
+    if (spec.sh_type == SHOP_BOOK)
+        return 7 + random2avg(13, 3);
+
     return 5 + random2avg(8, 3);
 }
 
@@ -6127,6 +6268,15 @@ static bool _valid_item_for_shop(int item_index, shop_type shop_type_,
         return !spec.items.empty();
     }
 
+    // Book/scroll shops only place parchments and manuals unless specified.
+    // (General stores are rarely allowed to roll an actual book.)
+    if ((shop_type_ == SHOP_BOOK || shop_type_ == SHOP_SCROLL)
+        && item.base_type == OBJ_BOOKS && item.sub_type != BOOK_PARCHMENT
+        && item.sub_type != BOOK_MANUAL)
+    {
+        return !spec.items.empty();
+    }
+
     return true;
 }
 
@@ -6146,6 +6296,7 @@ static bool _valid_item_for_shop(int item_index, shop_type shop_type_,
  */
 static void _stock_shop_item(int j, shop_type shop_type_,
                              int stocked[NUM_BOOKS],
+                             int supplied[NUM_SPELLS],
                              shop_spec &spec, shop_struct &shop,
                              int shop_level)
 {
@@ -6188,8 +6339,17 @@ static void _stock_shop_item(int j, shop_type shop_type_,
         // Try for a better selection for bookshops.
         if (item_index != NON_ITEM && shop_type_ == SHOP_BOOK)
         {
+            // Try hard to discard duplicate parchments
+            if (env.item[item_index].sub_type == BOOK_PARCHMENT)
+            {
+                if (supplied[env.item[item_index].plus] > 0)
+                {
+                    env.item[item_index].clear();
+                    item_index = NON_ITEM; // try again
+                }
+            }
             // if this book type is already in the shop, maybe discard it
-            if (!one_chance_in(stocked[env.item[item_index].sub_type] + 1))
+            else if (!one_chance_in(stocked[env.item[item_index].sub_type] + 1))
             {
                 env.item[item_index].clear();
                 item_index = NON_ITEM; // try again
@@ -6208,10 +6368,15 @@ static void _stock_shop_item(int j, shop_type shop_type_,
 
     item_def item = env.item[item_index];
 
-    // If this is a book, note it down in the stocked books array
+    // If this is a book or parchment, note it down in the appropriate array
     // (unless it's a randbook)
     if (shop_type_ == SHOP_BOOK && !is_artefact(item))
-        stocked[item.sub_type]++;
+    {
+        if (item.sub_type == BOOK_PARCHMENT)
+            supplied[item.plus]++;
+        else
+            stocked[item.sub_type]++;
+    }
 
     // Identify the item, unless we don't do that.
     if (shoptype_identifies_stock(shop_type_))
@@ -6272,10 +6437,13 @@ void place_spec_shop(const coord_def& where, shop_spec &spec, int shop_level)
     // For books shops, store how many copies of a given book are on display.
     // This increases the diversity of books in a shop.
     int stocked[NUM_BOOKS] = { 0 };
+    // We want to do the same thing for parchments. Book stocking is retained
+    // because it could be relevant for special shops.
+    int supplied[NUM_SPELLS] = { 0 };
 
     shop.stock.clear();
     for (int j = 0; j < num_items; j++)
-        _stock_shop_item(j, shop.type, stocked, spec, shop, shop_level);
+        _stock_shop_item(j, shop.type, stocked, supplied, spec, shop, shop_level);
 }
 
 object_class_type item_in_shop(shop_type shop_type)
@@ -6294,6 +6462,8 @@ object_class_type item_in_shop(shop_type shop_type)
         return OBJ_ARMOUR;
 
     case SHOP_GENERAL:
+        if (one_chance_in(10))
+            return OBJ_BOOKS;
     case SHOP_GENERAL_ANTIQUE:
         if (one_chance_in(10))
             return OBJ_MISCELLANY;
@@ -6311,6 +6481,8 @@ object_class_type item_in_shop(shop_type shop_type)
         return OBJ_POTIONS;
 
     case SHOP_SCROLL:
+        if (one_chance_in(10))
+            return OBJ_BOOKS;
         return OBJ_SCROLLS;
 
     default:
@@ -6428,7 +6600,8 @@ static void _place_specific_trap(const coord_def& where, trap_spec* spec,
 
     if (spec_type == TRAP_SHAFT && !is_valid_shaft_level())
     {
-        mprf(MSGCH_ERROR, "Vault %s tried to place a shaft at a branch end",
+        mprf(MSGCH_ERROR, "%s%s tried to place a shaft at a branch end.",
+                env.placing_vault.empty() ? "Something" : "Vault ",
                 env.placing_vault.c_str());
     }
 

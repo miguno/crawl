@@ -528,10 +528,7 @@ static void _forget_map(bool wizard_forget = false)
             tile_forget_map(*ri);
 #endif
             if (monster *m = monster_at(*ri))
-            {
-                m->seen_context = SC_NONE;
-                m->flags &= ~(MF_WAS_IN_VIEW | MF_SEEN);
-            }
+                m->flags &= ~(MF_WAS_IN_VIEW | MF_SEEN | MF_SENSED);
         }
         else if (flags & MAP_SEEN_FLAG)
         {
@@ -1365,7 +1362,7 @@ map_control_state process_map_command(command_type cmd, const map_control_state&
             break;
         if (cell_is_solid(state.lpos.pos))
             you.wizmode_teleported_into_rock = true;
-        you.moveto(state.lpos.pos);
+        you.move_to(state.lpos.pos, MV_INTERNAL);
         state.map_alive = false;
         break;
 #endif
@@ -1431,7 +1428,7 @@ static cglyph_t _get_feat_glyph(const coord_def& gc)
     }
     else
         col = fdef.seen_colour();
-    g.col = real_colour(col);
+    g.col = real_colour(col, gc);
     return g;
 }
 #endif

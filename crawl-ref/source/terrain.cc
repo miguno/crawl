@@ -402,6 +402,13 @@ bool cell_is_solid(const coord_def &c)
     return feat_is_solid(env.grid(c));
 }
 
+/** Can spells and other abilities target this cell?
+ */
+bool cell_is_invalid_target(const coord_def &c)
+{
+    return cell_is_solid(c) && !actor_at(c);
+}
+
 /** Can a human stand on this feature without flying?
  */
 bool feat_has_solid_floor(dungeon_feature_type feat)
@@ -476,7 +483,8 @@ bool feat_is_statuelike(dungeon_feature_type feat)
 {
     return feat == DNGN_ORCISH_IDOL
       || feat == DNGN_GRANITE_STATUE
-      || feat == DNGN_METAL_STATUE;
+      || feat == DNGN_METAL_STATUE
+      || feat == DNGN_ZOT_STATUE;
 }
 
 /** Is this feature permanent, unalterable rock?
@@ -1078,11 +1086,19 @@ static bool _item_traversable_square(const coord_def &pos)
     return !cell_is_solid(pos);
 }
 
+static bool _item_visible_square(const coord_def &pos)
+{
+    return _item_safe_square(pos) && you.see_cell(pos) && you.pos() != pos;
+}
+
 // Moves an item on the floor to the nearest adjacent floor-space.
-static bool _dgn_shift_item(const coord_def &pos, item_def &item)
+static bool _dgn_shift_item(const coord_def &pos, item_def &item,
+                            bool keep_visible)
 {
     // First try to avoid pushing things through solid features...
-    coord_def np = _dgn_find_nearest_square(pos, _item_safe_square,
+    coord_def np = _dgn_find_nearest_square(pos,
+                                            keep_visible ? _item_visible_square
+                                                         : _item_safe_square,
                                             _item_traversable_square);
     // ... but if we have to, so be it.
     if (!in_bounds(np) || np == pos)
@@ -1156,7 +1172,7 @@ void dgn_move_entities_at(coord_def src, coord_def dst,
     {
         if (monster* mon = monster_at(src))
         {
-            mon->moveto(dst);
+            mon->move_to(dst, MV_INTERNAL);
             if (mon->type == MONS_ELDRITCH_TENTACLE)
             {
                 if (mon->props.exists(BASE_POSITION_KEY))
@@ -1168,8 +1184,6 @@ void dgn_move_entities_at(coord_def src, coord_def dst,
                 }
 
             }
-            env.mgrid(dst) = env.mgrid(src);
-            env.mgrid(src) = NON_MONSTER;
         }
     }
 
@@ -1225,7 +1239,8 @@ static bool _dgn_shift_feature(const coord_def &pos)
     return true;
 }
 
-static void _dgn_check_terrain_items(const coord_def &pos, bool preserve_items)
+void dgn_check_terrain_items(const coord_def &pos, bool preserve_items,
+                             bool keep_in_sight)
 {
     const dungeon_feature_type feat = env.grid(pos);
 
@@ -1240,7 +1255,7 @@ static void _dgn_check_terrain_items(const coord_def &pos, bool preserve_items)
 
         // Game-critical item.
         if (preserve_items || env.item[curr].is_critical())
-            _dgn_shift_item(pos, env.item[curr]);
+            _dgn_shift_item(pos, env.item[curr], keep_in_sight);
         else
         {
             feat_splash_noise(feat);
@@ -1253,7 +1268,7 @@ static void _dgn_check_terrain_items(const coord_def &pos, bool preserve_items)
 static void _dgn_check_terrain_monsters(const coord_def &pos)
 {
     if (monster* m = monster_at(pos))
-        m->apply_location_effects(pos);
+        m->trigger_movement_effects();
 }
 
 // Clear blood or off of terrain that shouldn't have it. Also clear of blood if
@@ -1293,7 +1308,7 @@ static void _dgn_check_terrain_player(const coord_def pos)
         return;
 
     if (you.can_pass_through(pos))
-        move_player_to_grid(pos, false);
+        you.trigger_movement_effects(MV_NO_TRAVEL_STOP);
     else
         push_or_teleport_actor_from(pos);
 }
@@ -1359,7 +1374,7 @@ void dungeon_terrain_changed(const coord_def &pos,
             destroy_trap(pos);
     }
 
-    _dgn_check_terrain_items(pos, preserve_items);
+    dgn_check_terrain_items(pos, preserve_items);
     _dgn_check_terrain_monsters(pos);
     if (!wizmode)
         _dgn_check_terrain_player(pos);
@@ -1370,6 +1385,12 @@ void dungeon_terrain_changed(const coord_def &pos,
 
     // Deal with doors being created by changing features.
     tile_init_flavour(pos);
+
+    // If we just placed a trap under an actor, trigger it immediately.
+    if (actor* act = actor_at(pos))
+        if (feat_is_trap(nfeat))
+            if (trap_def* ptrap = trap_at(pos))
+                ptrap->trigger(*act);
 }
 
 static void _announce_swap_real(coord_def orig_pos, coord_def dest_pos)
@@ -1591,12 +1612,12 @@ bool swap_features(const coord_def &pos1, const coord_def &pos2,
 
     if (!swap_everything)
     {
-        _dgn_check_terrain_items(pos1, false);
+        dgn_check_terrain_items(pos1, false);
         _dgn_check_terrain_monsters(pos1);
         _dgn_check_terrain_player(pos1);
         set_terrain_changed(pos1);
 
-        _dgn_check_terrain_items(pos2, false);
+        dgn_check_terrain_items(pos2, false);
         _dgn_check_terrain_monsters(pos2);
         _dgn_check_terrain_player(pos2);
         set_terrain_changed(pos2);
@@ -2432,9 +2453,9 @@ coord_def push_actor_from(const coord_def& pos,
     const coord_def newpos = random ? targets[random2(targets.size())]
                                     : targets.front();
     ASSERT(!newpos.origin());
-    act->move_to_pos(newpos);
-    // The new position of the monster is now an additional veto spot for
-    // monsters.
+    act->move_to(newpos, MV_INTERNAL);
+    // The new position of the monster might be used as an additional veto spot
+    // for other monsters.
     return newpos;
 }
 
@@ -2456,23 +2477,19 @@ coord_def push_or_teleport_actor_from(const coord_def& pos)
 
     if (push_actor_from(pos, nullptr, true).origin())
     {
-        for (distance_iterator di(pos, false, true, LOS_RADIUS); di; ++di)
+        for (distance_iterator di(pos, true, true); di; ++di)
         {
             if (!actor_at(*di)
-                && ((act->is_player() && you.can_pass_through(*di))
+                && ((act->is_player()
+                     && you.can_pass_through(*di)
+                     && !is_feat_dangerous(env.grid(*di))
+                     && !testbits(env.pgrid(*di), FPROP_NO_TELE_INTO))
                     || act->is_monster() && monster_habitable_grid(act->as_monster(), *di)))
             {
-                if (act->is_player())
-                    move_player_to_grid(*di, false);
-                else
-                    act->move_to_pos(*di);
+                act->move_to(*di, MV_INTERNAL);
                 return act->pos();
             }
         }
-
-        // Failed to find anywhere in LOS_RADIUS that was valid to put this actor,
-        // so just teleport them instead
-        act->teleport(true);
     }
 
     return act->pos();
@@ -2539,7 +2556,7 @@ void ice_wall_damage(monster &mons, int delay)
 {
     if (!you.duration[DUR_FROZEN_RAMPARTS]
         || !you.see_cell_no_trans(mons.pos())
-        || mons_aligned(&you, &mons))
+        || !could_harm_enemy(&you, &mons))
     {
         return;
     }

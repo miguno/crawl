@@ -41,6 +41,7 @@
 #include "mon-tentacle.h"
 #include "mutation.h"
 #include "notes.h"
+#include "player-notices.h"
 #include "player-stats.h"
 #include "random.h"
 #include "religion.h"
@@ -189,10 +190,15 @@ static bool _okawaru_random_servant()
 
     mgen_data temp = _wrath_mon_data(mon_type, GOD_OKAWARU);
 
-    // Don't send dream sheep into battle, but otherwise let bands in.
+    // Don't send dream sheep into battle, and exclude most monsters who get
+    // bands with priests of other gods, but otherwise let bands in.
     // This makes sure you get multiple orcs/gnolls early on.
-    if (mon_type != MONS_CYCLOPS)
+    if (mon_type != MONS_CYCLOPS && mon_type != MONS_ORC_WARLORD
+        && mon_type != MONS_SPRIGGAN_DEFENDER
+        && mon_type != MONS_DRACONIAN_KNIGHT)
+    {
         temp.flags |= MG_PERMIT_BANDS;
+    }
 
     return create_monster(temp, false);
 }
@@ -324,14 +330,22 @@ static bool _zin_retribution()
         switch (random2(4))
         {
         case 0:
+            if (you.can_be_paralysed())
+            {
+                you.paralyse(nullptr, random_range(2, 5), _god_wrath_name(god));
+                return false;
+            }
+            // Deliberate fallthrough
+        case 1:
+            if (you.can_sleep())
+            {
+                you.put_to_sleep(nullptr, random_range(5, 10) * BASELINE_DELAY);
+                break;
+            }
+            // Deliberate fallthrough
+        case 2:
             confuse_player(5 + random2(3));
             break;
-        case 1:
-            you.put_to_sleep(nullptr, random_range(5, 10) * BASELINE_DELAY);
-            break;
-        case 2:
-            paralyse_player(_god_wrath_name(god));
-            return false;
         case 3:
             blind_player(20 + random2(15), ETC_SILVER);
             return false;
@@ -347,7 +361,7 @@ static bool _zin_retribution()
 
 static bool _xom_retribution()
 {
-    const int severity = abs(you.piety - HALF_MAX_PIETY);
+    const int severity = abs(you.raw_piety - HALF_MAX_PIETY);
     const bool good = one_chance_in(10);
     return xom_acts(severity, good) != XOM_DID_NOTHING;
 }
@@ -650,7 +664,19 @@ static bool _kikubaaqudgha_retribution()
         _reset_avatar(*avatar);
     }
     else
-        drain_player(random_range(125, 225), false, true, false);
+    {
+        // Drain for ~16.6% to ~26.6% if you're not below 50% drained hp.
+        if (-you.hp_max_adj_temp < you.hp_max / 2)
+            drain_player(random_range(75, 150), false, true, false);
+
+        // Regardless of draining, apply some Doom.
+        int doom_pow = random_range(35, 50);
+
+        if (!(you.attribute[ATTR_DOOM] + doom_pow >= 100))
+            mprf(MSGCH_DANGER, "Your doom draws closer.");
+
+        you.doom(doom_pow);
+    }
 
     return true;
 }
@@ -909,12 +935,13 @@ static void _lugonu_transloc_retribution()
     {
         // Give extra opportunities for embarrassing teleports.
         simple_god_message(" wrath scatters you!", true, god);
-        you_teleport_now(false, true, "Space warps around you!");
+        you.props[TELEPORTITIS_SOURCE].get_int() = MID_NOBODY;
+        you_teleport_now(false, "Space warps around you!");
     }
     else if (coinflip())
     {
         simple_god_message(" draws you home!", false, god);
-        you.banish(nullptr, "Lugonu's touch", you.get_experience_level(), true);
+        you.banish(nullptr, "Lugonu's touch", true);
     }
 }
 
@@ -1026,7 +1053,7 @@ static spell_type _vehumet_wrath_type()
                                  SPELL_BOLT_OF_DRAINING,
                                  SPELL_BOLT_OF_DEVASTATION,
                                  SPELL_QUICKSILVER_BOLT,
-                                 SPELL_FREEZING_CLOUD,
+                                 SPELL_FREEZING_GUST,
                                  SPELL_POISONOUS_CLOUD,
                                  SPELL_METAL_SPLINTERS);
         case 6:
@@ -1112,7 +1139,7 @@ static void _jiyva_contaminate()
 {
     const god_type god = GOD_JIYVA;
     god_speaks(god, "Mutagenic energy floods into your body!");
-    contaminate_player(random2(you.penance[god] * 500));
+    contaminate_player(random2(you.penance[god] * 100));
 }
 
 static void _jiyva_summon_slimes()
@@ -1130,7 +1157,9 @@ static void _jiyva_summon_slimes()
         MONS_VOID_OOZE,
         MONS_ACID_BLOB,
         MONS_AZURE_JELLY,
+        MONS_STAR_JELLY,
         MONS_SLIME_CREATURE,
+        MONS_MORPHOGENIC_OOZE,
     };
 
     const int how_many = 1 + (you.experience_level / 10) + random2(3);
@@ -1418,19 +1447,27 @@ static void _qazlal_summon_elementals()
  */
 static void _qazlal_elemental_vulnerability()
 {
-    const god_type god = GOD_QAZLAL;
+    simple_god_message(" strips away your elemental protection.", false, GOD_QAZLAL);
 
-    if (mutate(RANDOM_QAZLAL_MUTATION, _god_wrath_name(god), false,
-               false, true, false, MUTCLASS_TEMPORARY))
+    // Pick a random elemental bane the player doesn't aready have.
+    vector<bane_type> banes;
+    if (!you.has_bane(BANE_HEATSTROKE))
+        banes.push_back(BANE_HEATSTROKE);
+    if (!you.has_bane(BANE_SNOW_BLINDNESS))
+        banes.push_back(BANE_SNOW_BLINDNESS);
+    if (!you.has_bane(BANE_ELECTROSPASM))
+        banes.push_back(BANE_ELECTROSPASM);
+
+    // If the player already has all 3, randomly increase the duration of one
+    // of them.
+    if (banes.empty())
     {
-        simple_god_message(" strips away your elemental protection.",
-                           false, god);
+        bane_type bane = random_choose(BANE_HEATSTROKE, BANE_SNOW_BLINDNESS, BANE_ELECTROSPASM);
+        mprf(MSGCH_WARN, "Your %s grows more durable.", bane_name(bane).c_str());
+        you.banes[bane] += 1000;
     }
     else
-    {
-        simple_god_message(" fails to strip away your elemental protection.",
-                           false, god);
-    }
+        add_bane(banes[random2(banes.size())], "The Wrath of Qazlal");
 }
 
 /**
@@ -1577,12 +1614,12 @@ static bool _ignis_shaft()
  *  Finds the highest HD monster in sight that would make a suitable vessel
  *  for Ignis's vengeance.
 */
-static monster* _ignis_champion_target()
+static vector<monster*> _ignis_champion_targets()
 {
-    monster* best_mon = nullptr;
+    vector<monster*> eligible;
+
     // Never pick monsters that are incredibly weak. That's just sad.
     int min_xl = you.get_experience_level() / 2;
-    int seen = 0;
     for (radius_iterator ri(you.pos(), LOS_NO_TRANS, true); ri; ++ri)
     {
         monster* mon = monster_at(*ri);
@@ -1594,63 +1631,66 @@ static monster* _ignis_champion_target()
             || mon->wont_attack()
             // no stealing another god's pals :P
             || mon->is_priest()
-            || mon->god != GOD_NO_GOD)
+            || mon->god != GOD_NO_GOD
+            || !mons_has_attacks(*mon)
+            || mon->has_ench(ENCH_FIRE_CHAMPION))
         {
             continue;
         }
-
-        // Don't anoint monsters with no melee attacks or with an
-        // existing attack flavour.
-        const mon_attack_def atk = mons_attack_spec(*mon, 0, true);
-        if (atk.type == AT_NONE || atk.flavour != AF_PLAIN)
-            continue;
 
         // Don't pick something weaker than a different mon we've already seen.
         const int hd = mon->get_experience_level();
         if (hd < min_xl)
             continue;
 
-        // Is this the new strongest thing we've seen? If so, reset the
-        // HD floor & the seen count.
-        if (hd > min_xl)
-        {
-            min_xl = hd;
-            seen = 0;
-        }
-
-        // Reservoir sampling among monsters of this HD.
-        ++seen;
-        if (one_chance_in(seen))
-            best_mon = mon;
+        eligible.push_back(mon);
     }
 
-    return best_mon;
+    // Annoint the strongest 1-3 eligible monsters
+    const int num = min((int)eligible.size(), random_range(1, 3));
+
+    // If all eligable monsters should be chosen, return early.
+    if ((int)eligible.size() == num)
+        return eligible;
+
+    // Otherwise sort by XP and return the best X.
+    sort(eligible.begin(), eligible.end(),
+        [](const monster* a, const monster* b)
+                {return exp_value(*a) > exp_value(*b);});
+
+    vector<monster*> chosen(eligible.begin(), eligible.begin() + num);
+    return chosen;
 }
 
 static bool _ignis_champion()
 {
-    monster *mon = _ignis_champion_target();
-    if (!mon)
+    vector<monster*> mons = _ignis_champion_targets();
+    if (mons.empty())
         return false;
+
     // Message ordering is a bit touchy here.
     // First, we say what we're doing. TODO: more fun messages
-    simple_god_message(make_stringf(" anoints %s as an instrument of "
-                                    "vengeance!", mon->name(DESC_THE).c_str()).c_str(),
+    simple_god_message(make_stringf(" anoints %s as %s of "
+                                    "vengeance!", multimonster_name_string(mons).c_str(),
+                                    mons.size() > 1 ? "instruments" : "an instrument").c_str(),
                                     false, GOD_IGNIS);
-    // Then, we add the ench. This makes it visible if it wasn't, since it's both
-    // confusing and unfun for players otherwise.
-    mon->add_ench(mon_enchant(ENCH_FIRE_CHAMPION, 1));
-    // Then we fire off update_monsters_in_view() to make the next messages make more
-    // sense. This triggers 'comes into view' if needed.
-    update_monsters_in_view();
-    // Then we explain what 'fire champion' does, for those who don't go through xv
-    // with a fine-toothed comb afterward.
-    simple_monster_message(*mon, " is coated in flames, covering ground quickly"
-                                 " and attacking fiercely!");
-    // Then we alert it last. It's just reacting, after all.
-    behaviour_event(mon, ME_ALERT, &you);
-    // Assign blame (so we can look up funny deaths)
-    mons_add_blame(mon, "anointed by " + god_name(GOD_IGNIS));
+
+    // Describe the effect on the monsters.
+    mprf("%s %s shrouded in protective flame, covering ground quickly, and attacking fiercely!",
+         mons.size() == 1 ? mons[0]->name(DESC_THE).c_str() : "The monsters",
+         mons.size() == 1 ? "is" : "are");
+
+    for (monster* mon : mons)
+    {
+        // Then, we add the ench. This makes it visible if it wasn't, since it's
+        // both confusing and unfun for players otherwise.
+        mon->add_ench(mon_enchant(ENCH_FIRE_CHAMPION));
+        // Then we alert it last. It's just reacting, after all.
+        behaviour_event(mon, ME_ALERT, &you);
+        // Assign blame (so we can look up funny deaths)
+        mons_add_blame(mon, "anointed by " + god_name(GOD_IGNIS));
+    }
+
     return true;
 }
 
@@ -1688,11 +1728,11 @@ static bool _uskayaw_retribution()
 
     case 2:
     case 3:
-        if (mon)
+        if (mon && you.can_be_paralysed())
         {
             simple_god_message(" booms out: Time for someone else to take a "
                                "solo!", false, god);
-            paralyse_player(_god_wrath_name(god));
+            you.paralyse(nullptr, random_range(2, 5), _god_wrath_name(god));
             dec_penance(god, 1);
             return false;
         }
@@ -1907,6 +1947,6 @@ void gozag_incite(monster *mon)
     {
         mon->add_ench(ENCH_GOZAG_INCITE);
         view_update_at(mon->pos());
-        lugonu_meddle_fineff::schedule();
+        schedule_lugonu_meddle_fineff();
     }
 }

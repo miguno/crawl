@@ -74,9 +74,10 @@ effects.
 Berserk status
 
 You are hasted, deal increased damage in combat, and have increased health, but
-are unable to make most actions other than moving and attacking. The status
-will wear off very quickly unless you are attacking monsters, and when it
-expires you will be slowed and unable to berserk again for a short duration.
+are unable to perform most actions other than moving and attacking in melee.
+The status will wear off very quickly unless you are attacking monsters, and
+when it expires you will be slowed and unable to berserk again for a short
+duration.
 %%%%
 -Berserk status
 
@@ -105,9 +106,17 @@ Confusion can be cured immediately by potions of curing.
 %%%%
 Contam status
 
-You glow with mutagenic radiation. This can mutate you over time, usually with
-a negative outcome. The colour indicates the severity: the first level (grey)
-is only a warning, and no mutation or loss of stealth will occur from it.
+You are glowing with mutagenic radiation. This can inflict mutations over time
+(usually negative) or even cause you to suffer damage as the unstable magic
+explodes violently. In addition, your glow prevents invisibility and reduces
+your stealth.
+{{
+    local dmg = you.contam_max_damage();
+    if dmg > 0 then
+        return "\nAn explosion at your current level of contamination could " ..
+               "inflict up to " .. dmg .. " damage."
+    end
+}}
 %%%%
 Drain status
 
@@ -317,27 +326,13 @@ QUAD DAMAGE!
 Sil status
 
 You are silenced. This makes reading scrolls, casting spells, invoking divine
-abilities, or shouting impossible. The oppressive, unnatural effect greatly
-hampers your stealth.
+abilities, or shouting impossible.
 %%%%
-Engulf status
+Flooded status
 
-{{
-    local desc = "You are engulfed by an adjacent creature"
-
-    if not you.res_drowning() then
-        desc = desc .. " and are unable to breathe. You will take increasing"
-                       .. " damage from asphyxiation every turn until you"
-                       .. " escape. This makes reading scrolls, casting"
-                       .. " spells, and invoking divine abilities impossible."
-                       .. " Moving away from the engulfing creature will end"
-                       .. " the effect"
-    else
-        desc = desc .. " but suffer no negative effects"
-    end
-
-    return desc .. "."
-}}
+Your lungs are filled with liquid, preventing you from breathing properly. This
+makes reading scrolls, casting spells, and invoking divine abilities impossible.
+You will also take asphyxiation damage every turn.
 %%%%
 Stealth status
 
@@ -654,12 +649,14 @@ maximum health is further drained when taking damage.
 Orb status
 
 You are near (or perhaps holding) the Orb of Zot, whose energies disrupt
-translocation magic. Teleportation will take longer.
+translocation magic. Teleportation will take longer and scrolls of blinking may
+transport you a short distance away from your intended destination.
 %%%%
 Orb? status
 
 You are holding the Charlatan's Orb, whose energies disrupt translocation
-magic. Teleportation will take longer.
+magic. Teleportation will take longer and scrolls of blinking may transport you
+a short distance away from your intended destination.
 %%%%
 -Hop status
 
@@ -726,7 +723,7 @@ You are bribing the inhabitants of the current branch.
 %%%%
 Cloud status
 
-You are standing in a cloud.
+You are in a cloud.
 %%%%
 -Clouds status
 
@@ -786,6 +783,11 @@ Gem status
 
 If you spend the indicated number of turns in this branch, its gem will be found
 and shattered by the power of Zot.
+%%%%
+Gem (*) status
+
+The power of Zot no longer hunts you, but this branch's gem still remains
+intact.
 %%%%
 rF0 status
 
@@ -1203,3 +1205,70 @@ You have a mane of venomous tendrils for hair.
 
 Your lithotoxin has recently activated and will not do so again until you fully
 heal.
+%%%%
+Doom status
+
+A malevolent fate is gathering around you. If your Doom reaches 100%, you will
+be afflicted by a random bane and your Doom will reset to 0. Banes have diverse
+negative effects that can significantly endanger your character for an extended
+period of time.
+
+Both Doom and Banes are only cured by gaining experience, though Banes typically
+last much longer.
+%%%%
+Ostracised status
+
+Your connection to the divine has been partially cut-off, temporarily reducing
+your effective piety. Gaining experience will eventually recover all piety that
+has been locked away this way.
+%%%%
+Tesseract status
+
+A Boundless Tesseract is drawing in forces from a parallel reality. New monsters
+will steadily appear at random locations across the floor until either of the
+tesseracts is destroyed. If this is allowed to continue for a very long time,
+those monsters may sometimes appear near your location instead.
+%%%%
+-Star status
+
+Your orb of stardust has recently expended its energy. It will recharge once
+several turns pass while your MP is full and there are no enemies in sight.
+%%%%
+-Mesm status
+
+Your orb of mesmerism has recently expended its energy. It will recharge after
+a short length of time (but cannot recharge on turns where you move).
+%%%%
+Phobia status
+
+Your claustrophobia has given you a slaying malus. This is dependent on the
+number of walls surrounding you.
+%%%%
+Dim status
+
+The power of all your spells is reduced by half.
+%%%%
+Sunder status
+
+Your next attack will have increased accuracy, inflict three times its normal
+damage, and cleave at an increased range. This bonus is lost if you perform any
+action besides attacking.
+%%%%
+Devious status
+
+Your evasion and slaying are increased. This stacks up to 3 times and will never
+expire so long as you continue to perform melee attacks.
+%%%%
+Slimifying status
+
+Your body is slowly being turned into slime. Even if a full transformation
+occurs, you have enough force of will to eventually revert back.
+%%%%
+Jelly status
+
+You have been temporarily transformed into a jelly. You have several unusual
+resistances and extra health, but heavily weakened spells.
+
+Any equipped weapons and armour are melded. The effectiveness of your
+newly-acidic melee attacks while in this form is based on your experience level
+rather than Unarmed Combat skill.

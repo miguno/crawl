@@ -58,6 +58,7 @@ int one_level_cost(skill_type sk);
 float scaled_skill_cost(skill_type sk);
 
 unsigned int skill_cost_needed(int level);
+int calc_skill_cost_level(int xp, int start);
 int calc_skill_cost(int skill_cost_level);
 void check_skill_cost_change(bool quiet = false);
 
@@ -74,6 +75,7 @@ void check_skill_level_change(skill_type sk, bool do_level_up = true);
 void change_skill_level(skill_type exsk, int num_level);
 void change_skill_points(skill_type sk, int points, bool do_level_up);
 
+bool is_mundane_skill(skill_type sk);
 bool is_magic_skill(skill_type sk);
 
 void exercise(skill_type exsk, int deg);
@@ -91,6 +93,7 @@ const char *skill_abbr(skill_type which_skill);
 skill_type str_to_skill(const string &skill);
 skill_type str_to_skill_safe(const string &skill);
 
+string special_conduct_title(skill_type best_skill, uint8_t skill_rank);
 string skill_title_by_rank(
     skill_type best_skill, uint8_t skill_rank,
     // these used for ghosts and hiscores:
@@ -98,7 +101,8 @@ string skill_title_by_rank(
     int dex = you.base_stats[STAT_DEX], int str = you.base_stats[STAT_STR],
     int intel = you.base_stats[STAT_INT],
     god_type god = you.religion,
-    int piety = you.piety, transformation trans = you.form);
+    int piety = you.raw_piety, bool conducts = true);
+
 unsigned get_skill_rank(unsigned skill_lev);
 
 string player_title(bool the = true);
@@ -108,6 +112,7 @@ skill_type best_skill(skill_type min_skill, skill_type max_skill,
 void init_skill_order();
 
 bool is_removed_skill(skill_type skill);
+skill_type random_skill();
 bool can_sacrifice_skill(mutation_type mut);
 bool is_useless_skill(skill_type skill);
 bool is_harmful_skill(skill_type skill);
@@ -125,8 +130,6 @@ skill_diff skill_level_to_diffs(skill_type skill, double amount,
 
 vector<skill_type> get_crosstrain_skills(skill_type sk);
 int get_crosstrain_points(skill_type sk);
-
-int destructive_elemental_preference(spell_type spell, int scale = 1);
 
 void skill_menu(int flag = 0, int exp = 0);
 void dump_skills(string &text);

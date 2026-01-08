@@ -102,7 +102,7 @@ spret cast_revivification(int pow, bool fail)
     {
         mprf(MSGCH_DURATION, "Your life is in your own hands once again.");
         // XXX: better cause name?
-        paralyse_player("Death's Door abortion");
+        you.paralyse(&you, random_range(2, 5), "breaking free from death's doorway");
         you.duration[DUR_DEATHS_DOOR] = 0;
     }
     return spret::success;
@@ -211,12 +211,12 @@ void do_fugue_wail(const coord_def pos)
 
 int silence_min_range(int pow)
 {
-    return shrinking_aoe_range((20 + pow/5) * BASELINE_DELAY);
+    return shrinking_aoe_range(min(100, (20 + pow/5)) * BASELINE_DELAY);
 }
 
 int silence_max_range(int pow)
 {
-    return shrinking_aoe_range((19 + pow/5 + pow/2) * BASELINE_DELAY);
+    return shrinking_aoe_range(min(100, (20 + pow/5 + pow/2)) * BASELINE_DELAY);
 }
 
 spret cast_silence(int pow, bool fail)
@@ -227,9 +227,6 @@ spret cast_silence(int pow, bool fail)
     you.increase_duration(DUR_SILENCE, 20 + div_rand_round(pow,5)
                             + random2avg(div_rand_round(pow,2), 2), 100);
     invalidate_agrid(true);
-
-    if (you.beheld())
-        you.update_beholders();
 
     learned_something_new(HINT_YOU_SILENCE);
     return spret::success;

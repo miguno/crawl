@@ -264,6 +264,49 @@ A stone staircase leading up
 
 A staircase leading back up.
 %%%%
+# For the Vaults:5 staircases in and out.
+A metal staircase leading down
+
+A staircase leading down to the grand vaults containing the silver rune of Zot,
+whose wealth attracts the most powerful champions from across the Dungeon to its
+defence.
+%%%%
+A metal staircase leading up
+
+A staircase leading up from the grand vaults containing the silver rune of Zot,
+whose wealth attracts the most powerful champions from across the Dungeon to its
+defence.
+%%%%
+A slimy stone staircase leading down
+
+A stone staircase leading further down.
+
+{{
+    if you.god() == "Jiyva" then
+        return "It is slick with slippery slime, but that is no obstacle for one " ..
+               "such as yourself who has embraced the way of all slime."
+    else
+        return "It is slick with slippery slime which will make it impossible " ..
+               "for you to climb back up again until the power ruling this place " ..
+               "is destroyed (or you choose to join it)."
+    end
+}}
+%%%%
+A slimy stone staircase leading up
+
+A stone staircase leading back up.
+
+{{
+    if you.god() == "Jiyva" then
+        return "It is slick with slippery slime, but that is no obstacle for one " ..
+               "such as yourself who has embraced the way of all slime."
+    else
+        return "It is slick with slippery slime, making it impossible for you to " ..
+               "climb until the power ruling this place is destroyed (or you choose " ..
+               "to join it)."
+    end
+}}
+%%%%
 A tree
 
 A large tree. While in most places the dim light of the dungeon is not bright
@@ -418,6 +461,21 @@ The orb dais
 
 A raised pedestal upon which rests the fabled Orb of Zot. More ancient than even
 the dungeon itself, it cannot be destroyed or transformed by any means.
+%%%%
+A statue of an orb of fire
+
+A statue of a terrifying globe of raw primordial fire, said to dwell within the
+Realm of Zot.
+%%%%
+A statue of an orb of winter
+
+A statue of a terrifying globe of uttermost cold, said to dwell within the
+Realm of Zot.
+%%%%
+A statue of an orb of entropy
+
+A statue of a terrifying globe of profound nothingness, said to dwell within the
+Realm of Zot.
 %%%%
 ########################################################################
 ### Branch entrances and exits
@@ -789,9 +847,17 @@ will avoid stepping on it.
 %%%%
 A dispersal trap
 
-Anyone stepping on this trap will translocate themself and anyone else in view
+Anyone stepping on this trap will translocate themselves and anyone else in view
 to a new location nearby. Hostile monsters may trigger this trap, but your
 allies will avoid stepping on it.
+
+After triggering, it cannot be triggered again for several turns.
+%%%%
+A dispersal trap (recharging)
+
+[[A dispersal trap]]
+
+It is currently recharging and will become active again in a short while.
 %%%%
 A harlequin's trap
 
@@ -1075,11 +1141,7 @@ flow of clouds.
 %%%%
 A wall of orange crystal
 
-<A crystal wall>
-%%%%
-A wall of pink crystal
-
-<A crystal wall>
+A wall made from orange crystal. It has a mind-boggling sheen.
 %%%%
 A wall of white crystal
 
@@ -1296,6 +1358,12 @@ A fur brush
 
 A grooming brush laid to rest beside a pile of tangled, matted yak fur.
 %%%%
+A set of bottled spirits
+
+A mix of various alcoholic drinks with worn-down labels. Unfortunately, the
+preservative magic sealing each bottle makes it impossible to sample from them
+without smashing their bottles open.
+%%%%
 # Graveyards, Crypt, Necropolis.
 A mourning vase
 
@@ -1305,6 +1373,13 @@ is difficult to tell whether it is even still alive.
 A broken floral vase
 
 A delicate arrangement, smashed to pieces and consigned to slow starvation.
+%%%%
+# The Hall of Blades
+A weapon-inlaid floor
+
+The decorative elvish inlayings of weapons mark here the Hall of Blades, where
+many of the Dungeon's keenest weapons originate, magically animated to
+demonstrate their own lethality on would-be thieves.
 %%%%
 # Bailies and other Orc-containing larger vaults
 An orcish standard

@@ -220,9 +220,12 @@ is increased by Invocations skill.
 %%%%
 Sanctuary ability
 
-Creates a divine refuge for a short duration. While you are inside the
-sanctuary, monsters will not attack you, but the protection will disappear at
-once should you breach the divine peace.
+Transforms the area around the user into a domain of unbreakable law for a short
+duration. So long as anyone stands within this sanctuary, no harm may be done to
+them by others, and they may do no harm to others in turn.
+
+Beings with hostile intent are unable to enter a sanctuary and those already
+nearby when it is created will be forced to flee.
 %%%%
 Cure All Mutations ability
 
@@ -305,8 +308,8 @@ Hurl Torchlight ability
 
 Hurls a gout of umbral fire from the Black Torch, which deals irresistible
 damage to living, demonic, and holy beings. The torchlight will also briefly
-empower any of your undead servants caught in its blast, and is harmless to its
-user. The damage is increased by Invocations skill.
+empower any of your undead servants caught in its blast, and is harmless to
+those who worship Yredelemnul. The damage is increased by Invocations skill.
 
 This ability can be used only while the torch is lit, and only a limited number
 of times on each floor. The number of uses available per floor increases with
@@ -715,7 +718,7 @@ Shadowslip ability
 Instantly swaps places with your shadow (so long as it is active) and misleads
 all enemies in sight about which of the two is which. Enemies which were
 previously focused on you will instead focus their attention exclusively upon
-your shadow for several turns before they realize their mistake - though if they
+your shadow for several turns before they realise their mistake - though if they
 succeed in destroying your shadow, the illusion will end prematurely.
 
 The duration of this effect increases with Invocations skill, as will the
@@ -817,11 +820,11 @@ Sacrifices purity of body or mind, causing a single mutation.
 %%%%
 Sacrifice Words ability
 
-Sacrifices the ability to use magical scrolls after being injured.
+Sacrifices the ability to use magical scrolls in combat unless badly injured.
 %%%%
 Sacrifice Drink ability
 
-Sacrifices the ability to drink potions after being injured.
+Sacrifices the ability to drink potions in combat unless badly injured.
 %%%%
 Sacrifice Essence ability
 
@@ -1087,9 +1090,9 @@ You must spend a short while recovering between each use of this ability.
 Watery Grave ability
 
 Turns all of the water near you into a surging tide that attempts to drown every
-enemy standing in or above it. Those who need air to breathe it will also become
-Waterlogged, preventing them from casting spells affected by Silence for several
-turns.
+enemy standing in or above it. Those who need air to breathe will also become
+Flooded, preventing them from casting spells affected by Silence for several
+turns and dealing minor asphyxiation damage.
 
 After using this ability, you must gain experience points before you can recover
 enough power to use it again.

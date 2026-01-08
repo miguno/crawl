@@ -324,6 +324,25 @@ enum tag_minor_version
     TAG_MINOR_COMPRESS_MAPPING,    // Reduce another mutation to 2 levels
     TAG_MINOR_FRENZY_FIXUP,        // Don't pair frenzy with haste and might
     TAG_MINOR_GHOST_WILLPOWER,     // Allow specifying willpower for ghost_demons (and player ghosts)
+    TAG_MINOR_BANES,               // Added Banes
+    TAG_MINOR_TEMP_MUT_KILLS,      // Change how temp mutations are cured
+    TAG_MINOR_CONTAM_PERCENT,      // Rescale internal values for magic contamination
+    TAG_MINOR_ZOT_ORB_ROTATION,    // Add multiple rotating orb monster types to Zot
+    TAG_MINOR_GHOST_TITLE,         // Store ghost titles instead of generating them
+    TAG_MINOR_ZOT_ORB_MEMORY,      // Fix whether the player has learned the Zot orb type not being saved
+    TAG_MINOR_CONSUMABLE_INV,      // Split gear and consumable inventory, adding much inventory space.
+    TAG_MINOR_EQUIP_TALISMAN,      // Make talismans equipment you put on.
+    TAG_MINOR_EXCLUSIVE_ROLLPAGE,  // Don't give inhibited regen mutation to rollpage characters.
+    TAG_MINOR_ATTACK_ACTION_COUNTS, // Add tracking for attack action count sources
+    TAG_MINOR_ACCURATE_INVIS_INDICATORS, // Invis indicators now always show at the monsters position
+    TAG_MINOR_FIX_BLOOD_KNOWLEDGE, // Add blood rotation to map knowledge so out of sight changes aren't leaked
+    TAG_MINOR_BRANCH_UNIQ_MAPS,    // buniq_* tags for "only once per branch" vault groups
+    TAG_MINOR_TRACK_ORIGIN_LEVEL,  // Track the original level on which a monster was generated
+    TAG_MINOR_FIX_POLAR_VORTEX_INFO_LEAK, // Don't leak whether the polar vortex caster has moved or gone
+    TAG_MINOR_CONSTRICTED_TYPE,    // Refactor saving of constriction type on actors
+    TAG_MINOR_LUA_5_4,             // Upgrade from Lua 5.1 to Lua 5.4.
+    TAG_MINOR_PIETY_LOGGING,       // Log piety events
+    TAG_MINOR_MONINFO_CLEANUP,     // Stop marshalling some unused info and start marshalling some overlooked info
 #endif
     NUM_TAG_MINORS,
     TAG_MINOR_VERSION = NUM_TAG_MINORS - 1
@@ -343,6 +362,7 @@ const set<int> bones_minor_tags =
          TAG_MINOR_GHOST_UMBRAS,
          TAG_MINOR_GHOST_MOVE_SPEED_FIX,
          TAG_MINOR_GHOST_WILLPOWER,
+         TAG_MINOR_GHOST_TITLE,
 #endif
         };
 

@@ -31,9 +31,12 @@ enum class spflag
     targeting_mask     = spflag::dir_or_target | spflag::target,
     obj                = 0x00000010,      // TARG_MOVABLE_OBJECT used
     helpful            = 0x00000020,      // TARG_FRIEND used
+                                          // (Can be cast by friendly monsters without a non-player foe,
+                                          //  so long as enemies are around.)
     aim_at_space       = 0x00000040,      // Spell aims at a location, not a
                                           // monster. Defaults to aiming at self
     not_self           = 0x00000080,      // aborts on isMe
+                                          // Irrelevant when cast by a monster.
     unholy             = 0x00000100,      // counts as "unholy"
     unclean            = 0x00000200,      // counts as "unclean"
     chaotic            = 0x00000400,      // counts as "chaotic"
@@ -41,7 +44,8 @@ enum class spflag
     silent             = 0x00001000,      // makes no noise on cast
     escape             = 0x00002000,      // useful for running away
     recovery           = 0x00004000,      // healing or recovery spell
-    area               = 0x00008000,      // area affect
+                                          // (Can be cast by friendly monsters, even when out of combat)
+                     //  0x00008000,
     destructive        = 0x00010000,      // not a conjuration, but still
                                           // supported by Vehumet/Battlesphere
     selfench           = 0x00020000,      // monsters use as selfench
@@ -51,13 +55,13 @@ enum class spflag
     testing            = 0x00200000,      // a testing/debugging spell
                      //  0x00400000,      // was spflag::corpse_violating
                      //  0x00800000,      // was SPFLAG_ALLOW_SELF
-    utility            = 0x01000000,      // usable no matter what foe is
+                     //  0x01000000,      // was spflag::utility
     no_ghost           = 0x02000000,      // ghosts can't get this spell
     cloud              = 0x04000000,      // makes a cloud
     WL_check           = 0x08000000,      // spell that checks monster WL
     mons_abjure        = 0x10000000,      // monsters can cast abjuration
                                           // instead of this spell
-                     //  0x20000000,      // was spflag::not_evil
+    dummy              = 0x20000000,      // not a real spell (and shouldn't be cast)
     holy               = 0x40000000,      // considered holy (can't be
                                           // used by Yred bound souls)
 };
@@ -96,8 +100,6 @@ int list_spells(bool toggle_with_I = true, bool transient = false,
                 const string &title = "cast");
 int raw_spell_fail(spell_type spell, bool enkindled = false);
 int calc_spell_power(spell_type spell);
-int calc_spell_range(spell_type spell, int power = 0, bool allow_bonus = true,
-                     bool ignore_shadows = false);
 
 spret cast_a_spell(bool check_range, spell_type spell = SPELL_NO_SPELL,
                    dist *_target = nullptr, bool force_failure = false);
@@ -152,3 +154,5 @@ bool channelled_spell_active(spell_type spell);
 void start_channelling_spell(spell_type spell, string reminder_msg = "", bool do_effect = true);
 void stop_channelling_spells(bool quiet = false);
 void handle_channelled_spell();
+
+bool warn_about_contam_cost(int max_contam);

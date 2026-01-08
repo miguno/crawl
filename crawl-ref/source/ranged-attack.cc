@@ -29,20 +29,20 @@
 #include "xom.h"
 
 ranged_attack::ranged_attack(actor *attk, actor *defn,
-                             const item_def *wpn, const item_def *proj,
-                             bool tele, actor *blame, bool mulch)
+                             const item_def *wpn,
+                             bool tele, actor *blame)
     : ::attack(attk, defn, blame), range_used(0), reflected(false),
-      projectile(proj), teleport(tele), mulched(mulch)
+        will_mulch(false), teleport(tele), _did_net(false)
 {
-    weapon = wpn;
-    if (weapon)
-        damage_brand = get_weapon_brand(*weapon);
+    ASSERT(wpn && (wpn->base_type == OBJ_MISSILES || is_range_weapon(*wpn)));
 
-    init_attack(SK_THROWING, 0);
+    weapon = wpn;
+    damage_brand = get_weapon_brand(*weapon);
+
+    init_attack(0);
     kill_type = KILLED_BY_BEAM;
 
-    string proj_name = projectile->name(DESC_PLAIN);
-    // init launch type early, so we can use it later in the constructor
+    proj_name = launched_projectile_name(*weapon);
 
     // [dshaligram] When changing bolt names here, you must edit
     // hiscores.cc (scorefile_entry::terse_missile_cause()) to match.
@@ -103,11 +103,10 @@ bool ranged_attack::attack()
     int ev = defender->evasion(false, attacker);
 
     // Works even if the defender is incapacitated
-    if (defender->missile_repulsion())
-        ev += REPEL_MISSILES_EV_BONUS;
+    ev += defender->missile_repulsion();
 
     ev_margin = test_hit(to_hit, ev, !attacker->is_player());
-    bool shield_blocked = attack_shield_blocked(false);
+    bool shield_blocked = attack_shield_blocked();
 
     god_conduct_trigger conducts[3];
     if (attacker->is_player() && attacker != defender)
@@ -138,8 +137,6 @@ bool ranged_attack::attack()
     if (!defender->pos().origin())
         handle_noise(defender->pos());
 
-    alert_defender();
-
     if (!defender->alive())
         handle_phase_killed();
 
@@ -151,21 +148,19 @@ bool ranged_attack::attack()
 
     handle_phase_end();
 
-    return attack_occurred;
+    return true;
 }
 
 // XXX: Are there any cases where this might fail?
 bool ranged_attack::handle_phase_attempted()
 {
     attacker->attacking(defender);
-    attack_occurred = true;
-
     return true;
 }
 
-bool ranged_attack::handle_phase_blocked()
+void ranged_attack::handle_phase_blocked()
 {
-    ASSERT(!ignores_shield(false));
+    ASSERT(!ignores_shield());
     string punctuation = ".";
 
     if (defender->reflection())
@@ -190,35 +185,35 @@ bool ranged_attack::handle_phase_blocked()
 
     if (needs_message)
     {
-        mprf("%s %s %s%s",
+        mprf("%s %s the %s%s",
              defender_name(false).c_str(),
              defender->conj_verb("block").c_str(),
-             projectile->name(DESC_THE).c_str(),
+             proj_name.c_str(),
              punctuation.c_str());
     }
 
-    if (!projectile->is_type(OBJ_MISSILES, MI_DART)
-        && !projectile->is_type(OBJ_MISSILES, MI_THROWING_NET))
+    if (!weapon->is_type(OBJ_MISSILES, MI_DART)
+        && !weapon->is_type(OBJ_MISSILES, MI_THROWING_NET))
     {
         maybe_trigger_jinxbite();
     }
 
-    return attack::handle_phase_blocked();
+    attack::handle_phase_blocked();
 }
 
-bool ranged_attack::handle_phase_dodged()
+void ranged_attack::handle_phase_dodged()
 {
     did_hit = false;
 
-    if (defender->missile_repulsion() && ev_margin > -REPEL_MISSILES_EV_BONUS)
+    if (ev_margin > -defender->missile_repulsion())
     {
         if (needs_message && defender_visible)
-            mprf("%s is repelled.", projectile->name(DESC_THE).c_str());
+            mprf("The %s is repelled.", proj_name.c_str());
 
         if (defender->is_player())
             count_action(CACT_DODGE, DODGE_REPEL);
 
-        return true;
+        return;
     }
 
     if (defender->is_player())
@@ -226,33 +221,29 @@ bool ranged_attack::handle_phase_dodged()
 
     if (needs_message)
     {
-        mprf("%s%s misses %s.",
-             projectile->name(DESC_THE).c_str(),
+        mprf("The %s%s misses %s.",
+             proj_name.c_str(),
              evasion_margin_adverb().c_str(),
              defender_name(false).c_str());
     }
 
-    if (!projectile->is_type(OBJ_MISSILES, MI_DART)
-        && !projectile->is_type(OBJ_MISSILES, MI_THROWING_NET))
+    if (!weapon->is_type(OBJ_MISSILES, MI_DART)
+        && !weapon->is_type(OBJ_MISSILES, MI_THROWING_NET))
     {
         maybe_trigger_jinxbite();
     }
 
     maybe_trigger_autodazzler();
-
-    return true;
 }
 
-static bool _jelly_eat_missile(const item_def& projectile, int damage_done)
+static bool _jelly_eat_missile(const string& proj_name, int damage_done)
 {
     if (you.has_mutation(MUT_JELLY_MISSILE)
         && you.hp < you.hp_max
         && !you.duration[DUR_DEATHS_DOOR]
-        && item_is_jelly_edible(projectile)
         && !one_chance_in(3))
     {
-        mprf("Your attached jelly eats %s!",
-             projectile.name(DESC_THE).c_str());
+        mprf("Your attached jelly eats the %s!", proj_name.c_str());
         inc_hp(1 + random2(damage_done));
         canned_msg(MSG_GAIN_HEALTH);
         return true;
@@ -263,31 +254,29 @@ static bool _jelly_eat_missile(const item_def& projectile, int damage_done)
 
 bool ranged_attack::handle_phase_hit()
 {
+    perceived_attack = true;
+
     if (mulch_bonus()
         // XXX: this kind of hijacks the shield block check
-        || !is_penetrating_attack(*attacker, weapon, *projectile))
+        || !is_penetrating_attack(*weapon))
     {
         range_used = BEAM_STOP;
     }
 
-    if (projectile->is_type(OBJ_MISSILES, MI_DART))
+    if (weapon->is_type(OBJ_MISSILES, MI_DART))
     {
-        damage_done = dart_duration_roll(get_ammo_brand(*projectile));
+        damage_done = dart_duration_roll(get_ammo_brand(*weapon));
         set_attack_verb(0);
         announce_hit();
     }
-    else if (projectile->is_type(OBJ_MISSILES, MI_THROWING_NET))
+    else if (weapon->is_type(OBJ_MISSILES, MI_THROWING_NET))
     {
         set_attack_verb(0);
         announce_hit();
+        if (defender->trap_in_net(true))
+            _did_net = true;
         if (defender->is_player())
-        {
-            player_caught_in_net();
-            if (attacker->is_monster())
-                xom_is_stimulated(50);
-        }
-        else
-            monster_caught_in_net(defender->as_monster());
+            xom_is_stimulated(50);
     }
     else
     {
@@ -301,7 +290,7 @@ bool ranged_attack::handle_phase_hit()
             if (attacker->is_monster()
                 && defender->is_player()
                 && !you.pending_revival
-                && _jelly_eat_missile(*projectile, damage_done))
+                && _jelly_eat_missile(proj_name, damage_done))
             {
                 range_used = BEAM_STOP;
             }
@@ -310,8 +299,8 @@ bool ranged_attack::handle_phase_hit()
         {
             if (needs_message)
             {
-                mprf("%s %s %s%s but does no damage.",
-                    projectile->name(DESC_THE).c_str(),
+                mprf("The %s %s %s%s but does no damage.",
+                    proj_name.c_str(),
                     attack_verb.c_str(),
                     defender->name(DESC_THE).c_str(),
                     mulch_bonus() ? " and shatters," : "");
@@ -321,21 +310,16 @@ bool ranged_attack::handle_phase_hit()
         maybe_trigger_jinxbite();
     }
 
-    if ((using_weapon() || throwing())
-        && (!defender->is_player() || !you.pending_revival))
+    if (!defender->is_player() || !you.pending_revival)
     {
-        if (using_weapon()
-            && apply_damage_brand(projectile->name(DESC_THE).c_str()))
-        {
+        if (apply_damage_brand(make_stringf("the %s", proj_name.c_str()).c_str()))
             return false;
-        }
 
-        if (using_weapon() && testbits(weapon->flags, ISFLAG_CHAOTIC)
-            && defender->alive())
+        if (testbits(weapon->flags, ISFLAG_CHAOTIC) && defender->alive())
         {
             unwind_var<brand_type> save_brand(damage_brand);
             damage_brand = SPWPN_CHAOS;
-            if (apply_damage_brand(projectile->name(DESC_THE).c_str()))
+            if (apply_damage_brand(make_stringf("the %s", proj_name.c_str()).c_str()))
                 return false;
         }
 
@@ -363,36 +347,17 @@ bool ranged_attack::throwing() const
 
 bool ranged_attack::using_weapon() const
 {
-    return weapon && !throwing();
-}
-
-bool ranged_attack::clumsy_throwing() const
-{
-    return throwing() && !is_throwable(attacker, *projectile);
+    return true;
 }
 
 int ranged_attack::weapon_damage() const
 {
-    if (clumsy_throwing())
-        return 0;
+    int dam = property(*weapon, PWPN_DAMAGE);
 
-    int dam = property(*projectile, PWPN_DAMAGE);
-    if (using_weapon())
-        dam += property(*weapon, PWPN_DAMAGE);
-    else if (attacker->is_player())
-        dam += calc_base_unarmed_damage();
+    if (attacker->is_player() && throwing())
+        dam += throwing_base_damage_bonus(*weapon, true);
 
     return dam;
-}
-
-/**
- * For ranged attacked, "unarmed" is throwing damage.
- */
-int ranged_attack::calc_base_unarmed_damage() const
-{
-    if (clumsy_throwing())
-        return 0;
-    return throwing_base_damage_bonus(*projectile, true);
 }
 
 int ranged_attack::calc_mon_to_hit_base()
@@ -408,10 +373,18 @@ int ranged_attack::apply_damage_modifiers(int damage)
     if (attacker->as_monster()->has_ench(ENCH_TOUCH_OF_BEOGH))
         damage = damage * 4 / 3;
 
+    if (attacker->as_monster()->has_ench(ENCH_FIGMENT))
+        damage = damage * 2 / 3;
+
     if (attacker->as_monster()->is_archer())
     {
         const int bonus = archer_bonus_damage(attacker->get_hit_dice());
         damage += random2avg(bonus, 2);
+    }
+    if (attacker->as_monster()->wearing_ego(OBJ_ARMOUR, SPARM_SNIPING)
+        && defender->incapacitated())
+    {
+        damage = damage * 3 / 2;
     }
     return damage;
 }
@@ -420,16 +393,25 @@ int ranged_attack::player_apply_final_multipliers(int damage, bool /*aux*/)
 {
     if (!throwing())
         damage = apply_rev_penalty(damage);
+    if (you.wearing_ego(OBJ_ARMOUR, SPARM_SNIPING)
+        && defender->incapacitated())
+    {
+        damage = damage * 3 / 2;
+    }
     return damage;
 }
 
 bool ranged_attack::mulch_bonus() const
 {
-    return mulched
+    return will_mulch
         && throwing()
-        && projectile
-        && ammo_type_damage(projectile->sub_type)
-        && projectile->sub_type != MI_STONE;
+        && ammo_type_damage(weapon->sub_type)
+        && weapon->sub_type != MI_STONE;
+}
+
+bool ranged_attack::did_net() const
+{
+    return _did_net;
 }
 
 int ranged_attack::player_apply_postac_multipliers(int damage)
@@ -439,24 +421,12 @@ int ranged_attack::player_apply_postac_multipliers(int damage)
     return damage;
 }
 
-bool ranged_attack::ignores_shield(bool verbose)
+bool ranged_attack::ignores_shield()
 {
     if (defender->is_player() && player_omnireflects())
         return false;
 
-    if (is_penetrating_attack(*attacker, weapon, *projectile))
-    {
-        if (verbose)
-        {
-            mprf("%s pierces through %s %s!",
-                 projectile->name(DESC_THE).c_str(),
-                 apostrophise(defender_name(false)).c_str(),
-                 is_shield(defender_shield) ? defender_shield->name(DESC_PLAIN).c_str()
-                                            : "shielding");
-        }
-        return true;
-    }
-    return false;
+    return is_penetrating_attack(*weapon);
 }
 
 special_missile_type ranged_attack::random_chaos_missile_brand()
@@ -631,11 +601,11 @@ int ranged_attack::dart_duration_roll(special_missile_type type)
 
 bool ranged_attack::apply_missile_brand()
 {
-    if (projectile->base_type != OBJ_MISSILES)
+    if (weapon->base_type != OBJ_MISSILES)
         return false;
 
     special_damage = 0;
-    special_missile_type brand = get_ammo_brand(*projectile);
+    special_missile_type brand = get_ammo_brand(*weapon);
     if (brand == SPMSL_CHAOS)
         brand = random_chaos_missile_brand();
 
@@ -646,7 +616,7 @@ bool ranged_attack::apply_missile_brand()
     case SPMSL_FLAME:
         calc_elemental_brand_damage(BEAM_FIRE,
                                     defender->is_icy() ? "melt" : "burn",
-                                    projectile->name(DESC_THE).c_str());
+                                    make_stringf("the %s", proj_name.c_str()).c_str());
 
         defender->expose_to_element(BEAM_FIRE, 2);
         if (defender->is_player())
@@ -654,11 +624,11 @@ bool ranged_attack::apply_missile_brand()
         break;
     case SPMSL_FROST:
         calc_elemental_brand_damage(BEAM_COLD, "freeze",
-                                    projectile->name(DESC_THE).c_str());
+                                    make_stringf("the %s", proj_name.c_str()).c_str());
         defender->expose_to_element(BEAM_COLD, 2, attacker);
         break;
     case SPMSL_POISONED:
-        if (projectile->is_type(OBJ_MISSILES, MI_DART)
+        if (weapon->is_type(OBJ_MISSILES, MI_DART)
                 && damage_done > 0
             || !one_chance_in(4))
         {
@@ -672,10 +642,7 @@ bool ranged_attack::apply_missile_brand()
                     (defender->as_monster()->get_ench(ENCH_POISON)).degree;
             }
 
-            defender->poison(attacker,
-                             projectile->is_type(OBJ_MISSILES, MI_DART)
-                             ? damage_done
-                             : 6 + random2(8) + random2(damage_done * 3 / 2));
+            defender->poison(attacker, damage_done);
 
             if (defender->is_player()
                    && old_poison < you.duration[DUR_POISONING]
@@ -690,7 +657,7 @@ bool ranged_attack::apply_missile_brand()
         break;
     case SPMSL_CURARE:
         obvious_effect = curare_actor(attacker, defender,
-                                      projectile->name(DESC_PLAIN),
+                                      proj_name,
                                       atk_name(DESC_A));
         break;
     case SPMSL_CHAOS:
@@ -733,7 +700,7 @@ bool ranged_attack::apply_missile_brand()
             mprf(MSGCH_WARN, "You become untethered in space!");
             you.duration[DUR_BLINKITIS] = random_range(30, 40);
             you.props[BLINKITIS_SOURCE_KEY] = attacker->name(DESC_A, true);
-            you.props[BLINKITIS_AUX_KEY] = projectile->name(DESC_PLAIN);
+            you.props[BLINKITIS_AUX_KEY] = proj_name;
         }
         else
         {
@@ -741,7 +708,7 @@ bool ranged_attack::apply_missile_brand()
             if (!dmon->has_ench(ENCH_BLINKITIS))
             {
                 simple_monster_message(*dmon, " becomes untethered in space!");
-                dmon->add_ench(mon_enchant(ENCH_BLINKITIS, 0, attacker,
+                dmon->add_ench(mon_enchant(ENCH_BLINKITIS, attacker,
                                            random_range(3, 4) * BASELINE_DELAY));
                 // Trigger immediately once so that monster can't make an attack
                 // before it activates.
@@ -759,15 +726,15 @@ bool ranged_attack::apply_missile_brand()
     case SPMSL_BLINDING:
         if (!dart_check(brand))
             break;
-        if (defender->can_be_blinded())
+        if (!defender->res_blind())
         {
             if (defender->is_player())
                 blind_player(damage_done, LIGHTGREEN);
             else
             {
                 monster* mon = defender->as_monster();
-                mon->add_ench(mon_enchant(ENCH_BLIND, 1, attacker,
-                       damage_done * BASELINE_DELAY));
+                mon->add_ench(mon_enchant(ENCH_BLIND, attacker,
+                                          damage_done * BASELINE_DELAY));
             }
         }
         defender->confuse(attacker, damage_done / 3);
@@ -824,7 +791,7 @@ bool ranged_attack::player_good_stab()
 
 void ranged_attack::set_attack_verb(int/* damage*/)
 {
-    attack_verb = !mulch_bonus() && is_penetrating_attack(*attacker, weapon, *projectile) ? "pierces through" : "hits";
+    attack_verb = !mulch_bonus() && is_penetrating_attack(*weapon) ? "pierces through" : "hits";
 }
 
 void ranged_attack::announce_hit()
@@ -832,11 +799,16 @@ void ranged_attack::announce_hit()
     if (!needs_message)
         return;
 
-    mprf("%s %s %s%s%s%s",
-         projectile->name(DESC_THE).c_str(),
+    mprf("The %s %s %s%s%s%s",
+         proj_name.c_str(),
          attack_verb.c_str(),
          defender_name(false).c_str(),
          mulch_bonus() ? " and shatters for extra damage" : "",
          debug_damage_number().c_str(),
          attack_strength_punctuation(damage_done).c_str());
+}
+
+string ranged_attack::projectile_name() const
+{
+    return proj_name;
 }

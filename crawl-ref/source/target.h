@@ -126,7 +126,7 @@ private:
 class targeter_permafrost : public targeter_smite
 {
 public:
-    targeter_permafrost(const actor &act, int power);
+    targeter_permafrost(const actor &act);
     aff_type is_affected(coord_def loc) override;
 private:
     set<coord_def> targets;
@@ -497,7 +497,7 @@ public:
 class targeter_bog : public targeter_multiposition
 {
 public:
-    targeter_bog(const actor *a, int pow);
+    targeter_bog(const actor *a);
 };
 
 class targeter_ignite_poison : public targeter_multiposition
@@ -734,6 +734,7 @@ class targeter_teleport_other : public targeter_smite
 public:
     targeter_teleport_other(const actor *act, int range);
     bool valid_aim(coord_def a) override;
+    bool preferred_aim(coord_def a) override;
 };
 
 class targeter_malign_gateway : public targeter

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "externs.h"
 #include "spl-cast.h"
 
 class actor;
@@ -34,9 +35,10 @@ coord_def get_electric_charge_landing_spot(const actor& agent,
 bool valid_electric_charge_target(const actor& agent, coord_def target,
                                   string* fail_reason = nullptr);
 
-void you_teleport();
-void you_teleport_now(bool wizard_tele = false, bool teleportitis = false,
-                      string reason = "");
+bool hostile_teleport_is_possible();
+bool hostile_teleport_player(monster* mon_source = nullptr);
+void you_teleport(bool is_hostile = false, mid_t teleportitis_source = MID_NOBODY);
+void you_teleport_now(bool wizard_tele = false, string reason = "");
 bool you_teleport_to(const coord_def where,
                      bool move_monsters = false);
 bool cell_vetoes_teleport(coord_def cell, bool check_monsters = true,
@@ -58,6 +60,8 @@ int gravitas_radius(int pow);
 spret cast_gravitas(int pow, const coord_def& where, bool fail);
 void pull_monsters_inward(const coord_def& center, int radius);
 
+bool can_beckon(const actor& beckoned);
+bool can_beckon(const monster_info& beckoned);
 bool beckon(actor &beckoned, const bolt &path);
 void attract_monsters(int delay);
 void attract_monster(monster &m, int max_move);

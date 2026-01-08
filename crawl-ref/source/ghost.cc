@@ -96,7 +96,6 @@ static spell_type search_order_misc[] =
     SPELL_VITRIFY,
     SPELL_SLEEP,
     SPELL_MASS_CONFUSION,
-    SPELL_DRAIN_MAGIC,
     SPELL_PETRIFY,
     SPELL_POLYMORPH,
     SPELL_SLOW,
@@ -147,6 +146,7 @@ void ghost_demon::reset()
     flies            = false;
     cloud_ring_ench  = ENCH_NONE;
     umbra_rad        = -1;
+    title            = "";
 }
 
 // Set values to the bare minimum required to function, in cases where full
@@ -189,15 +189,11 @@ static attack_type _pan_lord_random_attack_type()
     attack_type attack = AT_HIT;
     if (one_chance_in(4))
     {
-        do
-        {
-            // An ugly list, but less brittle and without e.g. false trampling.
-            attack = static_cast<attack_type>(random_choose(AT_BITE, AT_STING,
-                                      AT_SPORE, AT_TOUCH, AT_PECK, AT_HEADBUTT,
-                                      AT_PUNCH, AT_KICK, AT_TENTACLE_SLAP,
-                                      AT_TAIL_SLAP, AT_GORE, AT_TRUNK_SLAP));
-        }
-        while (attack == AT_HIT || !is_plain_attack_type(attack));
+        // An ugly list, but less brittle and without e.g. false trampling.
+        attack = static_cast<attack_type>(random_choose(AT_BITE, AT_STING,
+                                    AT_SPORE, AT_TOUCH, AT_PECK, AT_HEADBUTT,
+                                    AT_PUNCH, AT_KICK, AT_TENTACLE_SLAP,
+                                    AT_TAIL_SLAP, AT_GORE, AT_TRUNK_SLAP));
     }
     return attack;
 }
@@ -496,7 +492,7 @@ void ghost_demon::init_player_ghost()
                 case STAFF_FIRE: brand = SPWPN_FLAMING; break;
                 case STAFF_COLD: brand = SPWPN_FREEZING; break;
                 case STAFF_ALCHEMY: brand = SPWPN_VENOM; break;
-                case STAFF_DEATH: brand = SPWPN_PAIN; break;
+                case STAFF_NECROMANCY: brand = SPWPN_PAIN; break;
                 case STAFF_AIR: brand = SPWPN_ELECTROCUTION; break;
                 case STAFF_EARTH: brand = SPWPN_HEAVY; break;
                 default: ;
@@ -529,6 +525,7 @@ void ghost_demon::init_player_ghost()
     best_skill = ::best_skill(SK_FIRST_SKILL, SK_LAST_SKILL);
     best_skill_level = you.skills[best_skill];
     xl = you.experience_level;
+    title = player_title();
 
     flies = true;
 
@@ -1123,7 +1120,7 @@ spell_type ghost_demon::translate_spell(spell_type spell) const
         return SPELL_BLINK;
 #endif
     case SPELL_SWIFTNESS:
-        return SPELL_SPRINT;
+        return SPELL_FLEETFOOT;
     case SPELL_CONFUSING_TOUCH:
         return SPELL_CONFUSE;
     case SPELL_CURSE_OF_AGONY:
@@ -1136,6 +1133,10 @@ spell_type ghost_demon::translate_spell(spell_type spell) const
         return SPELL_ELECTROLUNGE;
     case SPELL_PERCUSSIVE_TEMPERING:
         return SPELL_ALL_PURPOSE_TEMPERING;
+    case SPELL_FREEZING_CLOUD:
+        return SPELL_FREEZING_GUST;
+    case SPELL_NOXIOUS_BOG:
+        return SPELL_HURL_SLUDGE;
     default:
         break;
     }

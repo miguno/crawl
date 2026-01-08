@@ -95,6 +95,7 @@
     aMcNicky
     AndSDev
     Antern
+    antimachina
     Austin Appleby
     araganzar
     argonaut
@@ -111,6 +112,7 @@
     Beargit
     Bill Beher
     Alexander Beisig
+    Alex Beloi
     benadryl
     biasface
     Björn Bähre
@@ -138,6 +140,7 @@
     Ian Caltabiano
     David Candido
     Edgar Carballo
+    caryoscelus
     Cedor
     Cerol
     Marcelo Cerri
@@ -158,10 +161,11 @@
     cut1less
     Matthew Daley
     David Damerell
-    Darby
     Paul Dejean
     Denzi
+    DevJac
     Sean Dewar
+    DewdropsOTG
     Ed Dewey
     dicedlemming
     Lothar Dierkes
@@ -190,7 +194,6 @@
     Brett Foster
     Kyle Fox
     Perry Fraser
-    freepotion
     Chris Galardi
     GenericPseudonym
     Ge0ff
@@ -227,7 +230,6 @@
     Iainuki
     ICC
     Icy Lich
-    Wizard Ike
     Ilyak
     Matthew Ince
     Mitsuhiro Itakura
@@ -257,6 +259,7 @@
     Christopher Landry
     Lantier
     Maciej Lapinski
+    LemurRobot
     Lamil Lerran
     Jordan Lewis
     Lici
@@ -290,6 +293,7 @@
     Midn8
     mikee
     MikeJHeg
+    Jared Miller
     Nathan Mills
     Andrew Minton
     Mintice
@@ -313,6 +317,8 @@
     Erkki Nurmi
     Mattias Nyberg
     nyra
+    Odds
+    Weston Odom
     Dylan O'Donnell
     Heinrich Ody
     Chris Oelmueller
@@ -334,10 +340,10 @@
     Christopher Partin
     Pedro
     Pekkekke
+    person50605
     Alejandro Ramirez
     Rytis Petronis
     Arlen Phillips
-    pianoman523
     pikaro
     Lemuel Pitkin
     valerie "ploomutoo"
@@ -416,6 +422,7 @@
     Tedronai
     tekkud
     Chris Terenzi
+    tianmaster
     Jared 'Twinge' Tinney
     Matt Titus
     Jonathan Klabunde Tomer
@@ -440,10 +447,13 @@
     Yelve Yakut
     Edward Z. Yang
     Yermak
+    YLam
     Andrew G. York
     Rob Young
     Zannick
     Zooko
+    Zhang Haocheng
+    Brian 'buehler' Faires
 
 The Dungeon Crawl Stone Soup development team is:
     advil
@@ -458,6 +468,7 @@ The Dungeon Crawl Stone Soup development team is:
     Robert Burnham
     Kate Campbell
     Matthew Cline
+    Darby
     Florian Diebold
     Rax E. Dillon
     Nicholas Feinberg
@@ -496,3 +507,4 @@ The Dungeon Crawl Stone Soup development team is:
     Marc H. Thoben
     Chris West
     Samuel Wilson
+    Wizard Ike

@@ -14,7 +14,9 @@
 #define MAP_INVISIBLE_MONSTER   0x10
 #define MAP_DETECTED_ITEM       0x20
 #define MAP_VISIBLE_FLAG        0x40
-#define MAP_GRID_KNOWN          0xFF
+#define MAP_GRID_KNOWN (MAP_MAGIC_MAPPED_FLAG | MAP_SEEN_FLAG \
+                        | MAP_DETECTED_MONSTER | MAP_INVISIBLE_MONSTER \
+                        | MAP_DETECTED_ITEM | MAP_VISIBLE_FLAG)
 
 #define MAP_EMPHASIZE          0x100
 #define MAP_MORE_ITEMS         0x200
@@ -22,17 +24,19 @@
 #define MAP_SILENCED           0x800
 #define MAP_BLOODY            0x1000
 #define MAP_CORRODING         0x2000
-#define MAP_INVISIBLE_UPDATE  0x4000 // Used for invis redraws by show_init()
 #define MAP_ICY               0x8000
 
 /* these flags require more space to serialize: put infrequently used ones there */
 #define MAP_EXCLUDED_STAIRS  0x10000
+#define MAP_BLOOD_WEST       0x20000
+#define MAP_BLOOD_NORTH      0x40000
 #define MAP_SANCTUARY_1      0x80000
 #define MAP_SANCTUARY_2     0x100000
 #define MAP_WITHHELD        0x200000
 #define MAP_LIQUEFIED       0x400000
 #define MAP_ORB_HALOED      0x800000
 #define MAP_UMBRAED        0x1000000
+#define MAP_OLD_BLOOD      0x2000000
 #define MAP_QUAD_HALOED    0X4000000
 #define MAP_DISJUNCT       0X8000000
 #define MAP_BLASPHEMY     0X10000000
@@ -40,20 +44,20 @@
 
 struct cloud_info
 {
-    cloud_info() : type(CLOUD_NONE), colour(0), duration(3), tile(0), pos(0, 0),
+    cloud_info() : type(CLOUD_NONE), colour(0), variety(3), tile(0), pos(0, 0),
                    killer(KILL_NONE)
     { }
 
     cloud_info(cloud_type t, colour_t c,
                uint8_t dur, unsigned short til, coord_def gc,
                killer_type kill)
-        : type(t), colour(c), duration(dur), tile(til), pos(gc), killer(kill)
+        : type(t), colour(c), variety(dur), tile(til), pos(gc), killer(kill)
     { }
 
     friend bool operator==(const cloud_info &lhs, const cloud_info &rhs) {
         return lhs.type == rhs.type
                && lhs.colour == rhs.colour
-               && lhs.duration == rhs.duration
+               && lhs.variety == rhs.variety
                && lhs.tile == rhs.tile
                && lhs.pos == rhs.pos
                && lhs.killer == rhs.killer;
@@ -66,7 +70,9 @@ struct cloud_info
 
     cloud_type type:8;
     colour_t colour;
-    uint8_t duration; // decay/20, clamped to 0-3
+    // for clouds with duration: decay/20, clamped to 0-3
+    // for vortex clouds: the vortex phase
+    uint8_t variety;
     // TODO: should this be tileidx_t?
     unsigned short tile;
     coord_def pos;
@@ -150,7 +156,7 @@ struct map_cell
     void clear_data()
     {
         const uint32_t f = flags & (MAP_SEEN_FLAG | MAP_CHANGED_FLAG
-                                    | MAP_INVISIBLE_UPDATE);
+                                    | MAP_VISIBLE_FLAG);
         clear();
         flags = f;
     }
@@ -314,6 +320,18 @@ struct map_cell
     {
         return _trap;
     }
+
+#ifdef USE_TILE
+    char blood_rotation() const noexcept
+    {
+        char result = 0;
+        if (flags & MAP_BLOOD_WEST)
+            result += 1;
+        if (flags & MAP_BLOOD_NORTH)
+            result += 2;
+        return result;
+    }
+#endif
 
 public:
     uint32_t flags = 0;   // Flags describing the mappedness of this square.

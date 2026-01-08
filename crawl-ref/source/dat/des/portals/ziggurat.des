@@ -79,7 +79,8 @@ WEIGHT:  15
 KFEAT:   O = enter_ziggurat no_mimic
 MONS:    lich / ancient lich, dread lich
 MONS:    angel / pearl dragon w:2, daeva / fravashi w:2
-MONS:    eye of devastation / great orb of eyes / shining eye, glass eye
+MONS:    eye of devastation / great orb of eyes / shining eye
+MONS:    glass eye / eye of draining w:2
 # Iron grates are guaranteed to get at least one monster that can threaten
 # from behind the grates, while transparent rock is not.
 SHUFFLE: Aa / 'A
@@ -150,6 +151,40 @@ n-xw2O3wx-n
  .nnnxnnn.
 ....---....
  .  .n.  .
+ENDMAP
+
+NAME:    tekkud_enter_ziggurat_h
+TAGS:    zig_entry no_trap_gen transparent no_descent
+KMONS:   1 = fire dragon w:20 / ice dragon w:20 / \
+             storm dragon / shadow dragon / iron dragon
+KMONS:   2 = fire giant / frost giant / stone giant
+KMONS:   3 : torpor snail / glass eye w:5 / rakshasa w:5 / soul eater
+KMONS:   O = titan / juggernaut / quicksilver dragon w:20 / \
+             golden dragon w:30 / wyrmhole
+KFEAT:   O = enter_ziggurat no_mimic
+NSUBST:  _ = 1:1 / 1:2 / * = 12''''''
+NSUBST:  ; = 3:3 / 1:' / * = 3''
+SHUFFLE: vm
+KPROP:   123'O = no_tele_into
+KMASK:   123'O = opaque
+KMASK:   123'O = no_monster_gen
+COLOUR:  v = yellow
+FTILE:   123'Ov = floor_limestone
+FTILE:   m = floor_nerves_yellow
+TILE:    v = dngn_metal_wall_yellow
+TILE:    m = dngn_transparent_wall_yellow
+MAP
+   .....
+ ...vmv...
+ .mvv'vvm.
+..v_;';_v..
+.vv;''';vv.
+.m'''O'''m.
+.vv;''';vv.
+..v_;';_v..
+ .mvv'vvm.
+ ...vmv...
+   .....
 ENDMAP
 
 default-depth: Zig
@@ -227,8 +262,8 @@ KMONS: A : guardian serpent / moth of wrath w:5 / ironbound convoker / \
            curse toe w:5 / mummy priest w:5 / royal mummy w:5 / stoker / \
            shadow demon / demonspawn corrupter / fravashi
 KMONS:  B : naga ritualist w:5 / salamander tyrant / entropy weaver / \
-            ghost moth / glass eye / deep elf high priest / titan / \
-            flayed ghost w:5 / soul eater w:5 / tormentor w:5 / \
+            ghost moth / glass eye / eye of draining / deep elf high priest / \
+            titan / flayed ghost w:5 / soul eater w:5 / tormentor w:5 / \
             demonspawn soul scholar / ophan / daeva
 KMONS:  C : glowing orange brain / torpor snail / tainted leviathan w:5 / \
             undying armoury w:5 / apis
@@ -270,7 +305,7 @@ ENDMAP
 NAME:  ziggurat_pillar_centre_h
 TAGS:  ziggurat_pillar centered no_dump unrand no_exits
 MONS:  laughing skull w:1 / crimson imp w:31 / pandemonium lord w:1
-KFEAT: % : cache of meat / cache of fruit
+KFEAT: % : cache_of_meat / cache_of_fruit
 KFEAT: T = fountain_eyes
 MAP
 ccncc
@@ -364,7 +399,7 @@ ENDMAP
 NAME: ziggurat_pillar_centre_oklobs
 TAGS: ziggurat_pillar centered unrand no_exits
 MONS: plant, oklob plant
-KFEAT: d = cache of fruit
+KFEAT: d = cache_of_fruit
 NSUBST: 1 = 2:1 / 2:2 / 6 = 12dd / * = 1...
 : megazig_zot_traps(_G)
 MAP

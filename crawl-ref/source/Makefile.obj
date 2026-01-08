@@ -185,11 +185,13 @@ package.o \
 pattern.o \
 pcg.o \
 perlin.o \
+piety-info.o \
 place-info.o \
 place.o \
 playable.o \
 player-act.o \
 player-equip.o \
+player-notices.o \
 player-reacts.o \
 player-stats.o \
 player.o \

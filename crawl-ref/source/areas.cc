@@ -302,18 +302,15 @@ static void _remove_sanctuary_property(const coord_def& where)
 
 bool sanctuary_exists()
 {
-    return in_bounds(env.sanctuary_pos);
+    return env.sanctuary_time > 0;
 }
 
 /*
  * Remove any sanctuary from the level.
  *
- * @param did_attack If true, the sanctuary removal was the result of a player
- *                   attack, so we apply penance. Otherwise the sanctuary is
- *                   removed with no penance.
  * @returns True if we removed an existing sanctuary, false otherwise.
  */
-bool remove_sanctuary(bool did_attack)
+bool remove_sanctuary()
 {
     if (env.sanctuary_time)
         env.sanctuary_time = 0;
@@ -322,23 +319,11 @@ bool remove_sanctuary(bool did_attack)
         return false;
 
     const int radius = 4;
-    bool seen_change = false;
     for (rectangle_iterator ri(env.sanctuary_pos, radius, true); ri; ++ri)
         if (is_sanctuary(*ri))
-        {
             _remove_sanctuary_property(*ri);
-            if (you.see_cell(*ri))
-                seen_change = true;
-        }
 
     env.sanctuary_pos.set(-1, -1);
-
-    if (did_attack)
-    {
-        if (seen_change)
-            simple_god_message(" revokes the gift of sanctuary.", GOD_ZIN);
-        did_god_conduct(DID_ATTACK_IN_SANCTUARY, 3);
-    }
 
     // Now that the sanctuary is gone, monsters aren't afraid of it
     // anymore.
@@ -583,7 +568,7 @@ int player::halo_radius() const
     if (have_passive(passive_t::halo))
     {
         // The cap is reached at piety 160 = ******.
-        size = min((int)piety, piety_breakpoint(5)) * you.normal_vision
+        size = min(piety(), piety_breakpoint(5)) * you.normal_vision
                                                     / piety_breakpoint(5);
     }
 
@@ -756,9 +741,9 @@ int player::umbra_radius() const
 
     if (have_passive(passive_t::umbra))
     {
-        if (piety >= piety_breakpoint(4))
+        if (piety() >= piety_breakpoint(4))
             size = 4;
-        else if (piety >= piety_breakpoint(3))
+        else if (piety() >= piety_breakpoint(3))
             size = 3;
         else
             size = 2;
@@ -797,6 +782,10 @@ int monster::umbra_radius() const
     item_def* ring = mslot_item(MSLOT_JEWELLERY);
     if (ring && is_unrandom_artefact(*ring, UNRAND_SHADOWS))
         size = max(size, 3);
+
+    // Death knights get a small umbra.
+    if (type == MONS_DEATH_KNIGHT)
+        size += 3;
 
     if (!(holiness() & MH_UNDEAD))
         return size;

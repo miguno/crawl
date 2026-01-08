@@ -129,9 +129,6 @@ public:
     direction_chooser(dist& moves, const direction_chooser_args& args);
     bool noninteractive();
     bool choose_direction();
-    // Returns a description of the target location. This includes
-    // the monster respecting visibility, dungeon features and clouds.
-    // If there is no monster at the target location, return the empty string
     string target_description() const;
 
 private:
@@ -237,13 +234,6 @@ private:
     // terrain (i.e. floor.)
     void print_floor_description(bool boring_too) const;
 
-    string target_interesting_terrain_description() const;
-    string target_cloud_description() const;
-    string target_sanctuary_description() const;
-    string target_silence_description() const;
-    vector<string> target_cell_description_suffixes() const;
-    vector<string> monster_description_suffixes(const monster_info& mi) const;
-
     // Top level description method used to describe what is located in a cell
     void describe_cell() const;
 
@@ -344,17 +334,23 @@ public:
 enum mons_equip_desc_level_type
 {
     DESC_WEAPON,
+    DESC_NOTEWORTHY,
+    DESC_NOTEWORTHY_AND_WEAPON,
     DESC_FULL,
-    DESC_IDENTIFIED,
-    DESC_WEAPON_WARNING, // like DESC_WEAPON but also includes dancing weapons
 };
 
 void direction(dist &moves, const direction_chooser_args& args);
 
-string get_terse_square_desc(const coord_def &gc);
-void terse_describe_square(const coord_def &c, bool in_range = true);
+string get_cell_mouseover_tag(const coord_def &gc);
 bool full_describe_square(const coord_def &c, bool cleanup = true);
-void get_square_desc(const coord_def &c, describe_info &inf);
+
+string get_square_desc(const coord_def &pos);
+string cell_monster_description(const coord_def& pos, bool include_areas = false,
+                                targeting_behaviour* behavior = nullptr);
+string cell_items_description(const coord_def& pos);
+string cell_floor_description(const coord_def& pos, bool boring_too);
+
+vector<string> get_monster_status_descriptors(const monster_info& mi);
 
 void describe_floor();
 void _walk_on_decor(dungeon_feature_type new_grid);
@@ -370,7 +366,8 @@ string raw_feature_description(const coord_def& where);
 string feature_description(dungeon_feature_type grid,
                            trap_type trap = NUM_TRAPS,
                            const string & cover_desc = "",
-                           description_level_type dtype = DESC_A);
+                           description_level_type dtype = DESC_A,
+                           level_id place = level_id::current());
 
 vector<dungeon_feature_type> features_by_desc(const base_pattern &pattern);
 

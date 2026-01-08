@@ -194,13 +194,13 @@ bool try_recall(mid_t mid)
     }
     coord_def empty;
     if (!find_habitable_spot_near(you.pos(), mons->type, 3, empty)
-        || !mons->move_to_pos(empty))
+        || !mons->move_to(empty, MV_TRANSLOCATION, true))
     {
         return false;
     }
     recall_orders(mons);
     simple_monster_message(*mons, " is recalled.");
-    mons->apply_location_effects(mons->pos());
+    mons->finalise_movement();
     // mons may have been killed, shafted, etc,
     // but they were still recalled!
     return true;
@@ -383,7 +383,7 @@ spret cast_passwall(const coord_def& c, int pow, bool fail)
         return spret::abort;
 
     coord_def delta = c - you.pos();
-    passwall_path p(you, delta, spell_range(SPELL_PASSWALL, pow));
+    passwall_path p(you, delta, spell_range(SPELL_PASSWALL, &you));
     string fail_msg;
     bool valid = p.is_valid(&fail_msg);
     if (!p.spell_succeeds())
@@ -446,7 +446,7 @@ static int _intoxicate_monsters(coord_def where, int pow, bool tracer)
 
     if (!tracer && x_chance_in_y(40 + div_rand_round(pow, 3), 100))
     {
-        mons->add_ench(mon_enchant(ENCH_CONFUSION, 0, &you));
+        mons->add_ench(mon_enchant(ENCH_CONFUSION, &you));
         simple_monster_message(*mons, " looks rather confused.");
         return 1;
     }
@@ -610,7 +610,7 @@ void trigger_binding_sigil(actor& actor)
                         - div_rand_round(m->get_hit_dice(), 4))
                     * BASELINE_DELAY;
 
-    if (m->add_ench(mon_enchant(ENCH_BOUND, 0, &you, dur)))
+    if (m->add_ench(mon_enchant(ENCH_BOUND, &you, dur)))
     {
         simple_monster_message(*m,
             " moves over the binding sigil and is bound in place!",
@@ -741,11 +741,17 @@ void handle_spike_launcher(int delay)
 
     int& timer = you.props[SPIKE_LAUNCHER_TIMER].get_int();
     timer -= delay;
-
+    bool no_targets = false;
     // Now, fire the launcher, if anything is in range.
     while (timer < 0)
     {
-        for (fair_adjacent_iterator ai(pos); ai; ++ai)
+        timer += BASELINE_DELAY;
+        // Keep incrementing the timer when no targets were found, as it updates
+        // the SPIKE_LAUNCHER_TIMER prop
+        if (no_targets)
+            continue;
+        vector<monster*> targets;
+        for (adjacent_iterator ai(pos, false); ai; ++ai)
         {
             if (monster* targ = monster_at(*ai))
             {
@@ -754,13 +760,16 @@ void handle_spike_launcher(int delay)
                 {
                     continue;
                 }
-
-                _fire_spike_launcher(targ, pos);
-                break;
+                targets.push_back(targ);
             }
         }
+        if (targets.size() == 0)
+        {
+            no_targets = true;
+            continue;
+        }
 
-        timer += BASELINE_DELAY;
+        _fire_spike_launcher(targets.at(random2(targets.size())), pos);
     }
 }
 

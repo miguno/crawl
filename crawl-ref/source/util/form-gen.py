@@ -321,6 +321,7 @@ keyfns = {
     'description': Field(parse_str),
 
     'skill': Field(parse_skill),
+    'hp_skill_penalty_mult': Field(lambda s: parse_num(s, 1, 10)),
     'talisman': Field(lambda s: "TALISMAN_" + s.upper()),
 
     'melds': Field(parse_slots),
@@ -350,6 +351,7 @@ keyfns = {
     'changes_substance': Field(parse_bool),
     'holiness': Field(lambda s: "MH_" + s.upper()),
 
+    'is_badform': Field(parse_bool),
     'has_blood': Field(parse_capability),
     'has_hair': Field(parse_capability),
     'has_bones': Field(parse_capability),
@@ -381,6 +383,7 @@ defaults = {
     'description': "",
 
     'skill': Skill(0, 0),
+    'hp_skill_penalty_mult': 1,
     'talisman': 'NUM_TALISMANS',
 
     'melds': 0,
@@ -410,6 +413,7 @@ defaults = {
     'changes_substance': "false",
     'holiness': "MH_NONE",
 
+    'is_badform': 'false',
     'has_blood': "FC_DEFAULT",
     'has_hair': "FC_DEFAULT",
     'has_bones': "FC_DEFAULT",

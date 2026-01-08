@@ -611,7 +611,7 @@ public:
     size_t size() const { return items.size(); }
     bool empty() const { return items.empty(); }
 
-    string add_item(const string &spec, bool fix = false);
+    string add_item(const string &spec, bool fix = false, bool ignore_excluded = false);
 
     // Set this list to be a copy of the item_spec_slot in list.
     void set_from_slot(const item_list &list, int slot_index);
@@ -631,7 +631,7 @@ private:
 
 private:
     item_spec item_by_specifier(const string &spec);
-    item_spec_slot parse_item_spec(string spec);
+    item_spec_slot parse_item_spec(string spec, bool ignore_excluded = false);
     int parse_acquirement_source(const string &source);
     void parse_raw_name(string name, item_spec &spec);
     void parse_random_by_class(string c, item_spec &spec);
@@ -740,9 +740,9 @@ private:
     mons_spec drac_monspec(string name) const;
     mons_spec soh_monspec(string name) const;
     void get_zombie_type(string s, mons_spec &spec) const;
-    mons_spec get_hydra_spec(const string &name) const;
+    mons_spec get_hydra_spec(const string &name, monster_type type) const;
     mons_spec get_slime_spec(const string &name) const;
-    mons_spec get_salt_spec(const string &name) const;
+    mons_spec get_shaped_spec(const string &name, monster_type type) const;
     mons_spec get_zombified_monster(const string &name,
                                     monster_type zomb) const;
     mons_spec_slot parse_mons_spec(string spec);
@@ -1178,6 +1178,7 @@ private:
     bool cache_minivault;
     bool cache_overwritable;
     bool cache_extra;
+    bool cache_extra_post_overflow;
 
 public:
     map_def();
@@ -1228,19 +1229,15 @@ public:
     // Executes post-generation lua code.
     bool run_lua_epilogue(bool croak = false);
 
-    string validate_map_def(const depth_ranges &);
+    string validate_map_def();
     string validate_temple_map();
     // Returns true if this map is in the middle of validation.
     bool is_validating() const { return validating_map_flag; }
-
-    void add_prelude_line(int line,  const string &s);
-    void add_main_line(int line, const string &s);
 
     void hmirror();
     void vmirror();
     void rotate(bool clockwise);
     void normalise();
-    string resolve();
     void fixup();
 
     bool is_usable_in(const level_id &lid) const;

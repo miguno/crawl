@@ -352,7 +352,7 @@ spret cast_healing(int pow, bool fail)
 
     if (!spd.isValid)
         return spret::abort;
-    if (cell_is_solid(spd.target))
+    if (cell_is_invalid_target(spd.target))
     {
         canned_msg(MSG_NOTHING_THERE);
         return spret::abort;
@@ -432,7 +432,7 @@ bool player_is_debuffable()
  */
 bool player_is_cancellable()
 {
-    return get_contamination_level() || player_is_debuffable();
+    return you.magic_contamination > 0 || player_is_debuffable();
 }
 
 /**
@@ -445,7 +445,7 @@ string describe_player_cancellation(bool debuffs_only)
     vector<string> effects;
 
     // Try to clarify it doesn't remove all contam?
-    if (!debuffs_only && get_contamination_level())
+    if (!debuffs_only && you.magic_contamination > 0)
         effects.push_back("as magically contaminated");
 
     vector<duration_type> buffs = _dispellable_player_buffs();
@@ -518,7 +518,7 @@ void debuff_player(bool ignore_resistance)
         {
             len = 0;
             mprf(MSGCH_DURATION, "You feel strangely stable.");
-            you.props.erase(SJ_TELEPORTITIS_SOURCE);
+            you.props.erase(TELEPORTITIS_SOURCE);
         }
         else if (duration == DUR_PETRIFYING)
         {
@@ -639,7 +639,7 @@ int detect_items(int pow)
         if (have_passive(passive_t::detect_items))
         {
             map_radius = max(map_radius,
-                             min(you.piety / 20 - 1, get_los_radius()));
+                             min(you.piety() / 20 - 1, get_los_radius()));
 
             if (map_radius <= 0)
                 return 0;
@@ -798,7 +798,6 @@ spret cast_tomb(int pow, actor* victim, int source, bool fail)
             }
 
             // Make sure we have a legitimate tile.
-            proceed = false;
             if (cell_is_solid(*ai) && !feat_is_opaque(env.grid(*ai)))
             {
                 success = false;
@@ -918,8 +917,6 @@ spret cast_tomb(int pow, actor* victim, int source, bool fail)
         else
             mpr("Walls emerge from the floor!");
 
-        you.update_beholders();
-        you.update_fearmongers();
         const int tomb_duration = BASELINE_DELAY * pow;
         env.markers.add(new map_tomb_marker(where,
                                             tomb_duration,
@@ -1067,8 +1064,7 @@ void holy_word_monsters(coord_def where, int pow, holy_word_source_type source,
     if (attacker != nullptr && attacker != mons)
         behaviour_event(mons, ME_ANNOY, attacker);
 
-    mons->add_ench(mon_enchant(ENCH_DAZED, 0, attacker,
-                               (10 + random2(10)) * BASELINE_DELAY));
+    mons->daze(random_range(4, 7));
 }
 
 void holy_word(int pow, holy_word_source_type source, const coord_def& where,
@@ -1110,11 +1106,6 @@ int torment_player(const actor *attacker, torment_source_type taux)
         }
         if (you.has_mutation(MUT_TORMENT_RESISTANCE))
             hploss /= 2;
-#if TAG_MAJOR_VERSION == 34
-        // Save compatibility for old demonspawn mutation -- now deterministic
-        if (you.has_mutation(MUT_STOCHASTIC_TORMENT_RESISTANCE))
-            hploss /= 2;
-#endif
     }
 
     // Kiku protects you from torment to a degree.
@@ -1122,7 +1113,7 @@ int torment_player(const actor *attacker, torment_source_type taux)
 
     if (kiku_shielding_player)
     {
-        int kiku_piety = min(piety_breakpoint(5), (int)you.piety);
+        int kiku_piety = min(piety_breakpoint(5), (int)you.piety());
         if (hploss > 0)
         {
             if (random2(480) < kiku_piety) // 20.83% to 33.33% chance
@@ -1200,31 +1191,26 @@ int torment_player(const actor *attacker, torment_source_type taux)
     return hploss;
 }
 
-int torment_cell(coord_def where, actor *attacker, torment_source_type taux)
+// Returns how much damage was done (if any).
+int torment_actor(actor* victim, actor *attacker, torment_source_type taux)
 {
-    int damage = 0;
-
-    if (where == you.pos()
-        // The Sceptre of Torment and pain card do not affect the user.
-        && !(attacker && attacker->is_player()
-            && (taux == TORMENT_SCEPTRE || taux == TORMENT_CARD_PAIN)))
+    // The Sceptre of Torment and pain card do not affect the user.
+    if (victim == attacker
+        && (taux == TORMENT_SCEPTRE || taux == TORMENT_CARD_PAIN))
     {
-        damage = torment_player(attacker, taux);
+        return 0;
     }
-    // Don't return, since you could be standing on a monster.
 
-    monster* mons = monster_at(where);
-    if (!mons
-        || !mons->alive()
-        || mons->res_torment()
-        || attacker && never_harm_monster(attacker, *mons, true)
-        // Monsters can't currently use the sceptre, but just in case.
-        || attacker
-           && mons == attacker->as_monster()
-           && taux == TORMENT_SCEPTRE)
-    {
-        return damage;
-    }
+    if (!victim->alive() || !could_harm(attacker, victim, true))
+        return 0;
+
+    if (victim->is_player())
+        return torment_player(attacker, taux);
+
+    // The rest of this code only concerns monsters.
+    monster* mons = victim->as_monster();
+    if (!victim->alive() || victim->res_torment())
+        return 0;
 
     god_conduct_trigger conducts[3];
     int hploss = max(0, mons->hit_points *
@@ -1240,7 +1226,6 @@ int torment_cell(coord_def where, actor *attacker, torment_source_type taux)
         // Currently, torment doesn't annoy the monsters it affects
         // because it can't kill them, and because hostile monsters use
         // it. It does alert them, though.
-        // XXX: attacker isn't passed through "int torment()".
         behaviour_event(mons, ME_ALERT, attacker);
 
         if (attacker && attacker->is_player())
@@ -1264,8 +1249,7 @@ int torment_cell(coord_def where, actor *attacker, torment_source_type taux)
 
     // Player torment annoys the monsters it affects
     // Tolerate unknown scroll, to not annoy ally god users too much.
-    if (attacker != nullptr
-        && attacker->is_player()
+    if (attacker && attacker->is_player()
         && (taux != TORMENT_SCROLL
             || item_type_known(OBJ_SCROLLS, SCR_TORMENT)))
     {
@@ -1273,15 +1257,15 @@ int torment_cell(coord_def where, actor *attacker, torment_source_type taux)
     }
 
     mons->hurt(attacker, hploss, BEAM_TORMENT_DAMAGE);
-    damage += hploss;
 
-    return damage;
+    return hploss;
 }
 
 void torment(actor *attacker, torment_source_type taux, const coord_def& where)
 {
     for (radius_iterator ri(where, LOS_NO_TRANS); ri; ++ri)
-        torment_cell(*ri, attacker, taux);
+        if (actor_at(*ri))
+            torment_actor(actor_at(*ri), attacker, taux);
 }
 
 void setup_cleansing_flame_beam(bolt &beam, int pow,

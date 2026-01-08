@@ -31,6 +31,7 @@
 #include "delay.h"
 #include "dgn-event.h"
 #include "end.h"
+#include "env.h"
 #include "fight.h"
 #include "files.h"
 #include "fineff.h"
@@ -299,8 +300,8 @@ int check_your_resists(int hurted, beam_type flavour, string source,
         break;
 
     case BEAM_UMBRAL_TORCHLIGHT:
-        if (you.holiness() & ~(MH_NATURAL | MH_DEMONIC | MH_HOLY)
-            || beam->agent(true)->is_player())
+        if (you_worship(GOD_YREDELEMNUL)
+            || you.holiness() & ~(MH_NATURAL | MH_DEMONIC | MH_HOLY))
         {
             hurted = 0;
         }
@@ -371,6 +372,61 @@ void expose_player_to_element(beam_type flavour, int strength, bool slow_cold_bl
         && you.res_cold() <= 0 && coinflip())
     {
         you.slow_down(0, strength);
+    }
+
+    if ((flavour == BEAM_FIRE || flavour == BEAM_LAVA
+         || flavour == BEAM_STICKY_FLAME || flavour == BEAM_STEAM)
+        && you.has_bane(BANE_HEATSTROKE))
+    {
+        int chance = 80;
+        const int rF = you.res_fire();
+        if (rF < 0)
+            chance = chance * 3 / 2;
+        else
+            chance = chance / (rF + 1);
+
+        if (x_chance_in_y(chance, 100))
+        {
+            mprf(MSGCH_WARN, "The heat overwhelms you.");
+            you.slow_down(0, random_range(4, 8));
+        }
+    }
+
+    if ((flavour == BEAM_COLD || flavour == BEAM_ICE)
+        && you.has_bane(BANE_SNOW_BLINDNESS))
+    {
+        int chance = 80;
+        const int rC = you.res_cold();
+        if (rC < 0)
+            chance = chance * 3 / 2;
+        else
+            chance = chance / (rC + 1);
+
+        if (x_chance_in_y(chance, 100))
+        {
+            mprf(MSGCH_WARN, "The cold chills your senses.");
+            const int dur = random_range(5, 10);
+            blind_player(dur, LIGHTBLUE);
+            you.increase_duration(DUR_WEAK, dur, 50);
+        }
+    }
+
+    if ((flavour == BEAM_ELECTRICITY || flavour == BEAM_THUNDER
+         || flavour == BEAM_STUN_BOLT)
+        && you.has_bane(BANE_ELECTROSPASM))
+    {
+        int chance = 60;
+        const int rElec = you.res_elec();
+        if (rElec < 0)
+            chance = chance * 3 / 2;
+        else
+            chance = chance / (rElec + 1);
+
+        if (x_chance_in_y(chance, 100))
+        {
+            mprf(MSGCH_WARN, "The electricity makes your body seize.");
+            you.increase_duration(DUR_NO_MOMENTUM, random_range(3, 7), 10);
+        }
     }
 
     if (flavour == BEAM_WATER && you.duration[DUR_STICKY_FLAME])
@@ -471,8 +527,17 @@ bool drain_player(int power, bool announce_full, bool ignore_protection, bool qu
         dprf("Drained by %d max hp (%d total)", mhp, you.hp_max_adj_temp);
         calc_hp();
 
+        string intensifier = "";
+        int perc = 100 * -you.hp_max_adj_temp / get_real_hp(false, false);
+        if (perc >= 50)
+            intensifier = "extremely ";
+        else if (perc >= 30)
+            intensifier = "very heavily ";
+        else if (perc >= 20)
+            intensifier = "heavily ";
+
         if (!quiet)
-            mpr("You feel drained.");
+            mprf("You feel %sdrained.", intensifier.c_str());
         xom_is_stimulated(15);
         return true;
     }
@@ -570,7 +635,7 @@ static void _maybe_ru_retribution(int dam, mid_t death_source)
         if (dam <= 0 || !mons || death_source == MID_YOU_FAULTLESS)
             return;
 
-        ru_retribution_fineff::schedule(mons, &you, dam);
+        schedule_ru_retribution_fineff(mons, &you, dam);
     }
 }
 
@@ -583,7 +648,7 @@ static void _maybe_inflict_anguish(int dam, mid_t death_source)
     {
         return;
     }
-    anguish_fineff::schedule(mons, dam);
+    schedule_anguish_fineff(mons, dam);
 }
 
 static void _maybe_spawn_rats(int dam, kill_method_type death_type)
@@ -688,8 +753,7 @@ void _maybe_blood_hastes_allies()
         {
              flash_tile(application->pos(), BLUE, 0);
              animation_delay(15, true);
-             application->add_ench(mon_enchant(ENCH_HASTE, 0, &you,
-                                   time * BASELINE_DELAY));
+             application->add_ench(mon_enchant(ENCH_HASTE, &you, time * BASELINE_DELAY));
              affected++;
         }
     }
@@ -701,10 +765,10 @@ void _maybe_blood_hastes_allies()
 static void _maybe_spawn_monsters(int dam, kill_method_type death_type,
                                   mid_t death_source)
 {
-    monster* damager = monster_by_mid(death_source);
+    monster* damager = monster_by_mid(death_source, true);
     // We need to exclude acid damage and similar things or this function
     // will crash later.
-    if (!damager || death_source == MID_YOU_FAULTLESS)
+    if (!damager)
         return;
 
     monster_type mon;
@@ -746,7 +810,7 @@ static void _maybe_spawn_monsters(int dam, kill_method_type death_type,
             if (mon == MONS_BUTTERFLY)
             {
                 mprf(MSGCH_GOD, "A shower of butterflies erupts from you!");
-                take_note(Note(NOTE_XOM_EFFECT, you.piety, -1, "butterfly on damage"), true);
+                take_note(Note(NOTE_XOM_EFFECT, you.raw_piety, -1, "butterfly on damage"), true);
             }
             else
             {
@@ -801,7 +865,7 @@ static void _maybe_fog(int dam)
     {
         mprf(MSGCH_GOD, "You emit a cloud of colourful smoke!");
         big_cloud(CLOUD_XOM_TRAIL, &you, you.pos(), 50, 4 + random2(5), -1);
-        take_note(Note(NOTE_XOM_EFFECT, you.piety, -1, "smoke on damage"), true);
+        take_note(Note(NOTE_XOM_EFFECT, you.raw_piety, -1, "smoke on damage"), true);
     }
 }
 
@@ -933,6 +997,37 @@ static void _handle_poor_constitution(int dam)
     }
 }
 
+static void _maybe_trigger_spiteful_blood()
+{
+    if (you.duration[DUR_SPITEFUL_BLOOD_COOLDOWN]
+        || !you.has_mutation(MUT_SPITEFUL_BLOOD)
+        || you.hp * 10 > you.hp_max * 6)
+    {
+        return;
+    }
+
+    // Go on cooldown regarless of whether we choose to trigger or not, so that
+    // the player gets a reprieve until the next battle.
+    you.duration[DUR_SPITEFUL_BLOOD_COOLDOWN] = 1;
+
+    if (!one_chance_in(4))
+        return;
+
+    mgen_data mg(MONS_ERYTHROSPITE, BEH_HOSTILE, you.pos(), MHITYOU, MG_NONE);
+    mg.set_summoned(&you, MON_SUMM_SPITEFUL_BLOOD, random_range(18, 26) * BASELINE_DELAY, false).set_range(1, 3);
+    mg.hd = pow(you.experience_level, 1.1);
+    mg.hp = 5 + pow(you.experience_level, 1.25);
+
+    const int num = you.get_mutation_level(MUT_SPITEFUL_BLOOD);
+    bool made_mon = false;
+    for (int i = 0; i < num; ++i)
+        if (create_monster(mg))
+            made_mon = true;
+
+    if (made_mon)
+        mpr("Your spilled blood starts moving with violent intent!");
+}
+
 int corrosion_chance(int sources)
 {
     return 3 * sources;
@@ -967,29 +1062,27 @@ static void _maybe_silence()
     if (x_chance_in_y(silence_sources, 100))
         silence_player(4 + random2(7));
 }
-/**
- * Maybe disable scrolls after taking damage if the player has MUT_READ_SAFETY.
- **/
-static void _maybe_disable_scrolls()
+
+static void _maybe_get_vitrified(mid_t source)
 {
-    int mut_level = you.get_mutation_level(MUT_READ_SAFETY);
-    if (mut_level && !you.duration[DUR_NO_SCROLLS] && x_chance_in_y(mut_level, 100))
+    monster* mon = monster_by_mid(source);
+    if (mon && mon->wearing_ego(OBJ_ARMOUR, SPARM_GLASS)
+        && x_chance_in_y(40 + mon->get_hit_dice() * 5, 500))
     {
-        mpr("You feel threatened and lose the ability to read scrolls!");
-        you.increase_duration(DUR_NO_SCROLLS, 10 + random2(5));
+        you.vitrify(mon, 4 + random2(5 + mon->get_hit_dice()));
     }
 }
 
-/**
- * Maybe disable potions after taking damage if the player has MUT_DRINK_SAFETY.
- **/
-static void _maybe_disable_potions()
+static void _maybe_scream(mid_t source)
 {
-    int mut_level = you.get_mutation_level(MUT_DRINK_SAFETY);
-    if (mut_level && !you.duration[DUR_NO_POTIONS] && x_chance_in_y(mut_level, 100))
+    // Don't repeatedly scream in place on the same turn.
+    if (you.shouted_pos == you.pos())
+        return;
+
+    if (x_chance_in_y(you.get_mutation_level(MUT_SCREAM), 20))
     {
-        mpr("You feel threatened and lose the ability to drink potions!");
-        you.increase_duration(DUR_NO_POTIONS, 10 + random2(5));
+        yell(actor_by_mid(source));
+        you.shouted_pos = you.pos();
     }
 }
 
@@ -1236,7 +1329,7 @@ void ouch(int dam, kill_method_type death_type, mid_t source, const char *aux,
     {
         if (you.form == transformation::slaughter)
             dam = dam * 10 / 15;
-        if (you.may_pruneify() && you.cannot_act())
+        if (you.may_pruneify() && you.helpless())
             dam /= 2;
         if (you.petrified())
             dam /= 2;
@@ -1363,6 +1456,8 @@ void ouch(int dam, kill_method_type death_type, mid_t source, const char *aux,
             _maybe_splash_water(dam);
             _maybe_hive_swarm();
             _maybe_medusa_lithotoxin();
+            _maybe_trigger_spiteful_blood();
+            _maybe_scream(source);
             if (sanguine_armour_valid())
                 activate_sanguine_armour();
             refresh_meek_bonus();
@@ -1371,11 +1466,11 @@ void ouch(int dam, kill_method_type death_type, mid_t source, const char *aux,
                 _maybe_corrode();
                 _maybe_slow();
                 _maybe_silence();
-                _maybe_disable_scrolls();
-                _maybe_disable_potions();
             }
             if (drain_amount > 0)
                 drain_player(drain_amount, true, true);
+
+            _maybe_get_vitrified(source);
         }
         if (you.hp > 0)
             return;

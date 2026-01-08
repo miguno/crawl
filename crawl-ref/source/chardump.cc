@@ -28,6 +28,7 @@
 #include "fight.h"
 #include "files.h"
 #include "god-companions.h"
+#include "god-conduct.h"
 #include "god-prayer.h"
 #include "hiscores.h"
 #include "initfile.h"
@@ -82,6 +83,7 @@ static void _sdump_screenshot(dump_params &);
 static void _sdump_kills_by_place(dump_params &);
 static void _sdump_kills(dump_params &);
 static void _sdump_xp_by_level(dump_params &);
+static void _sdump_piety_info(dump_params &);
 static void _sdump_newline(dump_params &);
 static void _sdump_overview(dump_params &);
 static void _sdump_hiscore(dump_params &);
@@ -92,6 +94,7 @@ static void _sdump_action_counts(dump_params &);
 static void _sdump_apostles(dump_params &);
 static void _sdump_separator(dump_params &);
 static void _sdump_lua(dump_params &);
+static void _sdump_dlua_errors(dump_params &);
 static bool _write_dump(const string &fname, const dump_params &,
                         bool print_dump_path = false);
 
@@ -139,10 +142,12 @@ static dump_section_handler dump_handlers[] =
     { "kills_by_place", _sdump_kills_by_place},
     { "kills",          _sdump_kills         },
     { "xp_by_level",    _sdump_xp_by_level   },
+    { "piety_info",     _sdump_piety_info    },
     { "overview",       _sdump_overview      },
     { "hiscore",        _sdump_hiscore       },
     { "monlist",        _sdump_monster_list  },
     { "vaults",         _sdump_vault_list    },
+    { "dlua_errors",    _sdump_dlua_errors   },
     { "spell_usage",    _sdump_action_counts }, // compat
     { "action_counts",  _sdump_action_counts },
     { "skill_gains",    _sdump_skill_gains   },
@@ -573,6 +578,150 @@ static void _sdump_xp_by_level(dump_params &par)
     text += "+---------+---------+-------+---------+---------+-------\n";
 
     text += "\n";
+}
+
+
+static string _sdump_rank_piety_info(RankPietyInfo r)
+{
+    string out;
+
+    int rank = piety_rank(r.initial_piety);
+
+    string name = god_name(r.god);
+
+    out =
+        make_stringf(" %16s | %1d | %7d | %3d | %3d | %3d | %3d | %3d | %3d | %3d \n",
+                     chop_string(name, 16).c_str(), rank, r.start_time,
+                     r.initial_piety, r.piety_gained, r.piety_on_gifts,
+                     r.piety_on_penance, r.piety_on_stepdowns, r.piety_decayed,
+                     r.piety_lost);
+
+    return out;
+}
+
+
+static string _sdump_god_conduct_info(god_type god, const map<int, ConductPietyInfo> &conduct_info_by_xl)
+{
+    string out;
+
+    out += make_stringf("Conducts for god: %s\n", god_name(god).c_str());
+
+    int max_lt = (min<int>(you.max_level, 27) - 1) / 3;
+
+    // Don't show both a total and 1..3 when there's only one tier.
+    if (max_lt)
+        max_lt++;
+    out += "Piety from conduct\n";
+
+    string header = make_stringf("%21s", "Conduct");
+    for (int lt = 0; lt < max_lt; lt++)
+        header += make_stringf(" | %2d-%2d", lt * 3 + 1, lt * 3 + 3);
+    header += " || total\n";
+    string divider = string(22, '-');
+    for (int lt = 0; lt < max_lt; lt++)
+        divider += "+-------";
+    divider += "++-------\n";
+    out += header;
+    out += divider;
+
+    vector<ConductPietyInfo> grouped_conducts(max_lt + 1, ConductPietyInfo());
+
+    for (const auto &pair : conduct_info_by_xl)
+    {
+        int grouped_index = (pair.first - 1) / 3;
+        if (grouped_index < max_lt)
+            grouped_conducts[grouped_index] += pair.second;
+        grouped_conducts.back() += pair.second;
+    }
+
+    for (auto &pair : grouped_conducts.back().piety_from_conducts)
+    {
+        conduct_type conduct = pair.first;
+        out += make_stringf("%20s ", conduct_description(conduct).c_str());
+        for (int lt = 0; lt <= max_lt; lt++)
+        {
+            float piety = 0.0f;
+            if (grouped_conducts[lt].piety_from_conducts.count(conduct))
+                piety = grouped_conducts[lt].piety_from_conducts[conduct];
+            if (lt == max_lt)
+                out += " || ";
+            else
+                out += " | ";
+            out += make_stringf("%5.0f", piety);
+        }
+        out += "\n";
+    }
+    out += divider;
+
+    out += "Conduct count\n";
+    out += header;
+    out += divider;
+    for (auto &pair : grouped_conducts.back().conducts_count)
+    {
+        conduct_type conduct = pair.first;
+        out += make_stringf("%20s ", conduct_description(conduct).c_str());
+        for (int lt = 0; lt <= max_lt; lt++)
+        {
+            int count = 0;
+            if (grouped_conducts[lt].conducts_count.count(conduct))
+                count = grouped_conducts[lt].conducts_count[conduct];
+            if (lt == max_lt)
+                out += " || ";
+            else
+                out += " | ";
+            out += make_stringf("%5d", count);
+        }
+        out += "\n";
+    }
+    out += divider;
+
+    out += "\n";
+    return out;
+}
+
+
+static void _sdump_piety_info(dump_params &par)
+{
+    // Only log piety after death, because it can leak exact piety values.
+    if (!par.full_id
+#ifdef WIZARD
+        && !you.wizard && !you.suppress_wizard
+#endif
+     )
+    {
+        return;
+    }
+
+    string &text(par.text);
+
+    vector<RankPietyInfo> all_info = you.piety_info.rank_info;
+
+    text +=
+"Table legend:\n"
+" A = God\n"
+" B = Rank\n"
+" C = Start time\n"
+" D = Start piety\n"
+" E = Piety gained\n"
+" F = Piety on gifts\n"
+" G = Piety on penance\n"
+" H = Piety on stepdowns\n"
+" I = Piety decays\n"
+" J = Piety lost (inc. decay)\n"
+;
+
+    text += "         A          B      C       D     E     F     G     H     I     J   \n";
+    text += "+-----------------+---+---------+-----+-----+-----+-----+-----+-----+-----+\n";
+
+    for (const RankPietyInfo &mi : all_info)
+        text += _sdump_rank_piety_info(mi);
+
+    text += "+-----------------+---+---------+-----+-----+-----+-----+-----+-----+-----+\n";
+
+    text += "\n";
+
+    for (const auto &pair : you.piety_info.conduct_info_by_god)
+        text += _sdump_god_conduct_info(pair.first, pair.second);
 }
 
 static void _sdump_newline(dump_params &par)
@@ -1160,6 +1309,17 @@ static void _sdump_vault_list(dump_params &par)
     }
 }
 
+static void _sdump_dlua_errors(dump_params &par)
+{
+    par.text += "DLua errors:\n";
+    for (const CLuaError &error : dlua_errors)
+    {
+        par.text += error.message + "\n";
+        par.text += error.stack_trace + "\n";
+    }
+    par.text += "\n";
+}
+
 static bool _sort_by_first(pair<int, FixedVector<int, 28> > a,
                            pair<int, FixedVector<int, 28> > b)
 {
@@ -1238,11 +1398,17 @@ static string _describe_action(caction_type type)
 #if TAG_MAJOR_VERSION == 34
     case CACT_EAT:
         return "Eat";
-#endif
     case CACT_RIPOSTE:
         return "Riposte";
+#endif
     case CACT_FORM:
         return "Form";
+    case CACT_ATTACK:
+        return "Attack";
+    case CACT_DRINK:
+        return "Drink";
+    case CACT_READ:
+        return "Read";
     default:
         return "Error";
     }
@@ -1284,6 +1450,19 @@ static const char* _aux_attack_names[] =
 };
 COMPILE_CHECK(ARRAYSZ(_aux_attack_names) == NUM_UNARMED_ATTACKS);
 
+static const char* _attack_count_names[]
+{
+    "Normal",
+    "Lunge",
+    "Whirlwind",
+    "Riposte",
+    "Spellmotor",
+    "Spellclaws",
+    "Drunken Brawl",
+    "Sundering",
+};
+COMPILE_CHECK(ARRAYSZ(_attack_count_names) == NUM_ATTACK_COUNT_TYPES);
+
 static string _describe_action_subtype(caction_type type, int compound_subtype)
 {
     pair<int, int> types = caction_extract_types(compound_subtype);
@@ -1301,7 +1480,6 @@ static string _describe_action_subtype(caction_type type, int compound_subtype)
     }
     case CACT_MELEE:
     case CACT_FIRE:
-    case CACT_RIPOSTE:
         if (subtype == -1)
         {
             if (auxtype == -1)
@@ -1322,7 +1500,7 @@ static string _describe_action_subtype(caction_type type, int compound_subtype)
         }
         return uppercase_first(item_base_name(OBJ_WEAPONS, subtype));
     case CACT_ARMOUR:
-        return (subtype == -1) ? "Skin"
+        return (subtype == -1) ? "None"
                : uppercase_first(item_base_name(OBJ_ARMOUR, subtype));
     case CACT_BLOCK:
     {
@@ -1368,11 +1546,11 @@ static string _describe_action_subtype(caction_type type, int compound_subtype)
             return uppercase_first(dummy.name(DESC_DBNAME, true));
         }
 
+#if TAG_MAJOR_VERSION == 34
         switch ((evoc_type)subtype)
         {
         case EVOC_WAND:
             return "Wand";
-#if TAG_MAJOR_VERSION == 34
         case EVOC_ROD:
             return "Rod";
         case EVOC_DECK:
@@ -1381,10 +1559,13 @@ static string _describe_action_subtype(caction_type type, int compound_subtype)
             return "Miscellaneous";
         case EVOC_BUGGY_TOME:
             return "tome";
-#endif
         default:
             return "Error";
         }
+#else
+        return "Error";
+#endif
+
     case CACT_USE:
         return uppercase_first(base_type_string((object_class_type)subtype));
     case CACT_STAB:
@@ -1392,7 +1573,17 @@ static string _describe_action_subtype(caction_type type, int compound_subtype)
         ASSERT_RANGE(subtype, 1, NUM_STABS);
         return _stab_names[subtype];
     case CACT_FORM:
-        return get_form((transformation)subtype)->short_name;
+        if ((transformation)subtype == transformation::none)
+            return "Default";
+        else
+            return get_form((transformation)subtype)->short_name;
+    case CACT_ATTACK:
+        ASSERT_RANGE(subtype, 0, NUM_ATTACK_COUNT_TYPES);
+        return _attack_count_names[subtype];
+    case CACT_DRINK:
+        return uppercase_first(potion_type_name(subtype));
+    case CACT_READ:
+        return uppercase_first(scroll_type_name(subtype));
 #if TAG_MAJOR_VERSION == 34
     case CACT_EAT:
         return "Removed food";
@@ -1401,6 +1592,25 @@ static string _describe_action_subtype(caction_type type, int compound_subtype)
         return "Error";
     }
 }
+
+static caction_type _action_count_order[]
+{
+    CACT_ATTACK,
+    CACT_MELEE,
+    CACT_FIRE,
+    CACT_THROW,
+    CACT_CAST,
+    CACT_INVOKE,
+    CACT_ABIL,
+    CACT_EVOKE,
+    CACT_DRINK,
+    CACT_READ,
+    CACT_STAB,
+    CACT_ARMOUR,
+    CACT_DODGE,
+    CACT_BLOCK,
+    CACT_FORM,
+};
 
 static void _sdump_action_counts(dump_params &par)
 {
@@ -1420,8 +1630,9 @@ static void _sdump_action_counts(dump_params &par)
         par.text += "+-------";
     par.text += "++-------\n";
 
-    for (int cact = 0; cact < NUM_CACTIONS; cact++)
+    for (unsigned int index = 0; index < ARRAYSZ(_action_count_order); ++index)
     {
+        caction_type cact = _action_count_order[index];
         vector<pair<int, FixedVector<int, 28> > > action_vec;
         for (const auto &entry : you.action_count)
         {
@@ -1531,7 +1742,7 @@ static void _sdump_mutations(dump_params &par)
 {
     string &text(par.text);
 
-    if (you.how_mutated(true, false))
+    if (you.has_any_mutations())
     {
         text += "\n";
         text += (formatted_string::parse_string(describe_mutations(false)));

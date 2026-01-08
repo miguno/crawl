@@ -99,7 +99,7 @@ void beogh_follower_convert(monster* mons, bool orc_hit)
     const int hd = mons->get_experience_level();
 
     if (have_passive(passive_t::convert_orcs)
-        && random2(you.piety / 15) + random2(4 + you.experience_level / 3)
+        && random2(you.piety() / 15) + random2(4 + you.experience_level / 3)
              > random2(hd) + hd + random2(5))
     {
         conv_t ctype = conv_t::sight;
@@ -239,7 +239,7 @@ void beogh_convert_orc(monster* orc, conv_t conv)
          || conv == conv_t::vengeance_follower)
         && orc->alive())
     {
-        avoided_death_fineff::schedule(orc);
+        schedule_avoided_death_fineff(orc);
     }
 }
 
@@ -337,7 +337,7 @@ void gozag_check_bribe(monster* traitor)
     if (traitor->props.exists(FRIENDLY_BRIBE_KEY))
     {
         traitor->props.erase(FRIENDLY_BRIBE_KEY);
-        traitor->add_ench(mon_enchant(ENCH_FRIENDLY_BRIBED, 0, 0,
+        traitor->add_ench(mon_enchant(ENCH_FRIENDLY_BRIBED, nullptr,
                                       INFINITE_DURATION));
         msg = getSpeakString(traitor->name(DESC_DBNAME, true)
                              + " Gozag permabribe");

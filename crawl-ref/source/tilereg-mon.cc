@@ -14,6 +14,7 @@
 #include "monster.h"
 #include "output.h"
 #include "describe.h"
+#include "directn.h"
 #include "tile-inventory-flags.h"
 #include "rltiles/tiledef-dngn.h"
 #include "rltiles/tiledef-icons.h"
@@ -135,7 +136,7 @@ bool MonsterRegion::update_alt_text(string &alt)
     if (!you.see_cell(gc))
         return false;
 
-    get_square_desc(gc, inf);
+    inf.body << get_square_desc(gc);
 
     alt = process_description(inf);
     return true;
@@ -170,15 +171,15 @@ void MonsterRegion::pack_buffers()
             if (mon)
             {
                 const coord_def gc = mon->pos;
-                const coord_def ep = grid2show(gc);
 
                 if (crawl_view.in_los_bounds_g(gc))
                 {
                     packed_cell cell;
-                    cell.fg = tile_env.fg(ep);
-                    cell.bg = tile_env.bg(ep);
+                    cell.fg = tile_env.bk_fg(gc);
+                    cell.bg = tile_env.bk_bg(gc);
                     cell.flv = tile_env.flv(gc);
-                    cell.icons = tile_env.icons[ep];
+                    if (set<tileidx_t>* icons = map_find(tile_env.icons, gc))
+                        cell.icons = *icons;
                     tile_apply_properties(gc, cell);
 
                     m_buf.add(cell, x, y);

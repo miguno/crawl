@@ -89,6 +89,7 @@ void wizard_create_spec_object_by_name()
         mprf(MSGCH_ERROR, "Error: %s", error.c_str());
         return;
     }
+    id_floor_items();
 }
 
 void wizard_create_spec_object()
@@ -99,7 +100,8 @@ void wizard_create_spec_object()
         {')', "weapons"}, {'(', "missiles"}, {'[', "armour"}, {'/', "wands"},
         {'?', "scrolls"}, {'=', "jewellery"}, {'!', "potions"}, {':', "books"},
         {'|', "staves"}, {'}', "miscellany"}, {'%', "talismans"},
-        {'X', "corpses"}, {'$', "gold"}, {'0', "the Orb"}
+        {'X', "corpses"}, {'$', "gold"}, {'G', "gems"}, {'B', "baubles"},
+        {'0', "the Orb"}
     };
     auto menu = WizardMenu(title, options);
     object_class_type class_wanted = item_class_by_sym(menu.run());
@@ -222,9 +224,6 @@ void wizard_create_spec_object()
         if (class_wanted != OBJ_CORPSES)
             origin_acquired(env.item[thing_created], AQ_WIZMODE);
         canned_msg(MSG_SOMETHING_APPEARS);
-
-        // Tell the stash tracker.
-        maybe_update_stashes();
     }
 }
 

@@ -73,7 +73,7 @@ enum band_type
     BAND_TARANTELLA,
     BAND_POLYPHEMUS,
     BAND_VAULT_WARDEN,
-    BAND_DEATH_KNIGHT,
+    BAND_DEATH_KNIGHT_STANDARD,
     BAND_JIANGSHI,
     BAND_FAUNS,
     BAND_TENGU,
@@ -117,10 +117,9 @@ enum band_type
     BAND_DIRE_ELEPHANTS,
     BAND_SIMULACRA,
     BAND_SPECTRALS,
-    BAND_BONE_DRAGONS,
     BAND_MIXED_SPIDERS,
     BAND_ORANGE_DEMONS,
-    BAND_DOOM_HOUNDS,
+    BAND_OBLIVION_HOUNDS,
     BAND_JELLYFISH,
     BAND_SKYSHARKS,
     BAND_UFETUBI,
@@ -141,6 +140,14 @@ enum band_type
     BAND_CAGES,
     BAND_CHONCHON,
     BAND_FLESHCRAFT,
+    BAND_DEATH_KNIGHT_DRAUGR,
+    BAND_MIXED_WRAITHS,
+    BAND_BES_KEMWAR,
+    BAND_ROCK_FISH,
+    BAND_UNDERTAKERS,
+    BAND_AMOEBA_ORGANS,
+    BAND_DRAINING_EYE_CORPS,
+    BAND_MORPHOGENIC_OOZE,
     NUM_BANDS                   // always last
 };
 
@@ -171,5 +178,7 @@ enum mgen_flag
                              ///  instead.
     MG_SEE_SUMMONER = 0x800, ///< will always be generated in sight of its
                              ///  summoner
+    MG_COPY_PARENT  = 0x1000, ///< if the summoner is summoned or charmed, will
+                              ///  take on those properties themselves
 };
 DEF_BITFIELD(mgen_flags, mgen_flag);

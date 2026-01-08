@@ -37,28 +37,26 @@
 #include "travel.h"
 #include "zot.h" // decr_zot_clock
 
-// Returns true if the monster has a path to the player, or it has to be
-// assumed that this is the case.
-static bool _mons_has_path_to_player(const monster* mon)
+// Checks if this is a monster that should be completely ignored for autoexplore
+// or tension purposes. This errs on the side of false positives, since there
+// are many situations where a monster is *realistically* harmless, but cannot
+// be categorically ruled out.
+bool mons_is_irrelevant(const monster* mon)
 {
-    // Short-cut if it's already adjacent.
-    if (grid_distance(mon->pos(), you.pos()) <= 1)
-        return true;
-
-    // Non-adjacent non-tentacle stationary monsters are only threatening
-    // because of any ranged attack they might possess, which is handled
-    // elsewhere in the safety checks. Presently all stationary monsters
-    // have a ranged attack, but if a melee stationary monster is introduced
-    // this will fail. Don't add a melee stationary monster it's not a good
-    // monster.
-    if (mon->is_stationary() && !mons_is_tentacle(mon->type))
+    // If we can see a monster with no walls in the way, there's always a chance
+    // they could be relevant. (Even melee-only monsters on the other side of
+    // water can cause issues with autotravel if the player can cross water
+    // themselves).
+    if (you.see_cell_no_trans(mon->pos()))
         return false;
 
+    // Otherwise, test if the player has enough map knowledge to be sure that
+    // the monster cannot path to them somehow.
 
     // If the monster is awake and knows a path towards the player
     // (even though the player cannot know this) treat it as unsafe.
     if (mon->travel_target == MTRAV_FOE)
-        return true;
+        return false;
 
     // use MTRAV_KNOWN_UNREACHABLE as a cache, but only for monsters
     // that aren't visible. This forces a pathfinding check whenever previously
@@ -67,15 +65,10 @@ static bool _mons_has_path_to_player(const monster* mon)
     // like sensed monsters via ash (which will get set as known unreachable
     // on detection).
     if (mon->travel_target == MTRAV_KNOWN_UNREACHABLE
-                                        && !you.see_cell_no_trans(mon->pos()))
+                                        && !you.see_cell(mon->pos()))
     {
         return false;
     }
-
-    // First do a *quick* check to see whether a straight path exists to the
-    // player before bothering with full pathfinding.
-    if (can_go_straight(mon, mon->pos(), you.pos()))
-        return true;
 
     // Try to find a path from monster to player, using the map as it's
     // known to the player and assuming unknown terrain to be traversable.
@@ -88,43 +81,16 @@ static bool _mons_has_path_to_player(const monster* mon)
     mp.set_range(max(LOS_RADIUS, range * 2));
 
     if (mp.init_pathfind(mon, you.pos(), true, false, true))
-        return true;
+        return false;
 
     // Now we know the monster cannot possibly reach the player.
     mon->travel_target = MTRAV_KNOWN_UNREACHABLE;
-
-    return false;
-}
-
-bool mons_can_hurt_player(const monster* mon)
-{
-    // FIXME: This takes into account whether the player knows the map!
-    //        It should, for the purposes of i_feel_safe. [rob]
-    // It also always returns true for sleeping monsters, but that's okay
-    // for its current purposes. (Travel interruptions and tension.)
-    if (_mons_has_path_to_player(mon))
-        return true;
-
-    // Even if the monster can not actually reach the player it might
-    // still use some ranged form of attack.
-    //
-    // This also doesn't account for explosion radii, which is a false positive
-    // for a player waiting near (but not in range of) their own fulminant
-    // prism
-    if (you.see_cell_no_trans(mon->pos())
-        && (mons_blows_up(*mon)
-            || mons_has_ranged_attack(*mon)
-            || mons_has_ranged_spell(*mon, false, true)))
-    {
-        return true;
-    }
-
-    return false;
+    return true;
 }
 
 // Returns true if a monster can be considered safe regardless
 // of distance.
-static bool _mons_is_always_safe(const monster *mon)
+bool mons_is_always_safe(const monster *mon)
 {
     return (mon->wont_attack() && (!mons_blows_up(*mon) || mon->type == MONS_SHADOW_PRISM))
           || mon->type == MONS_BUTTERFLY
@@ -146,14 +112,12 @@ bool mons_is_safe(const monster* mon, const bool want_move,
 
     int  dist    = grid_distance(you.pos(), mon->pos());
 
-    bool is_safe = (_mons_is_always_safe(mon)
+    bool is_safe = (mons_is_always_safe(mon)
                     || check_dist
                        && (mon->pacified() && dist > 1
                            || crawl_state.disables[DIS_MON_SIGHT] && dist > 2
-                           // Only seen through glass walls or within water?
-                           // Assuming that there are no water-only/lava-only
-                           // monsters capable of throwing or zapping wands.
-                           || !mons_can_hurt_player(mon)));
+                           // Only seen through glass walls?
+                           || mons_is_irrelevant(mon)));
 
     // If is_safe is true, ch_mon_is_safe will always immediately return true
     // anyway, so let's skip constructing another monster_info and handling lua
@@ -294,6 +258,13 @@ bool i_feel_safe(bool announce, bool want_move, bool just_monsters,
                 mprf(MSGCH_WARN,
                      "There is a lethal amount of poison in your body!");
             }
+            return false;
+        }
+
+        if (contam_max_damage() >= you.hp)
+        {
+            if (announce)
+                mprf(MSGCH_WARN, "You are contaminated with a potentially lethal amount of magic!");
             return false;
         }
 
@@ -465,7 +436,7 @@ bool bring_to_safety()
     if (min_threat == DBL_MAX)
         return false;
 
-    you.moveto(best_pos);
+    you.move_to(best_pos, MV_INTERNAL);
     return true;
 }
 
@@ -477,7 +448,8 @@ void revive()
 
     you.magic_contamination = 0;
 
-    clear_trapping_net();
+    you.stop_being_caught(true);
+    you.stop_being_constricted();
     you.attribute[ATTR_DIVINE_VIGOUR] = 0;
     you.attribute[ATTR_DIVINE_STAMINA] = 0;
     if (you.form != you.default_form)
@@ -517,7 +489,7 @@ void revive()
         }
 
         if (dur == DUR_TELEPORT)
-            you.props.erase(SJ_TELEPORTITIS_SOURCE);
+            you.props.erase(TELEPORTITIS_SOURCE);
     }
 
     update_vision_range(); // in case you had darkness cast before

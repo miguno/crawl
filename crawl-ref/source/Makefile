@@ -653,7 +653,7 @@ ifndef BUILD_LUA
     BUILD_LUA = yes
   endif
 endif
-# You can override the Lua package search with "make LUA_PACKAGE=lua-5-1".
+# You can override the Lua package search with "make LUA_PACKAGE=lua-5.4".
 # pkg-config is still required.
 ifndef LUA_PACKAGE
   ifndef BUILD_LUA
@@ -662,22 +662,22 @@ ifndef LUA_PACKAGE
         LUA_PACKAGE = luajit
       endif
     else
-      ifneq ($(shell $(PKGCONFIG) lua5.1 --exists || echo no),)
-        ifneq ($(shell $(PKGCONFIG) lua-5.1 --exists || echo no),)
-          ifneq ($(shell $(PKGCONFIG) lua51 --exists || echo no),)
+      ifneq ($(shell $(PKGCONFIG) lua5.4 --exists || echo no),)
+        ifneq ($(shell $(PKGCONFIG) lua-5.4 --exists || echo no),)
+          ifneq ($(shell $(PKGCONFIG) lua54 --exists || echo no),)
             ifeq ($(shell $(PKGCONFIG) lua --exists || echo no),)
-              ifeq ($(shell $(PKGCONFIG) lua --modversion | head -c 3),5.1)
+              ifeq ($(shell $(PKGCONFIG) lua --modversion | head -c 3),5.4)
                 LUA_PACKAGE = lua
               endif
             endif
           else
-            LUA_PACKAGE = lua51
+            LUA_PACKAGE = lua54
           endif
         else
-          LUA_PACKAGE = lua-5.1
+          LUA_PACKAGE = lua-5.4
         endif
       else
-        LUA_PACKAGE = lua5.1
+        LUA_PACKAGE = lua5.4
       endif
     endif
   endif
@@ -688,7 +688,7 @@ endif
 
 ifndef BUILD_LUA
   ifndef LUA_PACKAGE
-    LUA_PACKAGE = lua5.1
+    LUA_PACKAGE = lua5.4
   endif
   INCLUDES_L += $(shell $(PKGCONFIG) $(LUA_PACKAGE) --cflags-only-I | sed -e 's/-I/-isystem /')
   CFLAGS_L  += $(shell $(PKGCONFIG) $(LUA_PACKAGE) --cflags-only-other)
@@ -1265,7 +1265,8 @@ DOC_BASE        := ../docs
 DOC_TEMPLATES   := $(DOC_BASE)/template
 GENERATED_DOCS  := $(DOC_BASE)/aptitudes.txt $(DOC_BASE)/aptitudes-wide.txt $(DOC_BASE)/FAQ.html $(DOC_BASE)/crawl_manual.txt $(DOC_BASE)/quickstart.txt
 # Headers that need to exist before attempting to compile cc files
-GENERATED_HEADERS := art-enum.h config.h mon-mst.h species-type.h job-type.h form-data.h
+GENERATED_HEADERS := art-enum.h config.h mon-mst.h species-type.h job-type.h \
+                     form-data.h $(RLTILES)status-icon-sizes.h
 # All other generated files will be created later
 GENERATED_FILES := $(GENERATED_HEADERS) art-data.h mi-enum.h \
                    $(RLTILES)/dc-unrand.txt build.h compflag.h dat/dlua/tags.lua \
@@ -1323,13 +1324,15 @@ TITLEIMGS = denzi_dragon denzi_kitchen_duty denzi_summoner \
             kaonedong_ignis_the_dying_flame kaonedong_menkaure_prince_of_dust \
             philosopheropposite_palentonga_paladin gompami_kohu_xbow \
             micah_c_ereshkigal SpinningBird_djinn_sears_gnolls \
-            benadryl_antaeus king7artist_eustachio benadryl_oni
+            benadryl_antaeus king7artist_eustachio benadryl_oni \
+            ylam_formicid_shrikes lemurrobot_gozag_vaults
 
 STATICFILES = $(TILEIMAGEFILES:%=webserver/game_data/static/%.png) \
               webserver/static/stone_soup_icon-32x32.png \
               $(TITLEIMGS:%=webserver/static/title_%.png) \
               $(TILEINFOJS:%=webserver/game_data/static/tileinfo-%.js) \
-              webserver/webtiles/version.txt
+              webserver/webtiles/version.txt \
+              webserver/game_data/static/status-icon-sizes.js
 
 $(TILEINFOJS:%=$(RLTILES)/tileinfo-%.js): build-rltiles
 
@@ -1832,7 +1835,7 @@ $(foreach t,$(CONTRIB_LIBS),$(if $(wildcard $t),,$(shell rm -f .contrib-libs)))
 
 #############################################################################
 # Build unrandart data
-art-data.h: art-data.txt util/art-data.pl art-func.h $(RLTILES)/dc-player.txt
+art-data.h: art-data.txt util/art-data.pl art-func.h
 	util/art-data.pl
 art-enum.h rltiles/dc-unrand.txt rltiles/tiledef-unrand.cc: art-data.h
 
@@ -1878,6 +1881,12 @@ job-groups.h: job-data.h
 
 # no-op
 job-type.h: job-groups.h
+	$(QUIET_GEN)
+	
+$(RLTILES)status-icon-sizes.h : util/status-icon-sizes-gen.py $(RLTILES)/icon-sizes.txt
+	$(QUIET_PYTHON)$(PYTHON) util/status-icon-sizes-gen.py $(RLTILES)/icon-sizes.txt
+	
+$(RLTILES)status-icon-sizes.js : $(RLTILES)status-icon-sizes.h
 	$(QUIET_GEN)
 
 $(RLTILES)/dc-unrand.txt: art-data.h

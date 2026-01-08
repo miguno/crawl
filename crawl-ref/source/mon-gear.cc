@@ -489,14 +489,13 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
                 { WPN_FLAIL,            2 },
         }, {}, {}, 1 } },
         { MONS_DEATH_KNIGHT,
-            { { { WPN_MORNINGSTAR,      5 },
-                { WPN_GREAT_MACE,       5 },
-                { WPN_HALBERD,          5 },
+            { { { WPN_GREAT_MACE,       5 },
+                { WPN_HALBERD,          6 },
                 { WPN_GREAT_SWORD,      5 },
-                { WPN_GLAIVE,           8 },
+                { WPN_GLAIVE,           10 },
                 { WPN_BROAD_AXE,        10 },
-                { WPN_BATTLEAXE,        15 },
-        }, {2, 1, 4} } },
+                { WPN_BATTLEAXE,        16 },
+        }, {2, 1, 4}, { { SPWPN_DRAINING, 1 }, { NUM_SPECIAL_WEAPONS, 1 }, } } },
         { MONS_GNOLL,                   { GNOLL_WEAPONS } },
         { MONS_OGRE_MAGE,               { GNOLL_WEAPONS } },
         { MONS_NAGA_MAGE,               { GNOLL_WEAPONS } },
@@ -615,6 +614,7 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
         { MONS_FRANCES,                 { NAGA_WEAPONS } },
         { MONS_HAROLD,                  { NAGA_WEAPONS } },
         { MONS_SKELETAL_WARRIOR,        { NAGA_WEAPONS } },
+        { MONS_DRAUGR,                  { NAGA_WEAPONS } },
         { MONS_PALE_DRACONIAN,          { NAGA_WEAPONS } },
         { MONS_RED_DRACONIAN,           { NAGA_WEAPONS } },
         { MONS_WHITE_DRACONIAN,         { NAGA_WEAPONS } },
@@ -895,16 +895,12 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
         { MONS_DOWAN,           { { { WPN_DAGGER, 1 } } } },
         { MONS_BURIAL_ACOLYTE,  { { { WPN_DAGGER, 1 } } } },
         { MONS_KOBOLD_DEMONOLOGIST, { { { WPN_DAGGER, 1 } } } },
+        { MONS_KOBOLD_GEOMANCER, { { { WPN_DAGGER, 1 } } } },
         { MONS_NECROMANCER,      { { { WPN_DAGGER, 1 } } } },
         { MONS_ARCANIST,         { { { WPN_DAGGER, 1 } } } },
         { MONS_OCCULTIST,        { { { WPN_DAGGER, 1 } } } },
         { MONS_JOSEPHINE,        { { { WPN_DAGGER, 1 } } } },
-        { MONS_PSYCHE, {
-            { { WPN_DAGGER,             1 }, },
-            { 1, 0, 4 },
-            { { SPWPN_CHAOS, 3 },
-              { SPWPN_DISTORTION, 1 } },
-        } },
+        { MONS_CASSANDRA,        { { { WPN_DAGGER, 1 } } } },
         { MONS_AGNES,       { { { WPN_LAJATANG, 1 } } } },
         { MONS_SONJA, {
             { { WPN_DAGGER,             1 },
@@ -1341,7 +1337,8 @@ int make_mons_weapon(monster_type type, int level, bool melee_only)
         }
         break;
 
-        // As a violent thug, Throatcutter suits Terence perfectly.
+    // As someone who's learned the hard way that many have no honour in war,
+    // Throatcutter suits Terence perfectly.
     case MONS_TERENCE:
         if (one_chance_in(100) && !get_unique_item_status(UNRAND_THROATCUTTER))
         {
@@ -1488,7 +1485,7 @@ static void _give_weapon(monster *mon, int level, bool second_weapon = false)
         make_item_for_monster(mon, OBJ_JEWELLERY, NUM_RINGS, 0, 1);
 
     if (mon->type == MONS_FANNAR && i.is_type(OBJ_WEAPONS, WPN_QUARTERSTAFF))
-        make_item_for_monster(mon, OBJ_JEWELLERY, RING_ICE, 0, 1);
+        make_item_for_monster(mon, OBJ_JEWELLERY, RING_PROTECTION_FROM_COLD, 0, 1);
 
     if (mon->type == MONS_WIGLAF)
     {
@@ -1502,7 +1499,17 @@ static void _give_weapon(monster *mon, int level, bool second_weapon = false)
     }
 
     if (mon->type == MONS_JOSEPHINA)
-        make_item_for_monster(mon, OBJ_JEWELLERY, RING_ICE, ISPEC_RANDART, true);
+        make_item_for_monster(mon, OBJ_JEWELLERY, RING_PROTECTION_FROM_COLD, ISPEC_RANDART, true);
+
+    if (mon->type == MONS_CASSANDRA && coinflip())
+    {
+        item_def* amu = make_item_for_monster(mon, OBJ_JEWELLERY, get_random_amulet_type(), 0, 1);
+        if (amu && one_chance_in(4))
+        {
+            amu->props[FIXED_PROPS_KEY].get_table()["Bane"] = 1;
+            make_item_randart(*amu);
+        }
+    }
 }
 
 // Hands out ammunition fitting the monster's launcher (if any), or else any
@@ -1722,16 +1729,16 @@ static void _give_shield(monster* mon, int level)
         shield = make_item_for_monster(mon, OBJ_ARMOUR, ARM_ORB, level);
         if (shield)
         {
-            // Light is good-coded and Wrath is too vicious.
-            const auto ego = random_choose(SPARM_MAYHEM, SPARM_ENERGY, SPARM_GUILE);
+            const auto ego = random_choose(SPARM_STARDUST, SPARM_MESMERISM,
+                                           SPARM_ENERGY, SPARM_GUILE);
             set_item_ego_type(*shield, OBJ_ARMOUR, ego);
         }
         break;
 
     case MONS_FREDERICK:
     {
-        // Divinity or conjurer support.
-        const auto ego = random_choose(SPARM_LIGHT, SPARM_ENERGY);
+        // Conjurer support.
+        const auto ego = random_choose(SPARM_STARDUST, SPARM_ENERGY);
 
         give_specific_item(mon, items(false, OBJ_ARMOUR,
                            ARM_ORB, ISPEC_RANDART, ego));
@@ -2058,6 +2065,14 @@ int make_mons_armour(monster_type type, int level)
                                                6, ARM_FIRE_DRAGON_ARMOUR);
         break;
 
+    case MONS_MARA:
+        item.base_type = OBJ_ARMOUR;
+        item.sub_type = random_choose_weighted(3, ARM_LEATHER_ARMOUR,
+                                               1, ARM_TROLL_LEATHER_ARMOUR,
+                                               1, ARM_ACID_DRAGON_ARMOUR);
+        level = ISPEC_GOOD_ITEM;
+        break;
+
     case MONS_PARGHIT:
         item.base_type = OBJ_ARMOUR;
         item.sub_type = ARM_GOLDEN_DRAGON_ARMOUR;
@@ -2177,7 +2192,7 @@ int make_mons_armour(monster_type type, int level)
     }
 
     case MONS_JOSEPHINE:
-    case MONS_PSYCHE:
+    case MONS_CASSANDRA:
         if (one_chance_in(5))
             level = ISPEC_GOOD_ITEM;
         item.base_type = OBJ_ARMOUR;
@@ -2207,13 +2222,13 @@ int make_mons_armour(monster_type type, int level)
     case MONS_DOWAN:
     case MONS_JESSICA:
     case MONS_KOBOLD_DEMONOLOGIST:
+    case MONS_KOBOLD_GEOMANCER:
     case MONS_KOBOLD_FLESHCRAFTER:
     case MONS_OGRE_MAGE:
     case MONS_EROLCHA:
     case MONS_ARCANIST:
     case MONS_OCCULTIST:
     case MONS_ILSUIW:
-    case MONS_MARA:
     case MONS_RAKSHASA:
     case MONS_MERFOLK_AQUAMANCER:
     case MONS_SPRIGGAN:

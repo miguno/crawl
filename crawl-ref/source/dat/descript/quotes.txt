@@ -1883,7 +1883,7 @@ staff of conjuration
 
 <staff>
 %%%%
-staff of death
+staff of necromancy
 
 “'I am Aed Abaid of Ess Rúaid, that is, the good god of wizardry of the Tuatha
  Dé Danann, and the Rúad Rofhessa, and Eochaid Ollathair are my three names.’
@@ -2284,7 +2284,7 @@ Kirke
  shalt not thyself return, but shalt remain there with the others.”
     -Homer, Odysseia
 %%%%
-the Lernaean hydra
+Lernaean hydra
 
 “The second Labour which he undertook was the slaying of the Lernaian Hydra,
  springing from whose single body were fashioned a hundred necks, each bearing
@@ -2399,21 +2399,6 @@ Prince Ribbit
  Princess, youngest princess!
  Open the door for me!”
     -Brothers Grimm (Margaret Hunt), _The Frog King, or Iron Henry_
-%%%%
-Psyche
-
-“Let Psyche's corpse be clad in mourning weed
- And set on rock of yonder hill aloft;
- Her husband is no wight of human seed,
- But serpent dire and fierce, as may be thought,
- Who flies with wings above in starry skies,
- And doth subdue each thing with fiery flight.
- The Gods themselves and powers that seem so wise
- With mighty love be subject to his might.
- The rivers black and deadly floods of pain
- And darkness eke as thrall to him remain.”
-    -Apuleius, _Asinus aureus_, “Cupid and Psyche”. circa. 160 AD.
-    trans. William Adlington, 1566.
 %%%%
 Sigmund
 
@@ -2721,6 +2706,22 @@ battlesphere
  But I am”
     -They Might Be Giants, “Birdhouse in Your Soul”. 1989.
 %%%%
+bes kemwar
+
+# would prefer a more prose-like passage translating Teoh's Bes Hyang Dney or
+# Werner's Jah-hět of Malaysia, Art and Culture, but until then:
+“The Bès Kěmwar, “maggot spirit”, is one of the many _bès_ or disease spirits
+ known to the Jah Hut of Malaysia. A polyvalent spirit, it is depicted as a
+ maggot or caterpillar, with variants distinguished by hair, thorns, wings, and
+ other details. It eats rice, vegetables, and other crops. It is responsible for
+ aches in bones, joints, and muscles. If its caterpillar hair falls into water
+ and that water is drunk, it causes coughing and bleeding in the throat. Maggot
+ spirits are also known to live in rotten tree trunks and feed in them. Anyone
+ who approaches the fallen tree will be bitten in the leg by the spirit, causing
+ redness, swelling, and itching. All the toenails fall off but the swelling will
+ be gone by two or three months.”
+    - _A Book of Creatures_, 2020.
+%%%%
 boggart
 
 “He thinks every bush a boggart.”
@@ -2885,7 +2886,7 @@ diamond obelisk
     -“Expert Judgment on Markers to Deter Inadvertent Human Intrusion into the
       Waste Isolation Pilot Plant”, Sandia National Laboratories report. 1993
 %%%%
-doom hound
+oblivion hound
 
 “Standing over Hugo, and plucking at his throat, there stood a foul thing, a
  great, black beast, shaped like a hound, yet larger than any hound that ever
@@ -3308,20 +3309,23 @@ kraken
  one doubt that this is the Leviathan of Job?”
     -Jacob Wallenberg, “Min son på galejan”. 1781.
 %%%%
+large abomination
+
+<small abomination>
+%%%%
 lindwurm
 
 “Freilich verbürgt uns keine Silbe die Existenz von solcherlei Thieren, wenn
  wir uns den Drachen oder Lindwurm als ein Ungeheuer vorstellen, dessen langer
  Hals in einen Adler-, Löwen- oder Delphinenkopf endigt; das auf dem breiten
  Rücken Greifs- oder Nachisittige trägt; und am vielfach
- gerollten Schweif
- einen Stachel mit Widerhaken hat; Feuer speit; sich in Mädchen verliebt und
- diese entführt; bald diese bald jene Gestalt annimmt; auf sauer erworbenen
- Schatzen ruht — kurz, als ein Ungeheuer, das alle Eigenschaften besitzt,
- welche die Fabel ihm andichtet; dann wäre es Wahnsinn, an Drachen und
- Lindwürmer glauben zu wollen. Nehmen wir aber dafür bloß ein furchtbares
- Ungeheuer überhaupt, welches nun aus unserem Welttheile vertilgt ist, so hat
- der Glaube daran nichts Lächerliches.”
+ gerollten Schweif einen Stachel mit Widerhaken hat; Feuer speit; sich in
+ Mädchen verliebt und diese entführt; bald diese bald jene Gestalt annimmt; auf
+ sauer erworbenen Schatzen ruht — kurz, als ein Ungeheuer, das alle
+ Eigenschaften besitzt, welche die Fabel ihm andichtet; dann wäre es Wahnsinn,
+ an Drachen und Lindwürmer glauben zu wollen. Nehmen wir aber dafür bloß ein
+ furchtbares Ungeheuer überhaupt, welches nun aus unserem Welttheile vertilgt
+ ist, so hat der Glaube daran nichts Lächerliches.”
     -Leopold Ziegelhauſer, _Schattenbilder der Vorzeit: Ein Kranz von
      Geschichten, Sagen, Legenden, Märchen, Skizzen und Heldenmahlen, Aus allen
      Gegenden Deutschlands und des österreichischen Kaiserstaates_. 1844.
@@ -3574,9 +3578,8 @@ ogre mage
 oklob plant
 
 “Carbonic acid is one of the three materials which together form the starting
- point of vegetable growth; the others being water and
- nitric acid. This acid
- is formed of carbon and oxygen in the proportion of one part of the former to
+ point of vegetable growth; the others being water and nitric acid. This acid is
+ formed of carbon and oxygen in the proportion of one part of the former to
  two of the latter chemically combined. It is a colorless gas, having an acid
  taste and smell; is soluble in water; weighs one-half more than air and can be
  poured from one vessel to another, as a liquid may be; 100 parts of water
@@ -3822,13 +3825,14 @@ shadow dragon
 
 “Crux sacra sit mihi lux / Non draco sit mihi dux
  Vade retro satana / Numquam suade mihi vana
- Sunt mala quae libas / Ipse venena bibas”
-        “Let the Holy Cross be my light / Let not the dragon be my guide
-        Step back Satan / Never tempt me with vain things
-        What you offer me is evil / You drink the poison yourself.”
-    -full text of initials on the Saint Benedict Medal, worn to ward off evil
-spririts. Inscription from 11-15th century, formally approved by pope Benedict
-XIV in 18th century
+ Sunt mala quae libas / Ipse venena bibas
+
+ [Let the Holy Cross be my light / Let not the dragon be my guide
+  Step back Satan / Never tempt me with vain things
+  What you offer me is evil / You drink the poison yourself.]”
+    -Full text of initials on the Saint Benedict Medal, worn to ward off evil
+     spirits. Inscription from 11-15th century, formally approved by Pope
+     Benedict XIV in 18th century.
 %%%%
 shadow wraith
 
@@ -4015,6 +4019,13 @@ sphinx marauder
  guile-entangled words, the grim riddle of the winged beast, I solved.'”
     -Seneca, _Oedipus_, 1st cent. A.D.
      trans. Frank Justus Miller, 1917.
+%%%%
+star jelly
+
+"My colleagues may have dismissed the sightings as blink frog egg casings, but
+today I shall prove that these creatures came from beyond the firmament. Let's
+begin the dissection."
+        -Ardun Idrick, cryptozoologist, last words
 %%%%
 starcursed mass
 

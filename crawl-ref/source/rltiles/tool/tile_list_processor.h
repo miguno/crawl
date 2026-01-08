@@ -30,6 +30,23 @@ protected:
         const vector<string> &uc_max_enum,
         bool is_js = false);
 
+    struct variation
+    {
+        unsigned int from_idx;
+        unsigned int to_idx;
+        int variety;
+
+        bool operator<(const variation& other) const noexcept;
+    };
+
+    struct pending_variation
+    {
+        unsigned int idx;
+        int variety;
+
+        bool operator==(const pending_variation& other) const noexcept;
+    };
+
     string m_name;
 
     tile_page m_page;
@@ -53,8 +70,10 @@ protected:
     vector<int> m_ctg_counts;
     tile m_compose;
     tile* m_texture;
-    int m_variation_idx;
-    int m_variation_col;
+    vector<pending_variation> m_pending_colour_variations;
+    vector<variation> m_colour_variations;
+    vector<pending_variation> m_pending_enchant_variations;
+    vector<variation> m_enchant_variations;
     int m_weight;
     double m_alpha;
     int m_domino;

@@ -70,6 +70,8 @@ static const map<shout_type, string> default_msg_keys = {
     { S_LOUD_ROAR,      "__LOUD_ROAR" },
     { S_RUSTLE,         "__RUSTLE" },
     { S_SQUEAK,         "__SQUEAK" },
+    { S_CAW,            "__CAW" },
+    { S_LAUGH,          "__LAUGH" },
 };
 
 /**
@@ -225,14 +227,6 @@ void monster_shout(monster &mons, int shout)
 
         strip_channel_prefix(message, channel);
 
-        if (seen)
-        {
-            // Otherwise it can move away with no feedback.
-            if (!(mons.flags & MF_WAS_IN_VIEW))
-                handle_seen_interrupt(&mons);
-            seen_monster(&mons);
-        }
-
         if (channel != MSGCH_TALK_VISUAL || seen)
         {
             message = do_mon_str_replacements(message, mons, s_type);
@@ -245,6 +239,26 @@ void monster_shout(monster &mons, int shout)
 
     if (crawl_state.game_is_hints() && (heard || you.can_see(mons)))
         learned_something_new(HINT_MONSTER_SHOUT, mons.pos());
+}
+
+int monster_perception(monster* mons)
+{
+    if (!you.visible_to(mons))
+        return 5;
+
+    return monster_perception(mons->get_hit_dice(), mons_intel(*mons), mons->asleep());
+}
+
+int monster_perception(int HD, mon_intel_type intel, bool is_asleep)
+{
+    // Intelligent monsters are better at noticing the player, and those who are
+    // awake are significantly moreso.
+    static const int intel_factor[] = {15, 20, 30};
+    const int perc_mult = intel_factor[intel] + (!is_asleep ? 15 : 0);
+    const int perc = (5 + HD * 3 / 2) * perc_mult / 20;
+
+    // Very low HD enemies still have a minimum perception.
+    return max(12, perc);
 }
 
 bool check_awaken(monster* mons, int stealth)
@@ -268,44 +282,9 @@ bool check_awaken(monster* mons, int stealth)
         return true;
 
 
-    int mons_perc = 10 + (mons_intel(*mons) * 4) + mons->get_hit_dice();
+    int mons_perc = monster_perception(mons);
 
-    bool unnatural_stealthy = false; // "stealthy" only because of invisibility?
-
-    // Critters that are wandering but still have MHITYOU as their foe are
-    // still actively on guard for the player, even if they can't see you.
-    // Give them a large bonus -- handle_behaviour() will nuke 'foe' after
-    // a while, removing this bonus.
-    if (mons_is_wandering(*mons) && mons->foe == MHITYOU)
-        mons_perc += 15;
-
-    if (!you.visible_to(mons))
-    {
-        mons_perc -= 75;
-        unnatural_stealthy = true;
-    }
-
-    if (mons->asleep())
-    {
-        if (mons->holiness() & MH_NATURAL)
-        {
-            // Monster is "hibernating"... reduce chance of waking.
-            if (mons->has_ench(ENCH_SLEEP_WARY))
-                mons_perc -= 10;
-        }
-        else // unnatural creature
-        {
-            // Unnatural monsters don't actually "sleep", they just
-            // haven't noticed an intruder yet... we'll assume that
-            // they're diligently on guard.
-            mons_perc += 10;
-        }
-    }
-
-    if (mons_perc < 4)
-        mons_perc = 4;
-
-    if (x_chance_in_y(mons_perc + 1, stealth))
+    if (x_chance_in_y(mons_perc, stealth))
         return true; // Oops, the monster wakes up!
 
     // You didn't wake the monster!
@@ -314,7 +293,7 @@ bool check_awaken(monster* mons, int stealth)
         && !mons->neutral() // include pacified monsters
         && mons_class_gives_xp(mons->type))
     {
-        practise_sneaking(unnatural_stealthy);
+        practise_sneaking();
     }
 
     return false;
@@ -564,16 +543,6 @@ static bool _issue_order(int keyn, int &mons_targd)
             break;
 
         case 'a':
-            if (env.sanctuary_time > 0)
-            {
-                if (!yesno("An ally attacking under your orders might violate "
-                           "sanctuary; order anyway?", false, 'n'))
-                {
-                    canned_msg(MSG_OK);
-                    return false;
-                }
-            }
-
         {
             direction_chooser_args args;
             args.restricts = DIR_TARGET;
@@ -723,32 +692,32 @@ void issue_orders()
 }
 
 /**
- * Make the player yell, either at a monster or at nothing in particular.
+ * Make the player yell, either at a monster, themselves, or at nothing in particular.
  *
- * @mon     The monster to yell at; may be null.
+ * @target     The target to yell at; may be null.
  */
-void yell(const actor* mon)
+void yell(const actor* target)
 {
     ASSERT(!crawl_state.game_is_arena());
 
-    const string shout_verb = you.shout_verb(mon != nullptr);
+    const string shout_verb = you.shout_verb(target != nullptr);
     const int noise_level = you.shout_volume();
 
     if (you.cannot_speak())
     {
-        if (mon)
+        if (target)
         {
-            if (you.paralysed() || you.duration[DUR_WATER_HOLD])
-            {
-                mprf("You feel a strong urge to %s, but "
-                     "you are unable to make a sound!",
-                     shout_verb.c_str());
-            }
-            else
+            if (silenced(you.pos()))
             {
                 mprf("You feel %s rip itself from your throat, "
                      "but you make no sound!",
                      article_a(shout_verb).c_str());
+            }
+            else
+            {
+                mprf("You feel a strong urge to %s, but "
+                     "you are unable to make a sound!",
+                     shout_verb.c_str());
             }
         }
         else
@@ -757,12 +726,13 @@ void yell(const actor* mon)
         return;
     }
 
-    if (mon)
+    if (target)
     {
         mprf("You %s%s at %s!",
              shout_verb.c_str(),
              you.duration[DUR_RECITE] ? " your recitation" : "",
-             mon->name(DESC_THE).c_str());
+             target && target->is_player() ? "yourself"
+                                           : target->name(DESC_THE).c_str());
     }
     else
     {

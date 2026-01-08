@@ -27,8 +27,6 @@ god_conduct_trigger::god_conduct_trigger(
     conduct_type c, int pg, bool kn, const monster* vict)
   : conduct(c), pgain(pg), known(kn), victim(nullptr)
 {
-    did_sanctuary = false;
-
     if (vict)
     {
         victim.reset(new monster);
@@ -39,15 +37,6 @@ god_conduct_trigger::god_conduct_trigger(
 void god_conduct_trigger::set(conduct_type c, int pg, bool kn,
                               const monster* vict)
 {
-    // This conduct only needs to be set once per instance; subsequent calls
-    // would just uselessly update the victim pointer.
-    if (c == DID_ATTACK_IN_SANCTUARY)
-    {
-        if (did_sanctuary)
-            return;
-
-        did_sanctuary = true;
-    }
     conduct = c;
     pgain = pg;
     known = kn;
@@ -61,10 +50,7 @@ void god_conduct_trigger::set(conduct_type c, int pg, bool kn,
 
 god_conduct_trigger::~god_conduct_trigger()
 {
-    // For order of events, let remove_sanctuary() apply the conduct.
-    if (conduct == DID_ATTACK_IN_SANCTUARY)
-        remove_sanctuary(true);
-    else if (conduct != NUM_CONDUCTS)
+    if (conduct != NUM_CONDUCTS)
         did_god_conduct(conduct, pgain, known, victim.get());
 }
 
@@ -80,10 +66,19 @@ static const char *conducts[] =
 #if TAG_MAJOR_VERSION == 34
     "Desecrate Orcish Remains", "Kill Slime",
 #endif
-    "Was Hasty", "Attack In Sanctuary", "Kill Nonliving", "Exploration",
+    "Was Hasty",
+#if TAG_MAJOR_VERSION == 34
+    "Attack In Sanctuary",
+#endif
+    "Kill Nonliving", "Exploration",
     "Seen Monster", "Sacrificed Love", "Hurt Foe", "Use Wizardly Item",
 };
 COMPILE_CHECK(ARRAYSZ(conducts) == NUM_CONDUCTS);
+
+string conduct_description(conduct_type conduct)
+{
+    return conducts[conduct];
+}
 
 /**
  * Change piety & add penance in response to a conduct.
@@ -96,10 +91,9 @@ COMPILE_CHECK(ARRAYSZ(conducts) == NUM_CONDUCTS);
 static void _handle_piety_penance(int piety_change, int piety_denom,
                                   int penance, conduct_type thing_done)
 {
-    const int old_piety = you.piety;
+    const int old_piety = you.raw_piety;
 #ifndef DEBUG_DIAGNOSTICS
     UNUSED(thing_done);
-    UNUSED(conducts);
     UNUSED(old_piety);
 #endif
 
@@ -110,12 +104,11 @@ static void _handle_piety_penance(int piety_change, int piety_denom,
 
     // don't announce exploration piety unless you actually got a boost
     if ((piety_change || penance)
-        && thing_done != DID_EXPLORATION || old_piety != you.piety)
+        && thing_done != DID_EXPLORATION || old_piety != you.raw_piety)
     {
-
         dprf("conduct: %s; piety: %d (%+d/%d); penance: %d (%+d)",
              conducts[thing_done],
-             you.piety, piety_change, piety_denom,
+             you.piety(), piety_change, piety_denom,
              you.penance[you.religion], penance);
 
     }
@@ -278,10 +271,6 @@ static peeve_map divine_peeves[] =
             "you attack neutral beings", false,
             1, 0,
             " forgives your inadvertent attack on a neutral, just this once."
-        } },
-        { DID_ATTACK_IN_SANCTUARY, {
-            "you attack monsters in a sanctuary", false,
-            1, 1
         } },
         { DID_UNCLEAN, {
             "you use unclean or chaotic magic or items", true,
@@ -523,6 +512,7 @@ struct like_response
         // may modify gain/denom
         if (special)
             special(gain, denom, victim);
+        you.piety_info.record_conduct_like(thing_done, gain, denom);
 
         _handle_piety_penance(max(0, gain), max(1, denom), 0, thing_done);
     }
@@ -1051,10 +1041,6 @@ void set_attack_conducts(god_conduct_trigger conduct[3], const monster &mon,
     else if (mon.neutral() && !mon.has_ench(ENCH_FRENZIED))
         conduct[0].set(DID_ATTACK_NEUTRAL, 5, known, &mon);
 
-    // Penance value is handled by remove_sanctuary().
-    if (is_sanctuary(mon.pos()) || is_sanctuary(you.pos()))
-        conduct[1].set(DID_ATTACK_IN_SANCTUARY, -1, known, &mon);
-
     if (mon.is_holy() && !mon.is_illusion())
     {
         conduct[2].set(DID_ATTACK_HOLY, mon.get_experience_level(), known,
@@ -1098,6 +1084,9 @@ string get_god_likes(god_type which_god)
         break;
     case GOD_ZIN:
         likes.emplace_back("you donate money");
+        break;
+    case GOD_OKAWARU:
+        really_likes.emplace_back("you kill challenging foes");
         break;
     default:
         break;
@@ -1182,12 +1171,29 @@ void did_hurt_monster(const monster &victim, int damage_done,
         you.props[USKAYAW_NUM_MONSTERS_HURT].get_int() += 1;
         you.props[USKAYAW_MONSTER_HURT_VALUE].get_int() += value;
     }
-    else if (you_worship(GOD_BEOGH) && you.piety >= piety_breakpoint(2))
+    else if (you_worship(GOD_BEOGH) && you.piety() >= piety_breakpoint(2))
     {
         // Cap the damage we give points for by the target's max hp to reduce rat value
         int bonus = min(victim.hit_points, min(damage_done, victim.max_hit_points / 2));
         you.props[BEOGH_DAMAGE_DONE_KEY].get_int() += bonus;
     }
+}
+
+/**
+ * Will this god definitely be upset if you memorise spells?
+ *
+ * This is as opposed to a likelihood.
+ *
+ * @param spell the spell to be cast
+ * @param god   the god to check against
+ * @returns true if you will definitely lose piety/get penance/be excommunicated
+ */
+bool god_punishes_memorising_spells(god_type god)
+{
+    if (map_find(divine_peeves[god], DID_SPELL_MEMORISE))
+        return true;
+
+    return false;
 }
 
 /**

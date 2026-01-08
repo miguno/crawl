@@ -75,7 +75,7 @@ void target_item(item_def &item);
 void desc_randart_props(const item_def &item, vector<string> &lines);
 string damage_rating(const item_def *item, int *rating_value = nullptr);
 
-int describe_monsters(const monster_info &mi, const string& footer = "");
+int describe_monster(const monster_info &mi, const string& footer = "");
 
 void get_monster_db_desc(const monster_info &mi, describe_info &inf,
                          bool &has_stat_desc, bool mark_spells=false);
@@ -91,6 +91,8 @@ void describe_spell(spell_type spelled,
 void describe_ability(ability_type ability);
 void describe_deck(deck_type deck);
 void describe_mutation(mutation_type mut);
+void describe_bane(bane_type bane);
+string bane_long_description(bane_type bane, bool ignore_player = false);
 
 string short_ghost_description(const monster *mon, bool abbrev = false);
 string get_ghost_description(const monster_info &mi, bool concise = false);
@@ -99,7 +101,8 @@ string get_skill_description(skill_type skill, bool need_title = false);
 
 void describe_skill(skill_type skill);
 
-int hex_chance(const spell_type spell, const monster_info* mon_owner);
+int hex_chance(const spell_type spell, const monster_info* mon_owner,
+               bool is_wand = false);
 void describe_to_hit(const monster_info& mi, ostringstream &result,
                      const item_def* weapon = nullptr, bool verbose = false,
                      attack *source = nullptr, int distance = 0);

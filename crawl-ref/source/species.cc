@@ -391,6 +391,19 @@ namespace species
     }
 
     /**
+     * What is an appropriate orcification message for orcs of this species?
+     *
+     *  @param sp what kind of species to look at
+     *  @returns a string describing 'orcification'.
+     */
+    string orcification_msg(species_type sp)
+    {
+        auto msg = get_species_def(sp).orcification_msg;
+        return msg ? msg
+                   : "Your teeth grow more tusk-like, and your ears lengthen.";
+    }
+
+    /**
      * What message should be printed when a character of the specified species
      * prays at an altar, if not in some form?
      * To be inserted into "You %s the altar of foo."
@@ -643,7 +656,9 @@ void give_level_mutations(species_type species, int xp_level)
         if (lum.xp_level == xp_level)
         {
             // XX: perma_mutate() doesn't handle prior conflicting innate muts,
-            // so we skip this mut if this occurs, e.g. through a Ru sacrifice.
+            // so we skip this mut if this occurs to avoid an assert. Ru
+            // sacrifices can be a source of this, so make sure any conflicts
+            // are handled by _sac_mut_maybe_valid!
             if (mut_check_conflict(lum.mut, true))
                 continue;
 

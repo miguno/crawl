@@ -180,7 +180,7 @@ static int _get_mons_colour(const monster_info& mi)
             col = YELLOW;
         else if (mi.type == MONS_SIMULACRUM && mons_zombie_size(mi.base_type) == Z_BIG)
             col = LIGHTCYAN;
-        else if (mi.type == MONS_SKELETON && mons_zombie_size(mi.base_type) == Z_BIG)
+        else if (mi.type == MONS_DRAUGR && mons_zombie_size(mi.base_type) == Z_BIG)
             col = WHITE;
         else if (mi.type == MONS_SPECTRAL_THING && mons_zombie_size(mi.base_type) == Z_BIG)
             col = LIGHTGREEN;
@@ -481,7 +481,7 @@ static cglyph_t _get_cell_glyph_with_class(const map_cell& cell,
             == CTVARY_DUR)
         {
             // duration is already clamped to 0-3
-            int dur = cell.cloudinfo()->duration;
+            int dur = cell.cloudinfo()->variety;
             switch (dur)
             {
             case 0:
@@ -613,7 +613,7 @@ cglyph_t get_mons_glyph(const monster_info& mi)
 
     g.ch = mons_char(stype);
     g.col = _get_mons_colour(mi);
-    g.col = real_colour(g.col);
+    g.col = real_colour(g.col, mi.pos);
     return g;
 }
 

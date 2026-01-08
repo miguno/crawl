@@ -53,10 +53,12 @@
 #include "religion.h"
 #include "stairs.h"
 #include "state.h"
+#include "status.h"
 #include "stringutil.h"
 #include "tag-version.h"
 #include "terrain.h"
 #include "tiles-build-specific.h"
+#include "transform.h"
 #include "traps.h"
 #include "travel-open-doors-type.h"
 #include "ui.h"
@@ -64,6 +66,8 @@
 #include "unwind.h"
 #include "view.h"
 #include "zot.h"
+
+#define AUTO_REST_STATUS_POS "autorest_status_pos"
 
 enum IntertravelDestination
 {
@@ -271,8 +275,11 @@ bool feat_is_traversable_now(dungeon_feature_type grid, bool try_fallback,
             return false;
 
         // Swimmers and water-walkers get deep water.
+        // Note that checking whether your base form can swim is not good enough;
+        // your current form must *also* be able to swim.
         if (grid == DNGN_DEEP_WATER
-            && (player_likes_water(true) || have_passive(passive_t::water_walk)))
+            && ((player_likes_water(true) && you.can_swim())
+                 || have_passive(passive_t::water_walk)))
         {
             return true;
         }
@@ -411,7 +418,6 @@ static bool _is_reseedable(const coord_def& c, bool ignore_danger = false)
            || _feat_is_blocking_door(grid)
            || is_trap(c)
            || !ignore_danger && _monster_blocks_travel(cell.monsterinfo())
-           || g_Slime_Wall_Check && slime_wall_neighbour(c)
            || !_is_safe_cloud(c);
 }
 
@@ -515,12 +521,6 @@ bool is_travelsafe_square(const coord_def& c, bool ignore_hostile,
     // Excluded squares are only safe if marking stairs, i.e. another level.
     if (!ignore_danger && !ignore_hostile && is_excluded(c)
         && !is_stair_exclusion(c))
-    {
-        return false;
-    }
-
-    if (g_Slime_Wall_Check && slime_wall_neighbour(c)
-        && !actor_slime_wall_immune(&you))
     {
         return false;
     }
@@ -1077,8 +1077,67 @@ command_type travel()
 
     if (you.running.is_explore())
     {
-        if (Options.explore_auto_rest && !you.is_sufficiently_rested()
-            || you.duration[DUR_NO_MOMENTUM])
+        // XXX: It is possible for the player to manually add a non-duration-based
+        //      status effect to this option, resulting in situations where
+        //      autoexplore can never move. We wait an arbitrary 500 turns before
+        //      deciding something must be wrong and stopping (to prevent an assert).
+        if (you.elapsed_time > you.elapsed_time_at_last_input + 5000
+            && you.props.exists(AUTO_REST_STATUS_POS)
+            && you.props[AUTO_REST_STATUS_POS].get_coord() == you.pos())
+        {
+            mprf(MSGCH_ERROR,
+                    "You appear to be waiting for the end of something which may "
+                    "never occur. Examine your explore_auto_rest_status option.");
+            stop_running();
+            return CMD_NO_CMD;
+        }
+
+        if (you.duration[DUR_NO_MOMENTUM]
+            || (Options.explore_auto_rest && !you.running.skip_autorest
+                && !you.is_sufficiently_rested())
+            )
+        {
+            return CMD_WAIT;
+        }
+
+        for (unsigned int i = 0; i < Options.explore_auto_rest_status.size(); ++i)
+        {
+            if (you.running.skip_autorest)
+                break;
+
+            duration_type type = Options.explore_auto_rest_status[i];
+
+            if (you.duration[type] == 0)
+                continue;
+
+            // Only rest off the bad part of Swiftness
+            if (type == DUR_SWIFTNESS && you.attribute[ATTR_SWIFTNESS] > 0)
+                continue;
+
+            // Only try to rest off transformations when this is both possible
+            // and the form is negative.
+            if (type == DUR_TRANSFORMATION
+                && (!you.transform_uncancellable || !form_is_bad()))
+            {
+                continue;
+            }
+
+            // Poison doesn't wear off while in this state, so don't try waiting
+            // for it.
+            if (type == DUR_POISONING
+                && (you.is_nonliving() || you.is_lifeless_undead()))
+            {
+                continue;
+            }
+
+            // Save the player's position, so we can catch the degenerate case
+            // where this results in us waiting indefinitely.
+            you.props[AUTO_REST_STATUS_POS] = you.pos();
+            return CMD_WAIT;
+        }
+
+        if (Options.explore_auto_rest_contam && you.magic_contamination
+            && !you.running.skip_autorest)
         {
             return CMD_WAIT;
         }
@@ -1398,7 +1457,8 @@ coord_def travel_pathfind::pathfind(run_mode_type rmode, bool fallback_explore)
         return start;
 
     unwind_bool slime_wall_check(g_Slime_Wall_Check,
-                                 !actor_slime_wall_immune(&you));
+                                 !ignore_player_traversability
+                                 && !actor_slime_wall_immune(&you));
     unwind_slime_wall_precomputer slime_neighbours(g_Slime_Wall_Check);
 
     // How many points we'll consider next iteration.
@@ -1559,7 +1619,12 @@ bool travel_pathfind::square_slows_movement(const coord_def &c)
     //
     // Walking through shallow water and opening closed doors is considered to
     // have the cost of two normal moves for travel purposes.
-    const int feat_cost = _feature_traverse_cost(feature);
+    int feat_cost = _feature_traverse_cost(feature);
+
+    // Areas next to slime walls are traversible, but we'd prefer not to if possible.
+    if (g_Slime_Wall_Check && slime_wall_neighbour(c))
+        feat_cost += 5;
+
     if (feat_cost > 1
         && point_distance[c.x][c.y] > traveled_distance - feat_cost)
     {
@@ -1854,17 +1919,34 @@ bool travel_pathfind::path_examine_point(const coord_def &c)
     // proceeds from source, so we take transporters, but for determining moves
     // we work in reverse from destination back to source, so we pathfind
     // through the landing sites.
-    if (runmode == RMODE_TRAVEL || runmode == RMODE_NOT_RUNNING)
+    if (runmode == RMODE_TRAVEL || runmode == RMODE_NOT_RUNNING
+        || runmode == RMODE_CONNECTIVITY)
     {
         if (floodout && env.grid(c) == DNGN_TRANSPORTER)
         {
-            LevelInfo &li = travel_cache.get_level_info(level_id::current());
-            transporter_info *ti = li.get_transporter(c);
-            if (ti && ti->destination != INVALID_COORD)
+            coord_def tdest;
+
+            // For connectivity checks, we have to use the map markers directly,
+            // since the travel cache info will not be set up yet. (These are only
+            // done in floodout mode, so it isn't necessary to do this for
+            // transporter landings.)
+            if (runmode == RMODE_CONNECTIVITY)
             {
-                if (path_flood(c, ti->destination))
-                    found_target = true;
+                map_position_marker* mark = get_position_marker_at(c, DNGN_TRANSPORTER);
+                if (mark)
+                    tdest = mark->dest;
             }
+            // But for travel checks, rely only on the player's knowledge instead.
+            else
+            {
+                LevelInfo &li = travel_cache.get_level_info(level_id::current());
+                transporter_info *ti = li.get_transporter(c);
+                if (ti && ti->destination != INVALID_COORD)
+                    tdest = ti->destination;
+            }
+
+            if (!tdest.origin() && path_flood(c, tdest))
+                found_target = true;
         }
         else if (!floodout && env.grid(c) == DNGN_TRANSPORTER_LANDING)
         {
@@ -1923,9 +2005,16 @@ void fill_travel_point_distance(const coord_def& youpos,
 
 extern map<branch_type, set<level_id> > stair_level;
 
-static void _find_parent_branch(branch_type br, branch_type *pb, int *pd)
+static void _find_parent_branch(branch_type br, branch_type *pb, int *pd, bool ignore_knowledge = false)
 {
     *pb = parent_branch(br);   // Check depth before using *pb.
+
+    // If doing internal calculations, don't rely on player knowledge of stairs.
+    if (ignore_knowledge)
+    {
+        *pd = brentry[br].depth;
+        return;
+    }
 
     if (auto levels = map_find(stair_level, br))
     {
@@ -1951,7 +2040,8 @@ static void _find_parent_branch(branch_type br, branch_type *pb, int *pd)
 // { BRANCH_SNAKE, 3 }, { BRANCH_LAIR, 5 }, { BRANCH_DUNGEON, 11 }
 // (Assuming, of course, that the vector started out empty.)
 //
-static void _trackback(vector<level_id> &vec, branch_type branch, int subdepth)
+static void _trackback(vector<level_id> &vec, branch_type branch, int subdepth,
+                       bool ignore_knowledge = false)
 {
     if (subdepth < 1)
         return;
@@ -1963,9 +2053,9 @@ static void _trackback(vector<level_id> &vec, branch_type branch, int subdepth)
     {
         branch_type pb;
         int pd;
-        _find_parent_branch(branch, &pb, &pd);
+        _find_parent_branch(branch, &pb, &pd, ignore_knowledge);
         if (pd)
-            _trackback(vec, pb, pd);
+            _trackback(vec, pb, pd, ignore_knowledge);
     }
 }
 
@@ -1993,7 +2083,10 @@ static void _track_intersect(vector<level_id> &cur, vector<level_id> &targ,
 // Returns the number of stairs the player would need to take to go from
 // the 'first' level to the 'second' level. If there's no obvious route between
 // 'first' and 'second', returns -1. If first == second, returns 0.
-int level_distance(level_id first, level_id second)
+//
+// If ignore_knowledge = true, use internal information rather than relying on
+// stairs the player knows the destination of.
+int level_distance(level_id first, level_id second, bool ignore_knowledge)
 {
     if (first == second)
         return 0;
@@ -2005,8 +2098,8 @@ int level_distance(level_id first, level_id second)
         return abs(first.depth - second.depth);
 
     // Figure out the dungeon structure between the two levels.
-    _trackback(fv, first.branch, first.depth);
-    _trackback(sv, second.branch, second.depth);
+    _trackback(fv, first.branch, first.depth, ignore_knowledge);
+    _trackback(sv, second.branch, second.depth, ignore_knowledge);
 
     level_id intersect;
     _track_intersect(fv, sv, &intersect);
@@ -2021,7 +2114,7 @@ int level_distance(level_id first, level_id second)
     {
         distance += first.depth;
 
-        _find_parent_branch(first.branch, &first.branch, &first.depth);
+        _find_parent_branch(first.branch, &first.branch, &first.depth, ignore_knowledge);
         if (!first.depth)
             return -1;
     }
@@ -3360,7 +3453,7 @@ void start_travel(const coord_def& p)
         start_translevel_travel(level_target);
 }
 
-void start_explore(bool grab_items)
+void start_explore(bool grab_items, bool skip_autorest)
 {
     if (Hints.hints_explored)
         Hints.hints_explored = false;
@@ -3381,15 +3474,16 @@ void start_explore(bool grab_items)
             env.map_seen.set(*ri);
 
     you.running.pos.reset();
+    you.running.skip_autorest = skip_autorest;
     _start_running();
 }
 
-void do_explore_cmd()
+void do_explore_cmd(bool skip_autorest)
 {
     if (you.berserk())
         mpr("Calm down first, please.");
     else                        // Start exploring
-        start_explore(Options.explore_greedy);
+        start_explore(Options.explore_greedy, skip_autorest);
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -4540,6 +4634,7 @@ void runrest::initialise(int dir, int mode)
     notified_mp_full = false;
     notified_ancestor_hp_full = false;
     turns_passed = 0;
+    skip_autorest = false;
 
     if (dir == RDIR_REST)
     {
@@ -4630,9 +4725,6 @@ bool runrest::run_should_stop() const
     if (mon && !fedhas_passthrough(tcell.monsterinfo()))
         return true;
 
-    if (slime_wall_neighbour(targ) && !actor_slime_wall_immune(&you))
-        return true;
-
     for (int i = 0; i < 3; i++)
     {
         const coord_def p = you.pos() + run_check[i].delta;
@@ -4676,6 +4768,7 @@ void runrest::stop(bool clear_delays)
         (runmode > 0 || runmode < 0 && Options.travel_delay == -1);
     _userdef_run_stoprunning_hook();
     runmode = RMODE_NOT_RUNNING;
+    skip_autorest = false;
 
     // Kill the delay; this is fine because it's not possible to stack
     // run/rest/travel on top of other delays.
@@ -4748,6 +4841,7 @@ void runrest::clear()
     notified_hp_full = false;
     notified_mp_full = false;
     notified_ancestor_hp_full = false;
+    skip_autorest = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -5257,15 +5351,12 @@ bool stairs_destination_is_excluded(const stair_info &si)
             return false;
         }
 
-        // Check for exclusions that cover the stair destination, but ignore
-        // those that have radius 1: those exclude travel in the _other_
-        // direction only (from the destination to here, not from here to the
-        // destination)
+        // Check for exclusions that cover the stair destination
         const exclude_set &excludes = dest_li->get_excludes();
         for (auto entry : excludes)
         {
             const travel_exclude &ex = entry.second;
-            if (ex.in_bounds(dest.pos) && ex.radius > 1)
+            if (ex.in_bounds(dest.pos))
                 return true;
         }
     }

@@ -21,8 +21,11 @@
 #include "files.h"
 #include "libutil.h"
 #include "maps.h"
+#include "map-knowledge.h"
+#include "mon-act.h"
 #include "message.h"
 #include "place.h"
+#include "player-notices.h"
 #include "prompt.h"
 #include "religion.h"
 #include "spl-goditem.h" // detect_items
@@ -276,6 +279,12 @@ bool wizard_create_feature(const coord_def& pos, dungeon_feature_type feat, bool
     return wizard_create_feature(t, feat, mimic);
 }
 
+static void _connect_door(coord_def pos)
+{
+    if (map_bounds(pos) && feat_is_door(env.grid(pos)))
+        tile_init_flavour(pos);
+}
+
 bool wizard_create_feature(dist &target, dungeon_feature_type feat, bool mimic)
 {
     if (feat == DNGN_UNSEEN)
@@ -320,7 +329,7 @@ bool wizard_create_feature(dist &target, dungeon_feature_type feat, bool mimic)
             return debug_make_shop(pos);
 
         if (feat_is_trap(feat))
-            return debug_make_trap(pos);
+            return debug_make_trap(pos, trap_type_from_feature(feat));
 
         tile_env.flv(pos).feat = 0;
         tile_env.flv(pos).special = 0;
@@ -330,12 +339,10 @@ bool wizard_create_feature(dist &target, dungeon_feature_type feat, bool mimic)
         // Update gate tiles, if existing.
         if (feat_is_door(old_feat) || feat_is_door(feat))
         {
-            const coord_def left  = pos - coord_def(1, 0);
-            const coord_def right = pos + coord_def(1, 0);
-            if (map_bounds(left) && feat_is_door(env.grid(left)))
-                tile_init_flavour(left);
-            if (map_bounds(right) && feat_is_door(env.grid(right)))
-                tile_init_flavour(right);
+            _connect_door(pos - coord_def(1, 0));
+            _connect_door(pos + coord_def(1, 0));
+            _connect_door(pos - coord_def(0, 1));
+            _connect_door(pos + coord_def(0, 1));
         }
         if (pos == you.pos() && cell_is_solid(pos))
             you.wizmode_teleported_into_rock = true;
@@ -344,7 +351,10 @@ bool wizard_create_feature(dist &target, dungeon_feature_type feat, bool mimic)
             env.level_map_mask(pos) |= MMT_MIMIC;
 
         if (you.see_cell(pos))
+        {
             view_update_at(pos);
+            StashTrack.update_stash(pos);
+        }
     } while (targeting_mode && target.isEndpoint);
 
     return true;
@@ -447,34 +457,38 @@ void wizard_map_level()
     }
 }
 
-bool debug_make_trap(const coord_def& pos)
+bool debug_make_trap(const coord_def& pos, trap_type trap)
 {
     if (env.grid(pos) != DNGN_FLOOR)
     {
-        mpr("You need to be on a floor square to make a trap.");
+        mprf("You can only make a %s on a floor square.",
+             trap == TRAP_UNASSIGNED ? "trap" : full_trap_name(trap).c_str());
         return false;
     }
 
-    vector<WizardEntry> options;
-    for (int i = TRAP_FIRST_TRAP; i < NUM_TRAPS; ++i)
+    if (trap == TRAP_UNASSIGNED)
     {
-        auto name = trap_name(static_cast<trap_type>(i));
-        options.emplace_back(WizardEntry(name, i));
+        vector<WizardEntry> options;
+        for (int i = TRAP_FIRST_TRAP; i < NUM_TRAPS; ++i)
+        {
+            auto name = trap_name(static_cast<trap_type>(i));
+            options.emplace_back(WizardEntry(name, i));
+        }
+        sort(options.begin(), options.end());
+        options.emplace_back(WizardEntry('*', "any", TRAP_RANDOM));
+
+        auto menu = WizardMenu("Make which kind of trap?", options);
+        if (!menu.run(true))
+            return false;
+
+        trap = static_cast<trap_type>(menu.result());
     }
-    sort(options.begin(), options.end());
-    options.emplace_back(WizardEntry('*', "any", TRAP_RANDOM));
-
-    auto menu = WizardMenu("Make which kind of trap?", options);
-    if (!menu.run(true))
-        return false;
-
-    auto trap = static_cast<trap_type>(menu.result());
-    place_specific_trap(you.pos(), trap);
+    place_specific_trap(pos, trap);
 
     mprf("Created %s.",
          (trap == TRAP_RANDOM)
             ? "a random trap"
-            : trap_at(you.pos())->name(DESC_A).c_str());
+            : trap_at(pos)->name(DESC_A).c_str());
 
     if (trap == TRAP_SHAFT && !is_valid_shaft_level())
         mpr("NOTE: Shaft traps aren't valid on this level.");
@@ -738,7 +752,7 @@ void debug_test_explore()
     const int explore_turns = _debug_time_explore();
 
     // Return to starting point.
-    you.moveto(where);
+    you.move_to(where, MV_INTERNAL);
 
     mprf("Explore took %d turns.", explore_turns);
 }
@@ -840,6 +854,8 @@ void wizard_clear_used_vaults()
     you.uniq_map_names_abyss.clear();
     env.level_uniq_maps.clear();
     env.level_uniq_map_tags.clear();
+    for (int i = 0; i < NUM_BRANCHES; ++i)
+        branch_uniq_map_tags[i].clear();
     mpr("All vaults are now eligible for [re]use.");
 }
 

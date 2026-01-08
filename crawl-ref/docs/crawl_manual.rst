@@ -379,9 +379,8 @@ that most monsters adjacent to you will follow when you change levels; this
 holds both for hostile and allied monsters. Notable exceptions are zombies
 and other mindless undead, who are too stupid to properly operate stairs.
 
-When taking stairs with an unknown destination, you are guaranteed a chance to
-move before any adjacent monsters. When taking stairs that you've already seen
-the other side of, monsters will be alert and get a chance to move before you.
+When taking stairs, you are guaranteed a chance to act before any monsters on
+the other side that you have not previously encountered.
 
 If you ascend an up staircase on level one, you will leave the dungeon forever;
 if you are carrying the magical Orb of Zot, you win the game by doing this.
@@ -710,7 +709,7 @@ adventures, how they are displayed, and what commands there are to use them:
 "        amulets        (use 'P'ut on and 'R'emove)
 \|        staves         (use 'w'ield)
 :        spellbooks     (use 'M'emorise and 'z'ap, 'Q' to quiver)
-%        talismans      (use 'V' to evoke)
+%        talismans      (use 'P'ut on and 'R'remove)
 }        miscellaneous  (use 'V' to evoke, 'Q' to quiver)
 $        gold           (use 'g' to pick up)
 =======  =============  ================================================
@@ -949,10 +948,10 @@ Talismans allow their user to shift into a different form. Entering or leaving
 a form with a talisman requires a brief period of concentration, but otherwise,
 forms last until the user chooses to leave them.
 
-More powerful talismans require some amount of Shapeshifting skill, without
-which a user will find their maximum health reduced until they leave the form.
-Shapeshifting skill also increases other benefits provided by talismans' forms,
-though weaker talismans have a limit to how helpful skill can be.
+Most talismans require some amount of Shapeshifting skill, without which a user
+will find their maximum health reduced until they leave the form. Shapeshifting
+skill also increases other benefits provided by talismans' forms, though weaker
+talismans have a limit to how helpful skill can be.
 
 { Miscellaneous
 ========================================
@@ -1160,11 +1159,10 @@ as a single mutation.
 
 Miscasting spells will cause magical contamination, which in turn can cause
 mutations if too much contamination is accrued at once. Certain powerful
-magical effects or spells (such as 'Invisibility' and 'Irradiate') also cause
-contamination as a side-effect even when successful. A single use of these
-effects is safe on its own, but multiple uses in short succession, or usage with
-existing contamination from other sources can cause dangerous levels of
-contamination.
+magical spells (such as 'Irradiate') also cause contamination as a side-effect
+even when successful. A single use of these effects is safe on its own, but
+multiple uses in short succession, or usage with existing contamination from
+other sources can cause dangerous levels of contamination.
 
 Mutations from magical contamination are almost always harmful. Mutations can
 also be caused by specific potions or by spells cast by powerful enemies found
@@ -1539,19 +1537,22 @@ the player to set aside many aspects of the game while still developing a
 strong character.
 
 
-Mountain Dwarves (MD)
+Gnolls (Gn)
+  Gnolls are a species of caniform humanoids originally hailing from the arid
+  deserts and grasslands of the east. In recent history they have become
+  unusually attracted to the Dungeon, establishing tribes around and even
+  inside of it. Unfortunately their long stay in the Dungeon has exposed their
+  somewhat fragile minds to excessive amounts of its magic.
 
-  Mountain Dwarves are stout and hardy folk, adept at fighting with axes and
-  blugeoning weapons, though lacking the dexterity to excel at other forms of
-  combat. Their reserves of magic are somewhat poor, though they still make
-  passable spellcasters, and their connection with the blood of the earth gives
-  them a particular talent at fire and earth magics. Their spell success is
-  significantly less encumbered by armour than other species.
+  On the one hand, their bizarrely altered brains now have incredible
+  proficiency at learning every skill. On the other, these same alterations
+  have rendered Gnolls incapable of selective learning. They learn all skills
+  at the same time, so are generally unable to specialise in any one thing.
 
-  They are superlative artisans and smiths, employed in ancient times by even the
-  gods themselves, and this spiritual history makes them exceptional at invoking
-  divine aid. They can even use enchantment scrolls to improve artefacts that
-  would be beyond the understanding of any other species.
+  In order to survive with this limitation, Gnolls use their universal
+  knowledge to take advantage of every resource they find in the Dungeon. They
+  also have a knack for finding items, allowing them to easily locate the
+  Dungeon's hidden treasures.
 
 Minotaurs (Mi)
   The Minotaurs are a species of hybrids, possessing Human bodies with bovine
@@ -1585,15 +1586,28 @@ Merfolk (Mf)
 
 Gargoyles (Gr)
   A cross between ordinary stone gargoyles and living beings, Gargoyles are
-  hideous humanoids with an affinity to rock. They have low health, but large
-  amounts of innate armour which increases further as they gain levels. They
-  eventually gain the ability to fly.
+  hideous humanoids with an affinity to earth magic. They have low health, but
+  large amounts of innate armour which increases further as they gain levels.
+  They eventually gain the ability to fly.
 
   Gargoyles' partially living form grants them immunity to poison, as well as
   resistance to electricity, and protection from some effects of necromancy.
   Their natural armour makes them strong melee fighters, and they are naturally
   skilled with blunt weapons and in unarmed combat. They can also be exceptional
   earth-based conjurers.
+
+Mountain Dwarves (MD)
+  Mountain Dwarves are stout and hardy folk, adept at fighting with axes and
+  blugeoning weapons, though lacking the dexterity to excel at other forms of
+  combat. Their reserves of magic are somewhat poor, though they still make
+  passable spellcasters, and their connection with the blood of the earth gives
+  them a particular talent at fire and earth magics. Their spell success is
+  significantly less encumbered by armour than other species.
+
+  They are superlative artisans and smiths, employed in ancient times by even the
+  gods themselves, and this spiritual history makes them exceptional at invoking
+  divine aid. They can even use enchantment scrolls to improve artefacts that
+  would be beyond the understanding of any other species.
 
 Draconians (Dr)
   Draconians are Human-dragon hybrids: humanoid in form and approximately
@@ -1642,23 +1656,6 @@ Armataurs (At)
   their body shape reduces the protection offered by body armour early on. At
   higher levels they also regenerate both health and magic when rolling, making
   them truly resilient.
-
-Gnolls (Gn)
-  Gnolls are a species of caniform humanoids originally hailing from the arid
-  deserts and grasslands of the east. In recent history they have become
-  unusually attracted to the Dungeon, establishing tribes around and even
-  inside of it. Unfortunately their long stay in the Dungeon has exposed their
-  somewhat fragile minds to excessive amounts of its magic.
-
-  On the one hand, their bizarrely altered brains now have incredible
-  proficiency at learning every skill. On the other, these same alterations
-  have rendered Gnolls incapable of selective learning. They learn all skills
-  at the same time, so are generally unable to specialise in any one thing.
-
-  In order to survive with this limitation, Gnolls use their universal
-  knowledge to take advantage of every resource they find in the Dungeon. They
-  also have a knack for finding items, allowing them to easily locate the
-  Dungeon's hidden treasures.
 
 
 Intermediate Species
@@ -2087,7 +2084,7 @@ Artificers
 Shapeshifters
   Shapeshifters use talismans to shift their body into different forms,
   granting them uncanny power but making them unable to use some items.
-  They enter the dungeon with two talismans, some flux baubles, and a 
+  They enter the dungeon with two talismans, some flux baubles, and a
   potion of lignification.
 
 Wanderers

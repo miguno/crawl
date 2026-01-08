@@ -242,7 +242,7 @@ static const map<spschool, miscast_datum> miscast_effects = {
                     // TODO: monster version? something else?
                      target.as_monster()->add_ench(
                          mon_enchant(ENCH_DIMENSION_ANCHOR,
-                                     0, source, dam * BASELINE_DELAY));
+                                     source, dam * BASELINE_DELAY));
                 }
             }
 
@@ -315,7 +315,7 @@ void miscast_effect(spell_type spell, int fail)
     // contamination!
     const int nastiness = spell_difficulty(spell) * spell_difficulty(spell)
                           * fail + 250;
-    const int cont_points = 2 * nastiness;
+    const int cont_points = 2 * nastiness / 5;
 
     contaminate_player(cont_points, true);
 
@@ -344,7 +344,7 @@ void miscast_effect(spell_type spell, int fail)
     if (school == spschool::necromancy
         && have_passive(passive_t::miscast_protection_necromancy))
     {
-        if (x_chance_in_y(you.piety, piety_breakpoint(5)))
+        if (x_chance_in_y(you.piety(), piety_breakpoint(5)))
         {
             simple_god_message(" protects you from your miscast "
                                "necromantic spell!");

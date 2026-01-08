@@ -183,6 +183,8 @@ public:
     const int min_skill;
     /// The skill level beyond which further skill provides no benefit.
     const int max_skill;
+    /// Multiplier to HP penalties for insufficient skill in talisman forms.
+    const int hp_skill_penalty_mult;
 
     /// flat str bonus
     const int str_mod;
@@ -215,6 +217,8 @@ public:
     /// What does this form change the player's holiness to? (MH_NONE if it leaves it unchanged)
     /// Note that vampire is special-cased in player::holiness().
     const mon_holy_type holiness;
+    /// Is this form considered 'bad' (ie: hostile)
+    const bool is_badform;
 
     /// Does this form have blood (used for sublimation and bloodsplatters)?
     const form_capability has_blood;
@@ -270,12 +274,14 @@ protected:
     vector<pair<string,string>> fakemuts;
     vector<pair<string,string>> badmuts;
 
-    /// Calculate the given FormScaling for this form, multiplied by scale.
-    int scaling_value(const FormScaling &sc, bool random,
-                      int level = -1, int scale = 1) const;
-    /// Calculate the given FormScaling for this form, with math internally multiplied by scale.
-    int divided_scaling(const FormScaling &sc, bool random,
-                        int level = -1, int scale = 1) const;
+    /// Calculate a given FormScaling for this form, multiplied by 100.
+    int raw_scaling_value(const FormScaling &sc, int level = -1) const;
+
+    /// Calculate a given FormScaling for this form, with math internally
+    /// using the raw_scaling_value, divided (possibly randomly) by some value
+    /// after calculation.
+    int scaling_value(const FormScaling &sc, int level = -1, bool random = false,
+                      int divisor = 100) const;
 
 private:
     /// Can this form fly?
@@ -314,6 +320,7 @@ const Form* cur_form(bool temp = true);
 
 bool lifeless_prevents_form(transformation form = you.form);
 
+bool form_is_bad(transformation form = you.form);
 bool form_can_wield(transformation form = you.form);
 bool form_can_wear(transformation form = you.form);
 bool form_can_fly(transformation form = you.form);
@@ -344,7 +351,7 @@ void untransform(bool skip_move = false, bool scale_hp = true,
                  transformation new_form = transformation::none);
 
 void unset_default_form();
-void set_default_form(transformation t, const item_def *source);
+void set_default_form(transformation t, const item_def *talisman);
 
 void set_form(transformation which_trans, int dur, bool scale_hp = true);
 void return_to_default_form(bool new_form = false);
@@ -353,9 +360,8 @@ monster_type transform_mons();
 string blade_parts(bool terse = false);
 const char* transform_name(transformation form = you.form);
 
-void merfolk_check_swimming(dungeon_feature_type old_grid,
-                            bool stepped = false);
-void merfolk_start_swimming(bool step = false);
+void merfolk_check_swimming(dungeon_feature_type old_grid);
+void merfolk_start_swimming();
 void merfolk_stop_swimming();
 
 transformation form_for_talisman(const item_def &talisman);

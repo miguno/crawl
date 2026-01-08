@@ -75,9 +75,7 @@ inline constexpr bool item_type_has_curses(object_class_type base_type)
 }
 
 // stationary:
-void set_net_stationary(item_def &item);
 bool item_is_stationary(const item_def &item) PURE;
-bool item_is_stationary_net(const item_def &item) PURE;
 
 // item descriptions:
 void     set_equip_desc(item_def &item, iflags_t flags);
@@ -94,6 +92,7 @@ bool set_item_ego_type(item_def &item, object_class_type item_type,
 brand_type get_weapon_brand(const item_def &item) PURE;
 special_armour_type get_armour_ego_type(const item_def &item) PURE;
 special_missile_type get_ammo_brand(const item_def &item) PURE;
+brand_type get_special_brand_for(weapon_type wpn_type) PURE;
 
 // staff functions:
 const char* staff_type_name(stave_type staff) PURE;
@@ -108,6 +107,7 @@ int armour_max_enchant(const item_def &item) PURE;
 bool armour_type_is_hide(armour_type type) PURE;
 bool armour_is_hide(const item_def &item) PURE;
 bool armour_is_special(const item_def &item) PURE;
+bool armour_is_aux(armour_type arm) PURE;
 int armour_acq_weight(const armour_type armour) PURE;
 
 equipment_slot get_armour_slot(const item_def &item) PURE;
@@ -178,14 +178,13 @@ bool item_skills(const item_def &item, set<skill_type> &skills);
 bool is_range_weapon(const item_def &item) PURE;
 bool is_crossbow(const item_def &item) PURE;
 bool is_slowed_by_armour(const item_def *item) PURE;
-const char *ammo_name(missile_type ammo) IMMUTABLE;
+const char *missile_name(missile_type ammo) IMMUTABLE;
+string launched_projectile_name(const item_def &item);
 bool is_throwable(const actor *actor, const item_def &wpn) PURE;
-bool is_launcher_ammo(const item_def &wpn) PURE;
-launch_retval is_launched(const actor *actor, const item_def &missile) PURE;
 
 bool ammo_always_destroyed(const item_def &missile) PURE;
 bool ammo_never_destroyed(const item_def &missile) PURE;
-int  ammo_type_destroy_chance(int missile_type) PURE;
+int  ammo_destroy_chance(const item_def &missile) PURE;
 int  ammo_type_damage(int missile_type) PURE;
 
 int weapon_reach(const item_def &item) PURE;
@@ -213,7 +212,7 @@ int evoker_max_charges(int evoker_type);
 void print_xp_evoker_recharge(const item_def &evoker, int gained, bool silenced);
 
 // ring functions:
-bool jewellery_type_has_plusses(int jewel_type) PURE;
+bool jewellery_type_has_pluses(int jewel_type) PURE;
 bool jewellery_has_pluses(const item_def &item) PURE;
 bool ring_has_stackable_effect(const item_def &item) PURE;
 
@@ -297,8 +296,6 @@ bool item_grants_flight(const item_def& item);
 bool is_equippable_item(const item_def& item);
 bool is_usable_talisman(const item_def& item);
 
-bool ring_plusses_matter(int ring_subtype);
-
 void remove_whitespace(string &str);
 
-void populate_fake_projectile(const item_def &wep, item_def &fake_proj);
+int jewellery_usefulness_limit(jewellery_type type);
