@@ -6,3 +6,8 @@
 *.sublime-workspace
 *.sublime-project
 games.d/
+
+# Ignore renamed crawl binaries that we use to distinguish between tiles ("app")
+# vs. non-tiles ("console") builds.
+crawl-ref/source/crawl-app
+crawl-ref/source/crawl-console
