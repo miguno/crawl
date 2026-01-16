@@ -81,6 +81,10 @@ build-linux-app:
 clean:
     (cd crawl-ref/source && make clean) || exit 1
 
+# alias for 'run-linux-app'
+[group('app')]
+run: run-linux-app
+
 # run DCSS as console Linux binary (ASCII mode)
 [group('app')]
 run-linux-console:
