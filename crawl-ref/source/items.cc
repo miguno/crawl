@@ -4221,10 +4221,14 @@ colour_t item_def::talisman_colour() const
         return ETC_FIRE;
     case TALISMAN_MEDUSA:
         return ETC_POISON;
+    case TALISMAN_SPORE:
+        return BROWN;
     case TALISMAN_MAW:
         return ETC_BLOOD;
     case TALISMAN_SERPENT:
         return ETC_POISON;
+    case TALISMAN_EEL:
+        return LIGHTCYAN;
     case TALISMAN_BLADE:
         return ETC_IRON;
     case TALISMAN_FORTRESS:

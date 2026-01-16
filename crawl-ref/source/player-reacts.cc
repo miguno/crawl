@@ -705,6 +705,29 @@ static void _decrement_rampage_heal_duration(int delay)
     }
 }
 
+static void _handle_trickster_decay(int delay)
+{
+    if (you.duration[DUR_TRICKSTER_GRACE] || delay == 0)
+        return;
+
+    if (!you.props.exists(TRICKSTER_POW_KEY))
+        return;
+
+    int& stacks = you.props[TRICKSTER_POW_KEY].get_int();
+
+    // Decay at a rate of ~1 AC per 30 aut.
+    const int reduction = div_rand_round(3, delay);
+    stacks -= reduction;
+    if (stacks <= 0)
+    {
+        you.props.erase(TRICKSTER_POW_KEY);
+        mprf(MSGCH_DURATION, "You feel your existence waver again.");
+    }
+
+    if (reduction > 0)
+        you.redraw_armour_class = true;
+}
+
 /**
  * Take a 'simple' duration, decrement it, and print messages as appropriate
  * when it hits 50% and 0% remaining.
@@ -1038,7 +1061,45 @@ static void _decrement_durations()
     if (you.duration[DUR_FUSILLADE] && you.time_taken > 0)
         fire_fusillade();
 
+    if (you.duration[DUR_CELEBRANT_COOLDOWN] && you.hp == you.hp_max)
+    {
+        mprf(MSGCH_DURATION, "You are ready to perform a blood rite again.");
+        you.duration[DUR_CELEBRANT_COOLDOWN] = 0;
+    }
 
+    if (you.duration[DUR_TIME_WARPED_BLOOD_COOLDOWN] && you.hp == you.hp_max)
+    {
+        // Don't print it the message if the mutation is lost
+        // before the cooldown wears off.
+        if (you.get_mutation_level(MUT_TIME_WARPED_BLOOD))
+            mprf(MSGCH_DURATION, "Your time-warped blood is ready to ripple again.");
+
+        you.duration[DUR_TIME_WARPED_BLOOD_COOLDOWN] = 0;
+    }
+
+    if (you.duration[DUR_HIVE_COOLDOWN] && you.hp == you.hp_max)
+    {
+        mprf(MSGCH_DURATION, "The buzzing within you returns to its normal rhythm.");
+        you.duration[DUR_HIVE_COOLDOWN] = 0;
+    }
+
+    if (you.duration[DUR_MEDUSA_COOLDOWN] && you.hp == you.hp_max)
+    {
+        mprf(MSGCH_DURATION, "You feel your defenses recover.");
+        you.duration[DUR_MEDUSA_COOLDOWN] = 0;
+    }
+
+    if (you.duration[DUR_SPITEFUL_BLOOD_COOLDOWN] && you.hp == you.hp_max)
+        you.duration[DUR_SPITEFUL_BLOOD_COOLDOWN] = 0;
+
+    if (you.duration[DUR_EELJOLT_COOLDOWN] && you.hp == you.hp_max)
+    {
+        mprf(MSGCH_DURATION, "Your %s have fully recharged.", you.hand_name(true).c_str());
+        you.duration[DUR_EELJOLT_COOLDOWN] = 0;
+    }
+
+    if (you.has_mutation(MUT_TRICKSTER))
+        _handle_trickster_decay(delay);
 
     // these should be after decr_ambrosia, transforms, liquefying, etc.
     for (int i = 0; i < NUM_DURATIONS; ++i)
@@ -1075,7 +1136,7 @@ void maybe_attune_regen_items(bool attune_regen, bool attune_mana_regen)
 
     bool gained_regen = false;
     bool gained_mana_regen = false;
-    bool gained_alchemy = false;
+    bool gained_chemistry = false;
 
     for (player_equip_entry& entry : you.equipment.items)
     {
@@ -1091,8 +1152,8 @@ void maybe_attune_regen_items(bool attune_regen, bool attune_mana_regen)
             // Track which properties we should notify the player they have gained.
             if (!gained_regen && is_regen_item(arm))
                 gained_regen = true;
-            if (arm.is_type(OBJ_JEWELLERY, AMU_ALCHEMY))
-                gained_alchemy = true;
+            if (arm.is_type(OBJ_JEWELLERY, AMU_CHEMISTRY))
+                gained_chemistry = true;
             else if (!gained_mana_regen && is_mana_regen_item(arm))
                 gained_mana_regen = true;
 
@@ -1117,7 +1178,7 @@ void maybe_attune_regen_items(bool attune_regen, bool attune_mana_regen)
                 gained_regen && gained_mana_regen ? " health and magic"
                 : (gained_regen ? "" : " magic")));
     }
-    if (gained_alchemy)
+    if (gained_chemistry)
         msgs.emplace_back("extract magic from the potions you drink");
 
     plural = plural || eq_list.size() > 1;
@@ -1204,27 +1265,26 @@ static void _handle_fugue(int delay)
     }
 }
 
-static void _handle_trickster_decay(int delay)
+static void _do_eel_flavour_msg()
 {
-    if (you.duration[DUR_TRICKSTER_GRACE] || delay == 0)
+    // No time for play while there's enemies to zap!
+    if (there_are_monsters_nearby(true, true, false))
         return;
 
-    if (!you.props.exists(TRICKSTER_POW_KEY))
-        return;
+    string msg;
+    if (you.arm_count() == 1)
+        msg = getSpeakString("eel hand solo actions");
+    else
+        msg = getSpeakString("eel hand actions");
 
-    int& stacks = you.props[TRICKSTER_POW_KEY].get_int();
+    // XXX: Apologies for the ad hoc string replacement. We really need a
+    //      centralised place to do this...
+    msg = replace_all(msg, "@head@",
+                        you.has_mutation(MUT_FORMLESS) ? "form" : "head");
 
-    // Decay at a rate of ~1 AC per 30 aut.
-    const int reduction = div_rand_round(3, delay);
-    stacks -= reduction;
-    if (stacks <= 0)
-    {
-        you.props.erase(TRICKSTER_POW_KEY);
-        mprf(MSGCH_DURATION, "You feel your existence waver again.");
-    }
+    msg = replace_all(msg, "@skin@", species::skin_name(you.species).c_str());
 
-    if (reduction > 0)
-        you.redraw_armour_class = true;
+    mprf(MSGCH_TALK, "%s", msg.c_str());
 }
 
 void player_reacts()
@@ -1238,6 +1298,9 @@ void player_reacts()
         beogh_ally_healing();
 
     unrand_reacts();
+
+    if (you.form == transformation::eel_hands && one_chance_in(500))
+        _do_eel_flavour_msg();
 
     _handle_fugue(you.time_taken);
     if (you.has_mutation(MUT_WARMUP_STRIKES))
@@ -1287,6 +1350,8 @@ void player_reacts()
     if (you.duration[DUR_RIME_YAK_AURA])
         frigid_walls_damage(you.time_taken);
 
+    _regenerate_hp_and_mp(you.time_taken);
+
     _decrement_durations();
 
     if (you.attempted_attack)
@@ -1302,52 +1367,13 @@ void player_reacts()
 
     you.handle_constriction();
 
-    _regenerate_hp_and_mp(you.time_taken);
-
-    if (you.duration[DUR_CELEBRANT_COOLDOWN] && you.hp == you.hp_max)
-    {
-        mprf(MSGCH_DURATION, "You are ready to perform a blood rite again.");
-        you.duration[DUR_CELEBRANT_COOLDOWN] = 0;
-    }
-
-    if (you.duration[DUR_TIME_WARPED_BLOOD_COOLDOWN] && you.hp == you.hp_max)
-    {
-        // Don't print it the message if the mutation is lost
-        // before the cooldown wears off.
-        if (you.get_mutation_level(MUT_TIME_WARPED_BLOOD))
-            mprf(MSGCH_DURATION, "Your time-warped blood is ready to ripple again.");
-
-        you.duration[DUR_TIME_WARPED_BLOOD_COOLDOWN] = 0;
-    }
-
-    if (you.duration[DUR_HIVE_COOLDOWN] && you.hp == you.hp_max)
-    {
-        mprf(MSGCH_DURATION, "The buzzing within you returns to its normal rhythm.");
-        you.duration[DUR_HIVE_COOLDOWN] = 0;
-    }
-
-    if (you.duration[DUR_MEDUSA_COOLDOWN] && you.hp == you.hp_max)
-    {
-        mprf(MSGCH_DURATION, "You feel your defenses recover.");
-        you.duration[DUR_MEDUSA_COOLDOWN] = 0;
-    }
-
-    if (you.duration[DUR_SPITEFUL_BLOOD_COOLDOWN] && you.hp == you.hp_max)
-        you.duration[DUR_SPITEFUL_BLOOD_COOLDOWN] = 0;
-
     if (you.duration[DUR_POISONING])
         handle_player_poison(you.time_taken);
 
-    if (you.has_mutation(MUT_TRICKSTER))
-        _handle_trickster_decay(you.time_taken);
-
     if (you.form == transformation::bat_swarm)
     {
-        if (x_chance_in_y(you.time_taken, 20))
-        {
-            const int num_clouds = 2 + (div_rand_round(get_form()->get_level(1) - 16, 4));
-            big_cloud(CLOUD_BATS, &you, you.pos(), 8, num_clouds);
-        }
+        const int num_clouds = random_range(1, 5);
+        big_cloud(CLOUD_BATS, &you, you.pos(), 8, num_clouds);
     }
 
     // safety first: make absolutely sure that there's no mimic underfoot.

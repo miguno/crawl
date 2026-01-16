@@ -236,7 +236,7 @@ static const armour_def Armour_prop[] =
 
     // Note: shields use ac-value as sh-value, EV pen is used as the basis
     // to calculate adjusted shield penalty.
-    { ARM_ORB,                 "orb",                     0,   0,   50,
+    { ARM_ORB,                 "orb",                     0,   0,   150,
         SLOT_OFFHAND,      SIZE_LITTLE, SIZE_GIANT, true, 0, {
             { SPARM_GLASS,      1 },
             { SPARM_MAYHEM,     1 },
@@ -290,7 +290,7 @@ static const armour_def Armour_prop[] =
         ARMF_WILLPOWER),
     DRAGON_ARMOUR(SWAMP,       "swamp",                   7,  -70,  450,
         ARMF_RES_POISON),
-    DRAGON_ARMOUR(FIRE,        "fire",                    8, -110,  500,
+    DRAGON_ARMOUR(FIRE,        "fire",                    8,  -90,  500,
         ard(ARMF_RES_FIRE, 2) | ARMF_VUL_COLD),
     DRAGON_ARMOUR(ICE,         "ice",                     9, -110,  500,
         ard(ARMF_RES_COLD, 2) | ARMF_VUL_FIRE),
@@ -606,7 +606,7 @@ static const weapon_def Weapon_prop[] =
             { SPWPN_DISTORTION,      1 },
             { SPWPN_ANTIMAGIC,       1 },
         }},
-    { WPN_QUICK_BLADE,       "quick blade",         4,  6, 12,
+    { WPN_QUICK_BLADE,       "quick blade",         4,  6, 15,
         SK_SHORT_BLADES, SIZE_LITTLE, SIZE_LITTLE,
         DAMV_PIERCING, 0, 25, 250, {
             { SPWPN_NORMAL,         43 },
@@ -3157,7 +3157,7 @@ bool is_mana_regen_item(const item_def& item)
 {
     return is_artefact(item) && artefact_property(item, ARTP_MANA_REGENERATION)
             || item.is_type(OBJ_JEWELLERY, AMU_MANA_REGENERATION)
-            || item.is_type(OBJ_JEWELLERY, AMU_ALCHEMY);
+            || item.is_type(OBJ_JEWELLERY, AMU_CHEMISTRY);
 }
 
 string talisman_type_name(int type)
@@ -3172,8 +3172,10 @@ string talisman_type_name(int type)
     case TALISMAN_AQUA:     return "wellspring talisman";
     case TALISMAN_SCARAB:   return "scarab talisman";
     case TALISMAN_MEDUSA:   return "medusa talisman";
+    case TALISMAN_SPORE:    return "spore talisman";
     case TALISMAN_MAW:      return "maw talisman";
     case TALISMAN_SERPENT:  return "serpent talisman";
+    case TALISMAN_EEL:      return "eel talisman";
     case TALISMAN_BLADE:    return "blade talisman";
     case TALISMAN_WEREWOLF: return "lupine talisman";
     case TALISMAN_FORTRESS: return "fortress talisman";
@@ -3197,10 +3199,12 @@ static const pair<talisman_type, int> _talisman_tiers[] =
     { TALISMAN_RIMEHORN,    2 },
     { TALISMAN_SCARAB,      2 },
     { TALISMAN_MEDUSA,      2 },
+    { TALISMAN_SPORE,       2 },
     { TALISMAN_MAW,         2 },
 
     { TALISMAN_SERPENT,     3 },
     { TALISMAN_BLADE,       3 },
+    { TALISMAN_EEL,         3 },
     { TALISMAN_FORTRESS,    3 },
     { TALISMAN_WEREWOLF,    3 },
     { TALISMAN_SPIDER,      3 },

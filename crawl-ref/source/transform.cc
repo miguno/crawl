@@ -620,7 +620,7 @@ public:
 class FormBlade : public Form
 {
 private:
-    FormBlade() : Form(transformation::blade_hands) { }
+    FormBlade() : Form(transformation::blade) { }
     DISALLOW_COPY_AND_ASSIGN(FormBlade);
 public:
     static const FormBlade &instance() { static FormBlade inst; return inst; }
@@ -638,9 +638,8 @@ public:
      */
     string get_description(bool past_tense) const override
     {
-        return make_stringf("You %s blades for %s.",
-                            past_tense ? "had" : "have",
-                            blade_parts().c_str());
+        return make_stringf("You %s blades growing out of your body.",
+                            past_tense ? "had" : "have");
     }
 
     /**
@@ -648,12 +647,7 @@ public:
      */
     string transform_message() const override
     {
-        const bool singular = you.arm_count() == 1;
-
-        // XXX: a little ugly
-        return make_stringf("Your %s turn%s into%s razor-sharp scythe blade%s.",
-                            blade_parts().c_str(), singular ? "s" : "",
-                            singular ? " a" : "", singular ? "" : "s");
+        return "Blades grow out of your body!";
     }
 
     /**
@@ -661,20 +655,18 @@ public:
      */
     string get_untransform_message() const override
     {
-        const bool singular = you.arm_count() == 1;
-
-        // XXX: a little ugly
-        return make_stringf("Your %s revert%s to %s normal proportions.",
-                            blade_parts().c_str(), singular ? "s" : "",
-                            singular ? "its" : "their");
+        return "Your blades shrink back into your body and disappear.";
     }
 
-    /**
-     * Get the name displayed in the UI for the form's unarmed-combat 'weapon'.
-     */
-    string get_uc_attack_name(string /*default_name*/) const override
+    int get_aux_damage(bool random, int skill) const override
     {
-        return "Blade " + blade_parts(true);
+        return scaling_value(FormScaling().Base(10).Scaling(8), skill, random);
+    }
+
+    // Base parrying bonus
+    int get_effect_size(int skill = -1) const override
+    {
+        return max(0, scaling_value(FormScaling().Base(8).Scaling(8), skill));
     }
 };
 
@@ -1028,7 +1020,15 @@ public:
 
     int get_aux_damage(bool random, int skill) const override
     {
-        return scaling_value(FormScaling().Base(10).Scaling(8), skill, random);
+        return scaling_value(FormScaling().Base(8).Scaling(6), skill, random)
+                    + (random ? div_rand_round(you.strength() * 3, 4)
+                              : you.strength() * 3 / 4);
+    }
+
+    // Engorged regeneration rate
+    int get_effect_size(int skill = -1) const override
+    {
+        return max(0, scaling_value(FormScaling().Base(220).Scaling(280), skill));
     }
 };
 
@@ -1078,12 +1078,16 @@ private:
 public:
     static const FormVampire &instance() { static FormVampire inst; return inst; }
 
-    int get_vamp_chance(int skill = -1) const override
+    // Bat swarm recharge rate
+    int get_effect_size(int skill = -1) const override
     {
-        if (skill == -1)
-            skill = get_level(1);
+        return max(0, scaling_value(FormScaling().Base(100).Scaling(100), skill));
+    }
 
-        return 100 - (1000 / (skill + 10));
+    // Daze power
+    int get_effect_chance(int skill = -1) const override
+    {
+        return max(0, scaling_value(FormScaling().Base(70).Scaling(75), skill));
     }
 };
 
@@ -1272,6 +1276,102 @@ public:
     }
 };
 
+class FormEelHands : public Form
+{
+private:
+    FormEelHands() : Form(transformation::eel_hands) { }
+    DISALLOW_COPY_AND_ASSIGN(FormEelHands);
+public:
+    static const FormEelHands &instance() { static FormEelHands inst; return inst; }
+
+    /**
+     * % screen description
+     */
+    string get_long_name() const override
+    {
+        return you.base_hand_name(true, true);
+    }
+
+    /**
+     * @ description
+     */
+    string get_description(bool past_tense) const override
+    {
+        return make_stringf("You %s %s for %s.",
+                            past_tense ? "had" : "have",
+                            you.arm_count() == 1 ? "an electric eel" : "electric eels",
+                            hand_transform_parts().c_str());
+    }
+
+    /**
+     * Get a message for transforming into this form.
+     */
+    string transform_message() const override
+    {
+        const bool singular = you.arm_count() == 1;
+
+        // XXX: a little ugly
+        return make_stringf("Your %s turn%s into%s wriggling electric eel%s!",
+                            hand_transform_parts().c_str(), singular ? "s" : "",
+                            singular ? " a" : " a pair of", singular ? "" : "s");
+    }
+
+    /**
+     * Get a message for untransforming from this form.
+     */
+    string get_untransform_message() const override
+    {
+        const bool singular = you.arm_count() == 1;
+
+        // XXX: a little ugly
+        return make_stringf("Your %s revert%s to %s normal form.",
+                            hand_transform_parts().c_str(), singular ? "s" : "",
+                            singular ? "its" : "their");
+    }
+
+    /**
+     * Get the name displayed in the UI for the form's unarmed-combat 'weapon'.
+     */
+    string get_uc_attack_name(string /*default_name*/) const override
+    {
+        return "Eel " + hand_transform_parts(true);
+    }
+};
+
+class FormSpore : public Form
+{
+private:
+    FormSpore() : Form(transformation::spore) { }
+    DISALLOW_COPY_AND_ASSIGN(FormSpore);
+public:
+    static const FormSpore &instance() { static FormSpore inst; return inst; }
+
+    /**
+     * Get a message for transforming into this form.
+     */
+    string transform_message() const override
+    {
+        return make_stringf("Dense mycelia sprout from your %s and %s.",
+                            you.arm_name(false).c_str(),
+                            you.foot_name(true).c_str());
+    }
+
+    /**
+     * Get a message for untransforming from this form.
+     */
+    string get_untransform_message() const override
+    {
+        return make_stringf("Your mycelia shrivel away.");
+    }
+
+    string get_description(bool past_tense) const override
+    {
+        return make_stringf("Your %s %s a mass of colorful fungus.",
+                            you.arm_name(false).c_str(),
+                            past_tense ? "was" : "is");
+    }
+};
+
 static const Form* forms[] =
 {
     &FormNone::instance(),
@@ -1316,6 +1416,8 @@ static const Form* forms[] =
     &FormFortressCrab::instance(),
     &FormSunScarab::instance(),
     &FormMedusa::instance(),
+    &FormEelHands::instance(),
+    &FormSpore::instance(),
 };
 
 const Form* get_form(transformation xform)
@@ -1517,20 +1619,22 @@ monster_type transform_mons()
 }
 
 /**
- * What is the name of the player parts that will become blades?
+ * What is the name of the player parts that will transform with an eel talisman?
  */
-string blade_parts(bool terse)
+string hand_transform_parts(bool terse)
 {
-    // there's special casing in base_hand_name to use "blade" everywhere, so
+    // there's special casing in base_hand_name to use "eel" everywhere, so
     // use the non-temp name
     string str = you.base_hand_name(true, false);
 
-    // creatures with paws (aka felids) have four paws, but only two of them
-    // turn into blades.
+    // creatures with paws (aka felids) have four paws, but only two of them transform.
     if (!terse && you.has_mutation(MUT_PAWS, false))
         str = "front " + str;
     else if (!terse && you.arm_count() > 2)
         str = "main " + str; // Op have four main tentacles
+
+    if (you.arm_count() == 1)
+        str = "a " + str;
 
     return str;
 }
@@ -1830,6 +1934,13 @@ static void _on_enter_form(transformation which_trans)
         sun_scarab_spawn_ember(true);
         break;
 
+    // It's hard to tell what properties might be affected by armour doubling, so redraw all.
+    case transformation::fortress_crab:
+        notify_stat_change();
+        you.redraw_armour_class = true;
+        you.redraw_evasion = true;
+        break;
+
     default:
         break;
     }
@@ -2103,6 +2214,16 @@ void untransform(bool skip_move, bool scale_hp, bool preserve_equipment,
     }
     else if (old_form == transformation::werewolf)
         you.duration[DUR_WEREFURY] = 0;
+    else if (old_form == transformation::maw)
+        you.duration[DUR_ENGORGED] = 0;
+    else if (old_form == transformation::eel_hands)
+        you.duration[DUR_EELJOLT_COOLDOWN] = 0;
+    else if (old_form == transformation::fortress_crab)
+    {
+        notify_stat_change();
+        you.redraw_armour_class = true;
+        you.redraw_evasion = true;
+    }
 
     // If the player is no longer be eligible to equip some of the items that
     // they were wearing (possibly due to losing slots from their default form
@@ -2415,17 +2536,63 @@ monster* get_solar_ember()
     return monster_by_mid(you.props[SOLAR_EMBER_MID_KEY].get_int());
 }
 
-bool maw_growl_check(const monster* mon)
+bool maw_considers_appetising(const monster& mon)
 {
-    // Only growl at things that look edible. (Alas, they still look edible for
-    // Gozag worshippers, even if you are doomed to suffer the curse of Midas.)
-    if (mons_class_can_leave_corpse(mons_species(mon->type))
-        && !mon->is_summoned()
-        && !(mon->flags & MF_HARD_RESET)
-        && one_chance_in(7))
+    return mons_class_can_leave_corpse(mons_species(mon.type))
+           && !mon.is_summoned()
+           && !(mon.flags & MF_HARD_RESET);
+}
+
+bool maw_hunger_check(monster* mon)
+{
+    if (you.beheld())
+        return false;
+
+    // Only become mesmerised by things that look edible. (Alas, they still look
+    // edible for Gozag worshippers, even if you are doomed to suffer the curse
+    // of Midas.)
+    if (maw_considers_appetising(*mon) && one_chance_in(6))
     {
-        mprf("Your maw growls hungrily at %s.", mon->name(DESC_THE).c_str());
+        if (!you.clarity())
+        {
+            mprf("Your maw growls hungrily at the sight of %s.", mon->name(DESC_THE).c_str());
+            you.add_beholder(*mon, true, random_range(6, 10));
+        }
+        else
+        {
+            mprf("Your maw growls hungrily at the sight of %s, but you resist your urges.",
+                 mon->name(DESC_THE).c_str());
+        }
+
         noisy(you.shout_volume(), you.pos(), MID_PLAYER);
+        return true;
+    }
+
+    return false;
+}
+
+bool vampire_mesmerism_check(monster& mon)
+{
+    if (you.form == transformation::vampire && you.can_see(mon) && mon.can_see(you)
+        && (mon.holiness() & (MH_NATURAL | MH_DEMONIC | MH_HOLY))
+        && !one_chance_in(4))
+    {
+        if (mon.check_willpower(&you, get_form()->get_effect_chance()) <= 0)
+        {
+            mprf("%s loses %s in your eye%s.",
+                    mon.name(DESC_THE).c_str(),
+                    mon.pronoun(PRONOUN_REFLEXIVE).c_str(),
+                    you.has_mutation(MUT_MISSING_EYE) ? "" : "s");
+            mon.daze(random_range(3, 5));
+        }
+        else
+        {
+            mprf("%s is briefly mesmerised by your gaze.", mon.name(DESC_THE).c_str());
+            // This works even if called during the stealth check, whereas a 1-turn daze
+            // would wear off with no effect and produce extra messages on top of that.
+            mon.speed_increment -= 10;
+        }
+
         return true;
     }
 

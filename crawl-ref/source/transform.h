@@ -144,7 +144,6 @@ public:
     virtual int get_ac_bonus(int skill = -1) const;
     virtual int ev_bonus(int /*skill*/ = -1) const;
     virtual int get_body_ac_mult(int /*skill*/ = -1) const;
-    virtual int get_vamp_chance(int /*skill*/ = -1) const { return 0; }
     virtual int get_web_chance(int /*skill*/ = -1) const {return 0; }
     virtual int regen_bonus(int /*skill*/ = -1) const {return 0; }
     virtual int mp_regen_bonus(int /*skill*/ = -1) const {return 0; }
@@ -357,7 +356,7 @@ void set_form(transformation which_trans, int dur, bool scale_hp = true);
 void return_to_default_form(bool new_form = false);
 
 monster_type transform_mons();
-string blade_parts(bool terse = false);
+string hand_transform_parts(bool terse = false);
 const char* transform_name(transformation form = you.form);
 
 void merfolk_check_swimming(dungeon_feature_type old_grid);
@@ -373,4 +372,7 @@ void sphinx_check_riddle();
 void sun_scarab_spawn_ember(bool first_time);
 monster* get_solar_ember();
 
-bool maw_growl_check(const monster* mon);
+bool maw_considers_appetising(const monster& mon);
+bool maw_hunger_check(monster* mon);
+
+bool vampire_mesmerism_check(monster& mon);

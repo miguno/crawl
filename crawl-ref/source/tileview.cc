@@ -363,40 +363,50 @@ void tile_init_flavour()
 
 // 11111333333   55555555
 //   222222444444   6666666666
-static void _get_dungeon_wall_tiles_by_depth(int depth, vector<tileidx_t>& t)
+static void _get_dungeon_wall_tiles_by_depth(int depth,
+                                             vector<pair<tileidx_t, int>>& t)
 {
     if (crawl_state.game_is_sprint() || crawl_state.game_is_arena())
     {
-        t.push_back(TILE_WALL_CATACOMBS);
+        t.emplace_back(TILE_WALL_CATACOMBS, 1);
         return;
     }
     if (depth <= 5)
-        t.push_back(TILE_WALL_BRICK_DARK_1);
+        t.emplace_back(TILE_WALL_BRICK_DARK_1, 460);
     if (depth > 2 && depth <= 8)
     {
-        t.push_back(TILE_WALL_BRICK_DARK_2);
-        t.push_back(TILE_WALL_BRICK_DARK_2_TORCH);
+        t.emplace_back(TILE_WALL_BRICK_DARK_2, 440);
+        t.emplace_back(TILE_WALL_BRICK_DARK_2_TORCH, 20);
     }
     if (depth > 5 && depth <= 11)
-        t.push_back(TILE_WALL_BRICK_DARK_3);
+        t.emplace_back(TILE_WALL_BRICK_DARK_3, 464);
+    int torch_4_weight = 0;
     if (depth > 8)
     {
-        t.push_back(TILE_WALL_BRICK_DARK_4);
-        t.push_back(TILE_WALL_BRICK_DARK_4_TORCH);
+        t.emplace_back(TILE_WALL_BRICK_DARK_4, 452);
+        torch_4_weight += 40;
     }
+    // Torches are more common on D:$
     if (depth == brdepth[BRANCH_DUNGEON])
-        t.push_back(TILE_WALL_BRICK_DARK_4_TORCH);  // torches are more common on D:14...
+        torch_4_weight += 40;
+
+    if (torch_4_weight)
+        t.emplace_back(TILE_WALL_BRICK_DARK_4_TORCH, torch_4_weight);
 }
 
-static void _get_depths_wall_tiles_by_depth(int depth, vector<tileidx_t>& t)
+static void _get_depths_wall_tiles_by_depth(int depth,
+                                            vector<pair<tileidx_t, int>>& t)
 {
-    t.push_back(TILE_WALL_BRICK_DARK_6_TORCH);
     if (depth <= 3)
-        t.push_back(TILE_WALL_BRICK_DARK_5);
+        t.emplace_back(TILE_WALL_BRICK_DARK_5, 476);
     if (depth > 3)
-        t.push_back(TILE_WALL_BRICK_DARK_6);
+        t.emplace_back(TILE_WALL_BRICK_DARK_6, 464);
+
+    int torch_weight = 60;
+    // Torches are more common on Depths:$
     if (depth == brdepth[BRANCH_DEPTHS])
-        t.push_back(TILE_WALL_BRICK_DARK_6_TORCH);  // ...and on Depths:$
+        torch_weight += 60;
+    t.emplace_back(TILE_WALL_BRICK_DARK_6_TORCH, torch_weight);
 }
 
 static int _find_variants(tileidx_t idx, int variant, vector<int> &out)
@@ -456,39 +466,27 @@ tileidx_t pick_dngn_tile(tileidx_t idx, int value, int domino)
     return idx;
 }
 
-static bool _is_torch(tileidx_t basetile)
+static tileidx_t _pick_dngn_tile_multi(
+                                const vector<pair<tileidx_t, int>>& candidates,
+                                int rand)
 {
-    return basetile == TILE_WALL_BRICK_DARK_2_TORCH
-           || basetile == TILE_WALL_BRICK_DARK_4_TORCH
-           || basetile == TILE_WALL_BRICK_DARK_6_TORCH;
-}
-
-static tileidx_t _pick_dngn_tile_multi(vector<tileidx_t> candidates, int value)
-{
-    ASSERT(!candidates.empty());
-
     int total = 0;
-    for (tileidx_t tidx : candidates)
-    {
-        const unsigned int count = tile_dngn_count(tidx);
-        total += tile_dngn_probs(tidx + count - 1);
-    }
-    int rand = value % total;
+    for (const pair<tileidx_t, int>& candidate : candidates)
+        total += candidate.second;
 
-    for (tileidx_t tidx : candidates)
+    int rand1 = rand % total;
+    int rand2 = rand / total;
+
+    for (const pair<tileidx_t, int>& candidate : candidates)
     {
-        const unsigned int count = tile_dngn_count(tidx);
-        for (unsigned int j = 0; j < count; ++j)
+        if (rand1 < candidate.second)
         {
-            if (rand < tile_dngn_probs(tidx + j))
-            {
-                // XXX: this should be for any animated tile
-                if (_is_torch(tidx))
-                    return tidx;
-                return tidx + j;
-            }
+            // XXX: this should be for any animated tile
+            if (is_torch_tile(candidate.first))
+                return candidate.first;
+            return pick_dngn_tile(candidate.first, rand2, -1);
         }
-        rand -= tile_dngn_probs(tidx + count - 1);
+        rand1 -= candidate.second;
     }
 
     // Should never reach this place
@@ -540,7 +538,7 @@ void tile_init_flavour(const coord_def &gc, const int domino)
         if ((player_in_branch(BRANCH_DUNGEON) || player_in_branch(BRANCH_DEPTHS))
             && tile_env.default_flavour.wall == TILE_WALL_NORMAL)
         {
-            vector<tileidx_t> tile_candidates;
+            vector<pair<tileidx_t, int>> tile_candidates;
             if (player_in_branch(BRANCH_DEPTHS))
                 _get_depths_wall_tiles_by_depth(you.depth, tile_candidates);
             else
@@ -1130,7 +1128,7 @@ static bool _tile_has_cycling_misc_animation(tileidx_t tile)
            || tile == TILE_DNGN_ALTAR_JIYVA
            || tile == TILE_DNGN_TRAP_HARLEQUIN
            || tile >= TILE_ARCANE_CONDUIT && tile < TILE_DNGN_SARCOPHAGUS_SEALED
-           || _is_torch(tile);
+           || is_torch_tile(tile);
 }
 
 static bool _tile_has_random_misc_animation(tileidx_t tile)
@@ -1178,7 +1176,7 @@ void tile_apply_animations(tileidx_t bg, tile_flavour *flv)
 static bool _suppress_blood(tileidx_t bg_idx)
 {
     tileidx_t basetile = tile_dngn_basetile(bg_idx);
-    return _is_torch(basetile);
+    return is_torch_tile(basetile);
 }
 
 // If the top tile is a corpse, don't draw blood underneath.
@@ -1199,6 +1197,15 @@ static uint8_t _get_direction_index(const coord_def& delta)
     if (delta.x ==  1 && delta.y ==  0) return 7;
     if (delta.x ==  1 && delta.y ==  1) return 8;
     return 0;
+}
+
+static unsigned int _pick_floor_tile(tileidx_t base_tile, coord_def gc)
+{
+    unsigned int count = tile_dngn_count(base_tile);
+    uint32_t seed = you.where_are_you + (you.depth << 8)
+                    + (gc.x << 16) + (gc.y << 24);
+    unsigned int offset = hash_with_seed(count, seed, you.birth_time);
+    return base_tile + offset;
 }
 
 void tile_apply_properties(const coord_def &gc, packed_cell &cell)
@@ -1307,13 +1314,14 @@ void tile_apply_properties(const coord_def &gc, packed_cell &cell)
     cell.flv = tile_env.flv(gc);
 
     if (mc.flags & MAP_CORRODING && !feat_is_wall(feat))
-        cell.flv.floor = TILE_FLOOR_SLIME_ACIDIC;
+        cell.flv.floor = _pick_floor_tile(TILE_FLOOR_SLIME_ACIDIC, gc);
     else if (mc.flags & MAP_ICY)
-        cell.flv.floor = TILE_FLOOR_ICY;
+        cell.flv.floor = _pick_floor_tile(TILE_FLOOR_ICY, gc);
     else if ((env.pgrid(gc) & FPROP_SEISMOROCK) && you.see_cell(gc)
              && feat_has_dry_floor(env.grid(gc)))
     {
         // Use the id of the underlying tile to randomize the rock appearance.
+        // XXX: This doesn't look great when the underlying tile is animated.
         tileidx_t tile = TILE_FLOOR_SEISMOROCK
                             + cell.bg % tile_dngn_count(TILE_FLOOR_SEISMOROCK);
 

@@ -420,12 +420,12 @@ spret cast_sphinx_sisters(const actor& caster, int pow, bool fail)
         if (mi->was_created_by(caster, SPELL_SPHINX_SISTERS))
             monster_die(**mi, KILL_TIMEOUT, NON_MONSTER);
 
-    int dur = summ_dur(3);
+    int dur = summ_dur(2);
 
     mgen_data mdata = _summon_data(caster, MONS_SPHINX_MARAUDER, dur,
                                                             SPELL_SPHINX_SISTERS);
     if (caster.is_player())
-        mdata.hd = 11 + div_rand_round(pow, 25);
+        mdata.hd = 9 + div_rand_round(pow, 25);
 
     monster* marauder = create_monster(mdata);
 
@@ -3400,7 +3400,7 @@ spret cast_hellfire_mortar(const actor& agent, bolt& beam, int pow, bool fail)
     }
 
     // Make the lava
-    int dur = random_range(15, 19) * BASELINE_DELAY;
+    int dur = len * 3 / 2 * BASELINE_DELAY;
     for (int i = 0; i < len; ++i)
     {
         const coord_def pos = beam.path_taken[i];
@@ -3422,7 +3422,7 @@ spret cast_hellfire_mortar(const actor& agent, bolt& beam, int pow, bool fail)
         }
 
         temp_change_terrain(beam.path_taken[i], DNGN_LAVA,
-                            dur - (i * BASELINE_DELAY),
+                            dur - (i * BASELINE_DELAY / 2),
                             TERRAIN_CHANGE_HELLFIRE_MORTAR);
 
         flash_tile(pos, RED, 5);
@@ -3458,6 +3458,7 @@ spret cast_hellfire_mortar(const actor& agent, bolt& beam, int pow, bool fail)
 
     mprf("With a deafening crack, the ground splits apart in the path of %s "
         "chthonic artillery!", agent.name(DESC_ITS).c_str());
+    you.duration[DUR_HELLFIRE_MORTAR_COOLDOWN] = dur;
 
     return spret::success;
 }
@@ -4318,12 +4319,12 @@ static void _do_player_potion()
 
     if (you.magic_points < you.max_magic_points)
     {
-        const int amu = you.wearing(OBJ_JEWELLERY, AMU_ALCHEMY, false, true);
+        const int amu = you.wearing(OBJ_JEWELLERY, AMU_CHEMISTRY, false, true);
         if (amu)
         {
             mprf("You extract %smagical energy from the potion.",
                  amu > 1 ? "even more " : "");
-            inc_mp(random_range(3, 6) * amu);
+            inc_mp(random_range(5, 9) * amu);
         }
     }
 
@@ -4539,13 +4540,15 @@ static bool _push_line_back(const coord_def& center, const coord_def& dir)
 }
 
 
-vector<coord_def> get_splinterfrost_block_spots(const actor& agent,
-                                              const coord_def& aim, int num_walls)
+vector<coord_def> get_wall_ring_spots(const coord_def& center,
+                                      const coord_def& aim,
+                                      int num_walls, bool water_okay)
 {
     vector<coord_def> spots;
 
     // Convert aim to a compass direction
-    coord_def delta = (aim - agent.pos()).sgn();
+    coord_def delta = (aim - center).sgn();
+
     int dir = 0;
     for (int i = 0; i < 8; ++i)
     {
@@ -4564,9 +4567,10 @@ vector<coord_def> get_splinterfrost_block_spots(const actor& agent,
     for (int i = start; i < start + num_walls; ++i)
     {
         const int index = i % 8;
-        const coord_def spot = agent.pos() + Compass[index];
+        const coord_def spot = center + Compass[index];
         if (in_bounds(spot) && !cell_is_solid(spot)
             && env.grid(spot) != DNGN_LAVA
+            && (water_okay || env.grid(spot) != DNGN_DEEP_WATER)
             && !feat_is_trap(env.grid(spot)))
         {
             spots.push_back(spot);
@@ -4591,7 +4595,7 @@ spret cast_splinterfrost_shell(const actor& agent, const coord_def& aim,
     mg.hd = 10 + div_rand_round(pow, 20);
     mg.set_range(0);
 
-    vector<coord_def> spots = get_splinterfrost_block_spots(agent, aim, 4);
+    vector<coord_def> spots = get_wall_ring_spots(agent.pos(), aim, 4, true);
     int num_created = 0;
     for (size_t i = 0; i < spots.size(); ++i)
     {

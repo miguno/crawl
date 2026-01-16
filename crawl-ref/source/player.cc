@@ -1208,12 +1208,18 @@ static int _player_bonus_regen()
     if (you.duration[DUR_POWERED_BY_DEATH])
         rr += you.props[POWERED_BY_DEATH_KEY].get_int() * 100;
 
+    if (you.duration[DUR_ENGORGED])
+        rr += get_form()->get_effect_size();
+
     // Rampage healing grants a variable regen boost while active.
     if (you.get_mutation_level(MUT_ROLLPAGE) > 1
         && you.duration[DUR_RAMPAGE_HEAL])
     {
         rr += you.props[RAMPAGE_HEAL_KEY].get_int() * 65;
     }
+
+    if (you.duration[DUR_OOZE_REGEN])
+        rr += you.hp_max * 4;
 
     return rr;
 }
@@ -1305,6 +1311,9 @@ int player_mp_regen()
     // Rampage healing grants a variable regen boost while active.
     if (you.duration[DUR_RAMPAGE_HEAL])
         regen_amount += you.props[RAMPAGE_HEAL_KEY].get_int() * 33;
+
+    if (you.duration[DUR_OOZE_REGEN])
+        regen_amount += you.max_magic_points * 4;
 
     if (have_passive(passive_t::jelly_regen))
     {
@@ -1787,7 +1796,7 @@ int player_spec_alchemy()
     if (you.wearing(OBJ_STAVES, STAFF_ALCHEMY))
         sp += 1 + you.wearing_ego(OBJ_ARMOUR, SPARM_ATTUNEMENT);
 
-    sp += you.wearing_jewellery(AMU_ALCHEMY);
+    sp += you.wearing_jewellery(AMU_CHEMISTRY);
 
     sp += you.scan_artefacts(ARTP_ENHANCE_ALCHEMY);
 
@@ -2002,6 +2011,9 @@ int player_parrying()
     }
 
     sh += 10 * you.wearing_ego(OBJ_WEAPONS, SPWPN_REBUKE);
+
+    if (you.form == transformation::blade)
+        sh += get_form()->get_effect_size() + you.slaying();
 
     return sh;
 }
@@ -3945,7 +3957,7 @@ void drain_mp(int mp_loss, bool ignore_resistance)
 void pay_hp(int cost)
 {
     you.hp -= cost;
-    ASSERT(you.hp);
+    ASSERT(you.hp > 0);
 }
 
 void pay_mp(int cost)
@@ -7809,8 +7821,12 @@ bool player::innate_sinv() const
     if (get_mutation_level(MUT_EYEBALLS) == 3)
         return true;
 
-    if (form == transformation::jelly)
+    if (form == transformation::jelly
+        || form == transformation::sphinx
+        || form == transformation::vampire)
+    {
         return true;
+    }
 
     if (have_passive(passive_t::sinv))
         return true;

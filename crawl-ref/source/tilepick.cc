@@ -597,6 +597,13 @@ tileidx_t tileidx_feature_base(dungeon_feature_type feat)
     }
 }
 
+bool is_torch_tile(tileidx_t tile)
+{
+    return tile == TILE_WALL_BRICK_DARK_2_TORCH
+           || tile == TILE_WALL_BRICK_DARK_4_TORCH
+           || tile == TILE_WALL_BRICK_DARK_6_TORCH;
+}
+
 bool is_door_tile(tileidx_t tile)
 {
     return tile >= TILE_DNGN_CLOSED_DOOR &&
@@ -669,8 +676,6 @@ static tileidx_t _apply_branch_tile_overrides(tileidx_t tile, coord_def gc)
             orig = TILE_WALL_LAB_STONE;
         else if (orig == TILE_DNGN_METAL_WALL)
             orig = TILE_WALL_LAB_METAL;
-        else if (orig == TILE_WALL_PERMAROCK)
-            orig = TILE_WALL_PERMAROCK_BROWN;
     }
     else if (player_in_branch(BRANCH_CRYPT))
     {
@@ -708,25 +713,16 @@ static tileidx_t _apply_branch_tile_overrides(tileidx_t tile, coord_def gc)
             orig = TILE_WALL_COBALT_STONE;
         else if (orig == TILE_DNGN_CRYSTAL)
             orig = TILE_WALL_EMERALD;
-        else if (orig == TILE_DNGN_METAL_WALL)
-            orig = TILE_DNGN_METAL_WALL_DARKGRAY;
     }
     else if (player_in_branch(BRANCH_GEHENNA))
     {
         if (orig == TILE_DNGN_STONE_WALL)
             orig = TILE_STONE_WALL_PYRE;
-        if (orig == TILE_DNGN_METAL_WALL)
-            orig = TILE_DNGN_METAL_WALL_RED;
     }
     else if (player_in_branch(BRANCH_BAILEY))
     {
         if (orig == TILE_DNGN_STONE_WALL)
             orig = TILE_WALL_STONE_SMOOTH;
-    }
-    else if (player_in_branch(BRANCH_OSSUARY))
-    {
-        if (orig == TILE_DNGN_STONE_WALL)
-            orig = TILE_DNGN_STONE_WALL_BROWN;
     }
     else if (player_in_branch(BRANCH_SLIME))
     {
@@ -831,18 +827,6 @@ static tileidx_t _apply_branch_tile_overrides(tileidx_t tile, coord_def gc)
     {
         if (orig == TILE_DNGN_CRYSTAL_WALL)
             orig = TILE_CRYSTAL_WALL_ZOT;
-        else if (orig == TILE_DNGN_STONE_WALL)
-        {
-        /* Matches hall_of_zot 2 through 5. */
-            if (you.depth == 2)
-                orig = TILE_DNGN_STONE_WALL_BLUE;
-            else if (you.depth == 3)
-                orig = TILE_DNGN_STONE_WALL_LIGHTBLUE;
-            else if (you.depth == 4)
-                orig = TILE_DNGN_STONE_WALL_MAGENTA;
-            else if (you.depth == 5)
-                orig = TILE_DNGN_STONE_WALL_LIGHTMAGENTA;
-        }
         else if (orig == TILE_DNGN_METAL_WALL)
             orig = TILE_DNGN_METAL_ZOT;
         else if (orig == TILE_DNGN_GRANITE_STATUE)
@@ -861,14 +845,53 @@ static tileidx_t _apply_branch_tile_overrides(tileidx_t tile, coord_def gc)
 static colour_t _feat_colour(coord_def gc)
 {
     colour_t colour = env.map_knowledge(gc).feat_colour();
-    if (colour != 0)
+    if (colour != COLOUR_UNDEF)
         return colour;
     dungeon_feature_type feat = env.map_knowledge(gc).feat();
-    if (feat == DNGN_FLOOR)
+    switch (feat)
+    {
+    case DNGN_FLOOR:
         return env.floor_colour;
-    if (feat == DNGN_ROCK_WALL)
+    case DNGN_ROCK_WALL:
+        if (player_in_branch(BRANCH_BAILEY))
+            return COLOUR_UNDEF;
         return env.rock_colour;
-    return 0; // meh
+    case DNGN_STONE_WALL:
+        switch (you.where_are_you)
+        {
+        case BRANCH_OSSUARY:
+            return BROWN;
+        case BRANCH_ZOT:
+            /* Matches hall_of_zot 2 through 5. */
+            if (you.depth == 2)
+                return BLUE;
+            if (you.depth == 3)
+                return LIGHTBLUE;
+            if (you.depth == 4)
+                return MAGENTA;
+            if (you.depth == 5)
+                return LIGHTMAGENTA;
+            return COLOUR_UNDEF;
+        default:
+            return COLOUR_UNDEF;
+        }
+    case DNGN_PERMAROCK_WALL:
+        if (player_in_branch(BRANCH_GAUNTLET))
+            return BROWN;
+        return COLOUR_UNDEF;
+    case DNGN_METAL_WALL:
+        switch (you.where_are_you)
+        {
+        case BRANCH_TARTARUS:
+            return DARKGRAY;
+        case BRANCH_GEHENNA:
+            return RED;
+        default:
+            return COLOUR_UNDEF;
+        }
+    default:
+        return COLOUR_UNDEF;
+    }
 }
 
 void apply_variations(const tile_flavour &flv, tileidx_t *bg,
@@ -922,7 +945,11 @@ void apply_variations(const tile_flavour &flv, tileidx_t *bg,
             tile = TILE_DNGN_TRAP_WEB_N - 1 + solid;
     }
     else
-        needs_tile_picking = true;
+    {
+        dungeon_feature_type feat = env.map_knowledge(gc).feat();
+        needs_tile_picking = (feat != DNGN_FLOOR && feat != DNGN_ROCK_WALL)
+                             || is_torch_tile(tile);
+    }
 
     tileidx_t base = tile_dngn_basetile(tile);
     tileidx_t variety = tile - base;
@@ -940,10 +967,7 @@ void apply_variations(const tile_flavour &flv, tileidx_t *bg,
 
     if (tile == TILE_DNGN_PORTAL_WIZARD_LAB
         || tile == TILE_DNGN_EXIT_NECROPOLIS
-        || tile == TILE_DNGN_TRAP_HARLEQUIN
-        || tile == TILE_WALL_BRICK_DARK_2_TORCH
-        || tile == TILE_WALL_BRICK_DARK_4_TORCH
-        || tile == TILE_WALL_BRICK_DARK_6_TORCH)
+        || tile == TILE_DNGN_TRAP_HARLEQUIN)
     {
         tile = tile + flv.special % tile_dngn_count(tile);
     }
@@ -3343,7 +3367,9 @@ static tileidx_t _tileidx_talisman(const item_def &item)
     case TALISMAN_SPIDER:   return TILE_TALISMAN_SPIDER;
     case TALISMAN_AQUA:     return TILE_TALISMAN_AQUA;
     case TALISMAN_SERPENT:  return TILE_TALISMAN_SNAKE;
+    case TALISMAN_SPORE:    return TILE_TALISMAN_SPORE;
     case TALISMAN_MAW:      return TILE_TALISMAN_MAW;
+    case TALISMAN_EEL:      return TILE_TALISMAN_EEL;
     case TALISMAN_BLADE:    return TILE_TALISMAN_BLADE;
     case TALISMAN_WEREWOLF: return TILE_TALISMAN_WEREWOLF;
     case TALISMAN_FORTRESS: return TILE_TALISMAN_FORTRESS;

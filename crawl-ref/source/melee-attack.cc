@@ -39,6 +39,7 @@
 #include "mon-abil.h"
 #include "mon-behv.h"
 #include "mon-death.h" // maybe_drop_monster_organ
+#include "mon-place.h"
 #include "mon-poly.h"
 #include "mon-tentacle.h"
 #include "nearby-danger.h"
@@ -609,9 +610,8 @@ void melee_attack::do_vampire_lifesteal()
         && adjacent(you.pos(), mon->pos())
         && !mons_class_flag(defender->type, M_ACID_SPLASH))
     {
-        // Stabs always heal, but thirsty attacks have a shapeshifting-based
-        // chance to heal.
-        if (!stab_attempt && !x_chance_in_y(get_form()->get_vamp_chance(), 100))
+        // Stabs always heal, while thirsty attacks have a 2/3 chance.
+        if (!stab_attempt && !x_chance_in_y(2, 3))
             return;
 
         const bool can_heal = actor_is_susceptible_to_vampirism(*mon);
@@ -657,14 +657,14 @@ void melee_attack::handle_concussion_brand()
     {
         did_move = true;
         if (monster* mon = defender->as_monster())
-            mon->stagger(random2(min(10, attacker->attack_delay().roll())) * 3 / 4);
+            mon->stagger(1 + random2(min(10, attacker->attack_delay().roll())) * 3 / 4);
     }
     else if (damage_done > 0)
     {
         const coord_def back = defender->pos() + (defender->pos() - attacker->pos()).sgn();
         if (feat_is_solid(env.grid(back)))
         {
-            special_damage = random2(damage_done) / 2 + 1;
+            special_damage = random2(damage_done) * 3 / 4 + 1;
             if (needs_message)
             {
                 mprf("%s crush%s %s against the %s%s",
@@ -769,6 +769,36 @@ void melee_attack::maybe_do_mesmerism()
         you.duration[DUR_MESMERISM_COOLDOWN] = random_range(150, 200) - you.skill(SK_EVOCATIONS, 2);
     else
         defender->as_monster()->add_ench(mon_enchant(ENCH_ORB_COOLDOWN, defender, random_range(120, 200)));
+}
+
+static void _grow_mushrooms(const monster& mon)
+{
+    vector<coord_def> spots = get_wall_ring_spots(mon.pos(),
+                                                  mon.pos() + (mon.pos() - you.pos()),
+                                                  3);
+
+    mgen_data mgen = mgen_data(MONS_BURSTSHROOM, BEH_FRIENDLY, coord_def(),
+                               MHITNOT, MG_FORCE_PLACE);
+    mgen.hd = get_form()->get_level(1) / 2;
+    mgen.set_summoned(&you, MON_SUMM_SPORE, 100, false);
+
+    bool created = false;
+    for (coord_def spot : spots)
+    {
+        if (actor_at(spot))
+            continue;
+
+        mgen.pos = spot;
+        if (monster* shroom = create_monster(mgen))
+        {
+            // Randomize detonation time a little.
+            shroom->number = random_range(3, 5);
+            created = true;
+        }
+    }
+
+    if (created)
+        mprf("Mushrooms sprout behind %s.", mon.name(DESC_THE).c_str());
 }
 
 /* An attack has been determined to have hit something
@@ -942,6 +972,21 @@ bool melee_attack::handle_phase_hit()
         && !defender->is_firewood() && coinflip())
     {
         inc_mp(1);
+    }
+
+    if (attacker->is_player() && you.form == transformation::eel_hands && coinflip())
+        do_eel_melee_jolt(defender->pos());
+
+    if (attacker->is_player() && you.form == transformation::spore)
+    {
+        _grow_mushrooms(*defender->as_monster());
+
+        if (!defender->is_unbreathing() && mons_has_attacks(*defender->as_monster(), false)
+            && coinflip())
+        {
+            mprf("%s is engulfed in spores.", defender->name(DESC_THE).c_str());
+            defender->weaken(&you, 3);
+        }
     }
 
     // Fireworks when using Serpent's Lash to kill.
@@ -1122,21 +1167,9 @@ static void _devour(monster &victim)
         orig = (monster_type) victim.props[ORIGINAL_TYPE_KEY].get_int();
     maybe_drop_monster_organ(victim.type, orig, victim.pos());
 
-    // Healing.
-    if (you.duration[DUR_DEATHS_DOOR])
-        return;
+    you.duration[DUR_ENGORGED] += 10 + random_range(victim.get_experience_level() * 10 / 3,
+                                                    victim.get_experience_level() * 20 / 3);
 
-    const int xl = victim.get_experience_level();
-    const int xl_heal = xl * 3 / 4 + random2(xl);
-    const int scale = 100;
-    const int form_lvl = get_form()->get_level(scale);
-    const int form_heal = div_rand_round(form_lvl, scale) + random2(15); // max 28
-    const int healing = 1 + min(xl_heal, form_heal);
-    dprf("healing for %d", healing);
-
-    you.heal(healing);
-    calc_hp();
-    canned_msg(MSG_GAIN_HEALTH);
 }
 
 
@@ -1157,9 +1190,7 @@ static void _consider_devouring(monster &defender)
     }
 
     // can't eat enemies that leave no corpses...
-    if (!mons_class_can_leave_corpse(mons_species(defender.type))
-        || defender.is_summoned()
-        || defender.flags & MF_HARD_RESET
+    if (!maw_considers_appetising(defender)
         // the curse of midas...
         || have_passive(passive_t::goldify_corpses))
     {
@@ -1180,8 +1211,6 @@ static void _consider_devouring(monster &defender)
         return;
     }
 
-    if (one_chance_in(3))
-        return;
 
     // chow down.
     _devour(defender);
@@ -2160,9 +2189,6 @@ public:
         const int base_dam = damage + (random ? you.skill_rdiv(SK_UNARMED_COMBAT, 1, 2)
                                               : you.skill(SK_UNARMED_COMBAT) / 2);
 
-        if (you.form == transformation::blade_hands)
-            return base_dam + 6;
-
         if (you.has_usable_claws())
         {
             const int claws = you.has_claws();
@@ -2185,8 +2211,8 @@ public:
 
     string get_verb() const override
     {
-        if (you.form == transformation::blade_hands)
-            return "slash";
+        if (you.form == transformation::eel_hands)
+            return "eel-slap";
 
         if (you.has_usable_claws())
             return "claw";
@@ -2334,7 +2360,7 @@ class AuxMaw: public AuxAttackType
 {
 public:
     AuxMaw()
-    : AuxAttackType(0, 75, "bite") { };
+    : AuxAttackType(0, 100, "chomp") { };
     int get_damage(bool random) const override {
         return get_form()->get_aux_damage(random);
     };
@@ -2400,6 +2426,22 @@ public:
     }
 };
 
+class AuxTalismanBlade: public AuxAttackType
+{
+public:
+    AuxTalismanBlade()
+    : AuxAttackType(0, 60, "slice") { };
+    int get_damage(bool random) const override {
+        return get_form()->get_aux_damage(random);
+    };
+    bool xl_based_chance() const override { return false; }
+
+    bool is_usable() const override
+    {
+        return you.form == transformation::blade;
+    }
+};
+
 static const AuxConstrict   AUX_CONSTRICT = AuxConstrict();
 static const AuxKick        AUX_KICK = AuxKick();
 static const AuxPeck        AUX_PECK = AuxPeck();
@@ -2414,6 +2456,7 @@ static const AuxMaw         AUX_MAW = AuxMaw();
 static const AuxBlades      AUX_EXECUTIONER_BLADE = AuxBlades();
 static const AuxFisticloak  AUX_FUNGAL_FISTICLOAK = AuxFisticloak();
 static const AuxMedusaStinger AUX_MEDUSA_STINGER = AuxMedusaStinger();
+static const AuxTalismanBlade AUX_TALISMAN_BLADE = AuxTalismanBlade();
 static const AuxAttackType* const aux_attack_types[] =
 {
     &AUX_CONSTRICT,
@@ -2430,6 +2473,8 @@ static const AuxAttackType* const aux_attack_types[] =
     &AUX_EXECUTIONER_BLADE,
     &AUX_FUNGAL_FISTICLOAK,
     &AUX_MEDUSA_STINGER,
+    &AUX_TALISMAN_BLADE,
+    &AUX_TALISMAN_BLADE,
 };
 
 
@@ -2551,6 +2596,10 @@ bool melee_attack::player_do_aux_attack(unarmed_attack_type atk)
 bool melee_attack::player_aux_apply(unarmed_attack_type atk)
 {
     did_hit = true;
+
+    // XXX: Merge action counts into a single entry. (They're otherwise identical.)
+    if (atk == UNAT_TALISMAN_BLADE_2)
+        atk = UNAT_TALISMAN_BLADE_1;
 
     count_action(CACT_MELEE, -1, atk); // aux_attack subtype/auxtype
 
@@ -4990,6 +5039,15 @@ bool melee_attack::_extra_aux_attack(unarmed_attack_type atk)
 
     if (!x_chance_in_y(aux->get_chance(), 100))
         return false;
+
+    // Maw bites are aut-normalized (so that one will happen every 15 aut on average)
+    if (atk == UNAT_MAW)
+    {
+        if (is_followup)
+            return false;
+        if (!x_chance_in_y(you.attack_delay().roll(), 15))
+            return false;
+    }
 
     if (wu_jian_attack != WU_JIAN_ATTACK_NONE
         && !x_chance_in_y(1, wu_jian_number_of_targets))

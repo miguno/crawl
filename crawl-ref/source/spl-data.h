@@ -4376,7 +4376,7 @@ static const struct spell_desc spelldata[] =
     spflag::destructive,
     6,
     75,
-    2, 2,
+    3, 3,
     20,
     TILEG_FORTRESS_BLAST,
 },
@@ -4625,6 +4625,17 @@ static const struct spell_desc spelldata[] =
     LOS_RADIUS, LOS_RADIUS,
     4,
     TILEG_SLEETSTRIKE,
+},
+
+{
+    SPELL_LANDBREAKER, "Landbreaker",
+    spschool::earth,
+    spflag::monster,
+    5,
+    200,
+    LOS_RADIUS, LOS_RADIUS,
+    8,
+    TILEG_SEISMIC_STOMP,
 },
 
 #if TAG_MAJOR_VERSION == 34

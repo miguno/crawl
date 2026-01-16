@@ -1020,8 +1020,7 @@ vampire fangs mutation
 
 When you perform a stab attack against a living monster with blood, you heal for
 a portion of the total damage dealt. When you are at 50% of your max HP or less,
-this has a chance to happen on all melee attacks which increases with your
-Shapeshifting skill.
+this has a 2/3 chance to happen on all melee attacks.
 %%%%
 bloodcurse mutation
 
@@ -1137,6 +1136,62 @@ When you strike an enemy in melee, a portion of the transmutational energy
 surging through will contaminate them. Upon landing the third strike in a row,
 this contamination will grow so acute that it will twist their bodily form,
 inflicting significant AC-ignoring damage and malmutating them.
+%%%%
+maw attack mutation
+
+Your maw sometimes bites enemies in melee, at a rate independant of your own
+attack speed (once per 15 aut, on average). Its base damage is directly
+increased by 3/4rd of your strength.
+%%%%
+devouring maw mutation
+
+When you kill an edible enemy in melee (anything which drops a corpse), your
+maw devours it, greatly increasing your regeneration for a short while. More
+powerful enemies provide a longer duration of this effect.
+%%%%
+growling stomach mutation
+
+Your maw's appetite is insatiable. Whenever you first encounter an edible
+monster, there is a chance to become mesmerised by it and let out a loud growl.
+%%%%
+eel punch mutation
+
+Your melee hits have a 33% chance of discharging an arc of electricity that
+travels between several connected enemies.
+%%%%
+eeljolt mutation
+
+When your health drops to 40% of your max HP, your eels violently discharge
+electricity, striking all connected targets within 2 tiles of yourself - be they
+friend or foe - for twice the damage their electricity normally does.
+
+This effect cannot activate again until you fully heal.
+%%%%
+blade parry mutation
+
+You briefly gain SH equal to your slaying whenever you perform a melee attack
+(with an additional flat bonus based on your Shapeshifting skill).
+%%%%
+sporulate mutation
+
+Your melee attacks cause multiple burstshrooms to begin growing on unoccupied
+tiles behind your target. If they are allowed to grow for several turns, they
+will explode in a burst of spores that damages nearby enemies and can briefly
+daze them.
+%%%%
+armoured shell mutation
+
+Your body armour is fused into your shell, multiplying its base AC by a factor
+that increases with your Shapeshifting skill. The effectiveness of its ego and
+most artefact properties will also be doubled, though certain rare artefacts may
+be too unusual to enhance this way.
+%%%%
+hypnotic gaze mutation
+
+Your gaze has a hypnotic effect on many creatures. Whenever a living, demonic,
+or holy monster first notices you, it may become momentarily dazed, preventing
+it from shouting. Creatures which fail a Willpower check will be dazed for even
+longer.
 %%%%
 # ------ Makhleb destruction flavours ------
 Gehenna destruction mutation

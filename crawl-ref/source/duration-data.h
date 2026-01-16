@@ -664,6 +664,11 @@ static const duration_def duration_data[] =
       "on gavotte cooldown", "gavotte cooldown",
       "You are unable to cast Gavotte.", D_NO_FLAGS | D_COOLDOWN,
       {{ "Gravity stabilises in your vicinity."}}},
+    { DUR_HELLFIRE_MORTAR_COOLDOWN,
+      YELLOW, "-Hellfire",
+      "on hellfire mortar cooldown", "hellfire mortar cooldown",
+      "You are unable to cast Hellfire Mortar.", D_NO_FLAGS | D_COOLDOWN,
+      {{ "You feel ready to split the earth once more."}}},
     { DUR_ANIMATE_DEAD,
       MAGENTA, "Reap",
       "animating dead", "animating dead",
@@ -696,6 +701,10 @@ static const duration_def duration_data[] =
         YELLOW, "-Lithotox",
         "on lithotoxin cooldown", "lithotoxin cooldown",
         "Your lithotoxin has recently activated.", D_NO_FLAGS},
+    { DUR_EELJOLT_COOLDOWN,
+        YELLOW, "-Jolt",
+        "on eeljolt cooldown", "eeljolt cooldown",
+        "Your hands have recently discharged their full voltage.", D_NO_FLAGS},
     { DUR_JINXBITE, LIGHTBLUE, "Jinx",
       "jinxed", "jinxbite",
       "You are surrounded by jinxing sprites.", D_DISPELLABLE | D_EXPIRES,
@@ -772,6 +781,11 @@ static const duration_def duration_data[] =
       {{ "You feel less devious.", [](){
           you.redraw_evasion = true;
       }}}},
+    { DUR_ENGORGED,
+      LIGHTBLUE, "Engorged",
+      "engorged", "engorged",
+      "Your maw is digesting a delicious meal.", D_NO_FLAGS,
+      {{ "You finish digesting your meal." }}},
 
     // The following are visible in wizmode only, or are handled
     // specially in the status lights and/or the % or @ screens.
@@ -855,6 +869,8 @@ static const duration_def duration_data[] =
     { DUR_SPITEFUL_BLOOD_COOLDOWN, 0, "", "", "spiteful_blood", "", D_NO_FLAGS},
     { DUR_SLIMIFYING, 0, "Slimifying", "", "slimifying", "", D_DISPELLABLE | D_NEGATIVE,
        {{"Your slimification abates."}}},
+    { DUR_OOZE_REGEN, LIGHTBLUE, "OozeRegen", "ooze regen", "ooze regen", "coated in regenerative ooze", D_NO_FLAGS,
+       {{"The regenerative ooze finishes dripping off of you."}}},
 
 #if TAG_MAJOR_VERSION == 34
     // And removed ones
