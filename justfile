@@ -63,7 +63,7 @@ build: build-linux-app
 # build DCSS as console Linux binary (ASCII mode)
 [group('development')]
 build-linux-console:
-    @echo "Building DCSS"
+    @echo "== Building DCSS as console binary (ASCII mode) =="
     (cd crawl-ref/source && make -j4 && cp crawl {{crawl_console_binary}}) || exit 1
     @echo
     @echo "Run the '{{crawl_console_binary}}' binary to launch DCSS in console mode."
@@ -71,7 +71,7 @@ build-linux-console:
 # build DCSS as app with tiles support
 [group('development')]
 build-linux-app:
-    @echo "Building DCSS"
+    @echo "== Building DCSS as app with tiles support =="
     (cd crawl-ref/source && make -j4 TILES=y && cp crawl {{crawl_tiles_binary}}) || exit 1
     @echo
     @echo "Run the '{{crawl_tiles_binary}}' binary to launch DCSS in app mode."
