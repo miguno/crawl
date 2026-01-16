@@ -76,6 +76,11 @@ build-linux-app:
     @echo
     @echo "Run the '{{crawl_tiles_binary}}' binary to launch DCSS in app mode."
 
+# clean the build
+[group('development')]
+clean:
+    (cd crawl-ref/source && make clean) || exit 1
+
 # run DCSS as console Linux binary (ASCII mode)
 [group('app')]
 run-linux-console:
