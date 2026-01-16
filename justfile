@@ -22,7 +22,7 @@ system-info:
 
 # install dependencies after a fresh project checkout
 [group('development')]
-install:
+install-dependencies:
     #!/usr/bin/env bash
     # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
     # `-u`: Errors if a variable is referenced before being set
