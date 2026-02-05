@@ -164,8 +164,7 @@ static void _wizard_go_to_level(const level_pos &pos)
     _wizard_level_target = pos.id;
 
     leaving_level_now(stair_taken);
-    const bool newlevel = load_level(stair_taken, LOAD_ENTER_LEVEL, old_level);
-    tile_new_level(newlevel);
+    load_level(stair_taken, LOAD_ENTER_LEVEL, old_level);
     if (!crawl_state.test)
         save_game_state();
     new_level();
@@ -325,27 +324,36 @@ bool wizard_create_feature(dist &target, dungeon_feature_type feat, bool mimic)
         }
         coord_def &pos = target.target;
 
+        bool done = false;
+        bool success = false;
         if (feat == DNGN_ENTER_SHOP)
-            return debug_make_shop(pos);
-
-        if (feat_is_trap(feat))
-            return debug_make_trap(pos, trap_type_from_feature(feat));
-
-        tile_env.flv(pos).feat = 0;
-        tile_env.flv(pos).special = 0;
-        env.grid_colours(pos) = 0;
-        const dungeon_feature_type old_feat = env.grid(pos);
-        dungeon_terrain_changed(pos, feat, false, false, false, true);
-        // Update gate tiles, if existing.
-        if (feat_is_door(old_feat) || feat_is_door(feat))
         {
-            _connect_door(pos - coord_def(1, 0));
-            _connect_door(pos + coord_def(1, 0));
-            _connect_door(pos - coord_def(0, 1));
-            _connect_door(pos + coord_def(0, 1));
+            success = debug_make_shop(pos);
+            done = true;
         }
-        if (pos == you.pos() && cell_is_solid(pos))
-            you.wizmode_teleported_into_rock = true;
+        else if (feat_is_trap(feat))
+        {
+            success = debug_make_trap(pos, trap_type_from_feature(feat));
+            done = true;
+        }
+        else
+        {
+            tile_env.flv(pos).feat = 0;
+            tile_env.flv(pos).special = 0;
+            env.grid_colours(pos) = 0;
+            const dungeon_feature_type old_feat = env.grid(pos);
+            dungeon_terrain_changed(pos, feat, false, false, true);
+            // Update gate tiles, if existing.
+            if (feat_is_door(old_feat) || feat_is_door(feat))
+            {
+                _connect_door(pos - coord_def(1, 0));
+                _connect_door(pos + coord_def(1, 0));
+                _connect_door(pos - coord_def(0, 1));
+                _connect_door(pos + coord_def(0, 1));
+            }
+            if (pos == you.pos() && cell_is_solid(pos))
+                you.wizmode_teleported_into_rock = true;
+        }
 
         if (mimic)
             env.level_map_mask(pos) |= MMT_MIMIC;
@@ -355,6 +363,8 @@ bool wizard_create_feature(dist &target, dungeon_feature_type feat, bool mimic)
             view_update_at(pos);
             StashTrack.update_stash(pos);
         }
+        if (done)
+            return success;
     } while (targeting_mode && target.isEndpoint);
 
     return true;
@@ -831,11 +841,10 @@ void wizard_recreate_level()
 
     leaving_level_now(stair_taken);
     delete_level(lev);
-    const bool newlevel = load_level(stair_taken, LOAD_START_GAME, lev);
+    load_level(stair_taken, LOAD_START_GAME, lev);
     if (you.get_place_info().levels_seen > 1)
         you.get_place_info().levels_seen--; // this getting to 0 -> crashes
 
-    tile_new_level(newlevel);
     if (!crawl_state.test)
         save_game_state();
     new_level();

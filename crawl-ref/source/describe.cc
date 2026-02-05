@@ -1238,7 +1238,13 @@ static int _item_training_target(const item_def &item)
     if (item.base_type == OBJ_MISSILES && is_throwable(&you, item))
         return (((10 + throw_dam / 2) - FASTEST_PLAYER_THROWING_SPEED) * 2) * 10;
     if (item.base_type == OBJ_TALISMANS)
-        return get_form(form_for_talisman(item))->min_skill * 10;
+    {
+        // Train to minimum level if below it, else maximum level.
+        int current_skill = get_form(form_for_talisman(item))->get_level(10);
+        int min_skill = get_form(form_for_talisman(item))->min_skill * 10;
+        int max_skill = get_form(form_for_talisman(item))->max_skill * 10;
+        return current_skill < min_skill ? min_skill : max_skill;
+    }
     if (item.base_type == OBJ_BAUBLES)
         return get_form(transformation::flux)->min_skill * 10;
     return 0;
@@ -7384,8 +7390,8 @@ static void _maybe_note_airstrike_damage(vector<vector<string>>& items,
     dice_def data[3][2];
     for (int i = 0; i < 3; ++i)
     {
-        data[i][0] = player_airstrike_melee_damage(skill[i], 0);
-        data[i][1] = player_airstrike_melee_damage(skill[i], 7);
+        data[i][0] = player_airstrike_melee_damage(0, skill[i]);
+        data[i][1] = player_airstrike_melee_damage(7, skill[i]);
     }
 
     vector<string> labels;
@@ -7458,11 +7464,6 @@ static void _desc_form_val(TablePrinter& pr, string label, int val)
     pr.AddCell(label, make_stringf("%+d", val).c_str(), val < 0 ? RED : LIGHTGREY);
 }
 
-static int _get_scroll_skill_boost(int skill)
-{
-    return 5 + skill * 5;
-}
-
 static string _describe_talisman_form(transformation form_type)
 {
     const Form* form = get_form(form_type);
@@ -7517,7 +7518,7 @@ static string _describe_talisman_form(transformation form_type)
         _maybe_populate_form_table(items, bind(&Form::get_howl_power, form, placeholders::_1), "Howl Power", skill, 0, false, false);
     }
     if (form_type == transformation::walking_scroll)
-        _maybe_populate_form_table(items, _get_scroll_skill_boost, "Spell Skill Boost", skill, 0, false, true, 10, 1);
+        _maybe_populate_form_table(items, bind(walking_scroll_skill_bonus, 10, placeholders::_1), "Spell Skill Boost", skill, 0, false, true, 10, 1);
     if (form_type == transformation::fortress_crab)
         _maybe_populate_form_table(items, bind(&Form::get_effect_size, form, placeholders::_1), "Rust Breath Size", skill, 0, false, false);
     if (form_type == transformation::medusa)

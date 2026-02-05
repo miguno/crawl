@@ -126,10 +126,8 @@ void dungeon_terrain_changed(const coord_def &pos,
                              dungeon_feature_type feat = DNGN_UNSEEN,
                              bool preserve_features = false,
                              bool preserve_items = false,
-                             bool temporary = false,
-                             bool wizmode = false,
-                             unsigned short flv_nfeat = 0,
-                             unsigned short flv_nfeat_idx = 0);
+                             bool wizmode = false);
+void dungeon_change_base_terrain(coord_def pos, dungeon_feature_type nfeat);
 
 // Moves everything on the level at src to dst.
 void dgn_move_entities_at(coord_def src,
@@ -163,6 +161,7 @@ void dgn_check_terrain_items(const coord_def &pos, bool preserve_items,
                              bool keep_in_sight = false);
 
 dungeon_feature_type orig_terrain(coord_def pos);
+dungeon_feature_type orig_terrain_no_mimic(coord_def pos);
 void temp_change_terrain(coord_def pos, dungeon_feature_type newfeat, int dur,
                          terrain_change_type type = TERRAIN_CHANGE_GENERIC,
                          int mid = MID_NOBODY);
@@ -189,3 +188,5 @@ void frigid_walls_damage(int delay);
 
 void descent_crumble_stairs();
 void descent_reveal_stairs();
+
+dungeon_feature_type feat_at_no_mimic(coord_def pos);

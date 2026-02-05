@@ -30,6 +30,7 @@
 #include "message.h"
 #include "mgen-data.h"
 #include "monster.h"
+#include "mon-abil.h"
 #include "mon-behv.h"
 #include "mon-clone.h"
 #include "mon-death.h"
@@ -320,7 +321,7 @@ static void _bane_triggers(int /*time_delta*/)
 {
     if (you.has_bane(BANE_MULTIPLICITY)
         && you.elapsed_time > you.props[MULTIPLICITY_TIME_KEY].get_int()
-        && coinflip())
+        && one_chance_in(3))
     {
         vector<monster*> to_clone;
         for (monster_near_iterator mi(you.pos(), LOS_NO_TRANS); mi; ++mi)
@@ -356,7 +357,7 @@ static void _bane_triggers(int /*time_delta*/)
 
         // Apply cooldown.
         if (did_clone)
-            you.props[MULTIPLICITY_TIME_KEY] = you.elapsed_time + random_range(150, 400);
+            you.props[MULTIPLICITY_TIME_KEY] = you.elapsed_time + random_range(270, 600);
 
         if (seen)
         {
@@ -661,6 +662,9 @@ monster* update_monster(monster& mon, int time)
     mon.heal(div_rand_round(time * mon.off_level_regen_rate(), 1000));
     mon.timeout_enchantments(time);
 
+    if (mon.type == MONS_SLYMDRA)
+        slymdra_split(mon, min(div_rand_round(time, 10), mon.num_heads - 4), true);
+
     return &mon;
 }
 
@@ -949,8 +953,8 @@ void timeout_terrain_changes(int duration, bool force)
 
     // Sort terrain expiration from near to far, from the player's perspective
     // (which results in more intuitive behavior when pushing the player out of walls).
-    sort(revert.begin(), revert.end(), [](terrain_change_reversion& a,
-                                          terrain_change_reversion& b)
+    sort(revert.begin(), revert.end(), [](const terrain_change_reversion& a,
+                                          const terrain_change_reversion& b)
     {
         return grid_distance(you.pos(), a.pos) < grid_distance(you.pos(), b.pos);
     });

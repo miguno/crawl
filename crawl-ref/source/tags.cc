@@ -7337,6 +7337,7 @@ static void _tag_read_level(reader &th)
     // how many shops?
     const int num_shops = unmarshallShort(th);
     shop_struct shop;
+    env.shop.clear();
     for (int i = 0; i < num_shops; i++)
     {
         unmarshall_shop(th, shop);
@@ -8119,6 +8120,9 @@ void unmarshallMonster(reader &th, monster& m)
             m.full_name(DESC_PLAIN).c_str(), m.damage_friendly, m.damage_total);
         m.damage_total = m.damage_friendly = 0;
     }
+
+    if (m.type == MONS_SLYMDRA && m.num_heads <= 0)
+        m.num_heads = 1;
 #endif
 
     if (m.type != MONS_PROGRAM_BUG && mons_species(m.type) == MONS_PROGRAM_BUG)

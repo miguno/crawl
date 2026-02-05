@@ -321,8 +321,8 @@ void set_unique_item_status(const item_def& item,
  * @param arm           The armour_type of the armour in question.
  * @param proprt[out]   The properties list to be populated.
  */
-static void _populate_armour_intrinsic_artps(const armour_type arm,
-                                             artefact_properties_t &proprt)
+void populate_armour_intrinsic_artps(const armour_type arm,
+                                     artefact_properties_t &proprt)
 {
     proprt[ARTP_FIRE] += armour_type_prop(arm, ARMF_RES_FIRE);
     proprt[ARTP_COLD] += armour_type_prop(arm, ARMF_RES_COLD);
@@ -448,16 +448,17 @@ static map<talisman_type, vector<intrinsic_artp>> talisman_artps = {
     { TALISMAN_SCARAB,      {{ARTP_FIRE, 2}}},
     { TALISMAN_MEDUSA,      {{ARTP_POISON, 1}}},
     { TALISMAN_SERPENT,     {{ARTP_POISON, 1}}},
+    { TALISMAN_EEL,         {{ARTP_ELECTRICITY, 1}}},
     { TALISMAN_SPIDER,      {{ARTP_RAMPAGING, 1}}},
     { TALISMAN_FORTRESS,    {{ARTP_RCORR, 1}}},
     { TALISMAN_STATUE,  {{ARTP_POISON, 1}, {ARTP_ELECTRICITY, 1},
                          {ARTP_NEGATIVE_ENERGY, 1}}},
     { TALISMAN_DRAGON,  {{ARTP_FIRE, 1}, {ARTP_COLD, 1}, {ARTP_POISON, 1}, {ARTP_FLY, 1}}},
-    { TALISMAN_SPHINX,  {{ARTP_FLY, 1}}},
+    { TALISMAN_SPHINX,  {{ARTP_FLY, 1}, {ARTP_SEE_INVISIBLE, 1}}},
     { TALISMAN_STORM,   {{ARTP_POISON, 1}, {ARTP_ELECTRICITY, 1}, {ARTP_FLY, 1}}},
     { TALISMAN_DEATH,   {{ARTP_POISON, 1}, {ARTP_NEGATIVE_ENERGY, 3},
                         {ARTP_COLD, 1}}},
-    { TALISMAN_VAMPIRE, {{ARTP_COLD, 1}, {ARTP_NEGATIVE_ENERGY, 1}}},
+    { TALISMAN_VAMPIRE, {{ARTP_COLD, 1}, {ARTP_NEGATIVE_ENERGY, 1}, {ARTP_SEE_INVISIBLE, 1}}},
 };
 
 /**
@@ -495,8 +496,8 @@ static void _populate_item_intrinsic_artps(const item_def &item,
     switch (item.base_type)
     {
         case OBJ_ARMOUR:
-            _populate_armour_intrinsic_artps((armour_type)item.sub_type,
-                                             props);
+            populate_armour_intrinsic_artps((armour_type)item.sub_type,
+                                            props);
             break;
         case OBJ_STAVES:
             _populate_staff_intrinsic_artps((stave_type)item.sub_type, props);

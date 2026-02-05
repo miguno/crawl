@@ -850,12 +850,19 @@ static colour_t _feat_colour(coord_def gc)
     dungeon_feature_type feat = env.map_knowledge(gc).feat();
     switch (feat)
     {
+        // Floor and rock tiles already have a colour e.g. a red floor might
+        // have the tile floor_rough_red and this is often different from
+        // env.floor_colour or env.rock_colour as these are the colours for
+        // console. However, animated colours can't be specified this way so if
+        // console has an animated colour use it for tiles to.
     case DNGN_FLOOR:
-        return env.floor_colour;
+        if (env.floor_colour >= ETC_FIRST)
+            return env.floor_colour;
+        return COLOUR_UNDEF;
     case DNGN_ROCK_WALL:
-        if (player_in_branch(BRANCH_BAILEY))
-            return COLOUR_UNDEF;
-        return env.rock_colour;
+        if (env.rock_colour >= ETC_FIRST)
+            return env.rock_colour;
+        return COLOUR_UNDEF;
     case DNGN_STONE_WALL:
         switch (you.where_are_you)
         {
@@ -945,11 +952,7 @@ void apply_variations(const tile_flavour &flv, tileidx_t *bg,
             tile = TILE_DNGN_TRAP_WEB_N - 1 + solid;
     }
     else
-    {
-        dungeon_feature_type feat = env.map_knowledge(gc).feat();
-        needs_tile_picking = (feat != DNGN_FLOOR && feat != DNGN_ROCK_WALL)
-                             || is_torch_tile(tile);
-    }
+        needs_tile_picking = true;
 
     tileidx_t base = tile_dngn_basetile(tile);
     tileidx_t variety = tile - base;
@@ -1009,10 +1012,7 @@ static tileidx_t _tileidx_feature_no_overrides(const coord_def &gc)
         if (env.map_knowledge(gc).flags & MAP_ICY)
             return TILE_FLOOR_ICY;
 
-        return tile_env.flv(gc).floor;
-
-    case DNGN_ROCK_WALL:
-        return tile_env.flv(gc).wall;
+        return tileidx_feature_base(feat);
 
 #if TAG_MAJOR_VERSION == 34
     // New trap-type-specific features are handled in default case.
@@ -1336,11 +1336,8 @@ void tileidx_out_of_los(tileidx_t *fg, tileidx_t *bg, tileidx_t *cloud, const co
 
     const map_cell &cell = env.map_knowledge(gc);
 
-    // Override terrain for magic mapping.
-    if (!cell.seen() && env.map_knowledge(gc).mapped())
-        *bg = tileidx_feature_base(cell.feat());
-    else
-        *bg = mem_bg;
+    // Set unseen flag.
+    *bg = mem_bg;
     *bg |= tileidx_unseen_flag(gc);
 
     // Override foreground for monsters/items

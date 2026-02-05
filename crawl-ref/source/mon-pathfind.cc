@@ -109,6 +109,9 @@ bool monster_pathfind::init_pathfind(const monster* mon, coord_def dest,
         return true;
     }
 
+    if (mon->is_stationary())
+        return false;
+
     return start_pathfind(msg);
 }
 
@@ -443,12 +446,6 @@ bool monster_pathfind::traversable(const coord_def& p)
     if (traverse_no_actors && actor_at(p))
         return false;
 
-    if (feat_is_solid(feat) && !feat_is_closed_door(feat)
-        && (!mons || !mons->can_pass_through_feat(feat)))
-    {
-        return false;
-    }
-
     if (monster* mon_at = monster_at(p))
     {
         // XXX: Ugly hack to make thorn hunters use their briars for defensive
@@ -467,8 +464,12 @@ bool monster_pathfind::traversable(const coord_def& p)
     if (mons)
         return mons_traversable(p);
 
+    // No monster specified, default to a normal walking monster.
     if (traverse_doors && feat_is_closed_door(feat) && !cell_is_runed(p))
         return true;
+
+    if (feat_is_solid(feat))
+        return false;
 
     return feat_has_solid_floor(feat);
 }

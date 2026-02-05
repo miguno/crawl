@@ -1400,15 +1400,16 @@ int stardust_orb_max(bool max)
 
 int stardust_orb_power(int mp_spent, bool max_evo)
 {
-    const int skill = max_evo ? 108 : you.skill(SK_EVOCATIONS, 4);
-    int pow = (skill + 15) * (100 + (mp_spent * 25)) / 100;
+    const int skill = max_evo ? 81 : you.skill(SK_EVOCATIONS, 3);
+    int pow = (skill + 10) * (100 + (mp_spent * 25)) / 100;
     return pow;
 }
 
 void stardust_orb_trigger(int mp_spent)
 {
     if (!you.duration[DUR_STARDUST_COOLDOWN]
-        && you.wearing_ego(OBJ_ARMOUR, SPARM_STARDUST))
+        && you.wearing_ego(OBJ_ARMOUR, SPARM_STARDUST)
+        && !you.has_mutation(MUT_HP_CASTING))
     {
         schedule_stardust_fineff(&you, stardust_orb_power(mp_spent),
                                  stardust_orb_max());

@@ -476,10 +476,6 @@ Blood status
 Your body is covered in congealed blood, serving as armour for as long as you
 remain seriously injured.
 %%%%
--Cast status
-
-You are unable to cast spells.
-%%%%
 Channel status
 
 You are channelling magical energy.
@@ -498,14 +494,6 @@ causes a highly localised meltdown, dealing enormous damage.
 However, this instability makes you unable to use weapons, shields, or
 body armour. You also glow, reducing stealth and preventing invisibility,
 and you do less damage in melee, as your limbs sometimes destabilise mid-swing.
-%%%%
-Blade status
-
-{{
-    local hands = you.hand() .. "s"
-    return "Long, needle-thin blades have grown from your " .. hands
-}}, and smaller fragments of metal have grown inside your body, deforming you
-and reducing the effectiveness of body armour.
 %%%%
 Serpent status
 

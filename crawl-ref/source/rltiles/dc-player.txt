@@ -750,8 +750,10 @@ sword_twist SWORD_TWIST
 knife KNIFE
 heavy_sword HEAVY_SWORD
 rapier RAPIER
-%enchant_variation RAPIER shiny runed glowing randart
+%enchant_variation RAPIER shiny runed glowing
 rapier2 RAPIER_MAGIC
+%enchant_variation RAPIER randart
+rapier3 RAPIER_RANDART
 sword_three SWORD3
 sword_breaker SWORD_BREAKER
 sword_jag SWORD_JAG
@@ -836,13 +838,15 @@ trident_demon DEMON_TRIDENT
 randart_demon_trident DEMON_TRIDENT_RANDART
 trident_elec TRIDENT_ELEC
 trident_two TRIDENT2
-%enchant_variation TRIDENT2 shiny runed glowing randart
+%enchant_variation TRIDENT2 shiny runed glowing
 trident_two2 TRIDENT2_MAGIC
+%enchant_variation TRIDENT2 randart
+trident_two3 TRIDENT2_RANDART
 trident_three TRIDENT3
 partisan_1 PARTISAN
 %enchant_variation PARTISAN shiny runed glowing
 partisan_2 PARTISAN_MAGIC
-%enchant_variation TRIDENT2 randart
+%enchant_variation PARTISAN randart
 partisan_3 PARTISAN_RANDART
 lance LANCE
 lance_two LANCE2
@@ -918,6 +922,8 @@ war_axe2 WAR_AXE_MAGIC
 broad_axe BROAD_AXE
 %enchant_variation BROAD_AXE shiny runed glowing randart
 broad_axe2 BROAD_AXE_MAGIC
+%enchant_variation BROAD_AXE randart
+broad_axe3 BROAD_AXE_RANDART
 battleaxe BATTLEAXE
 %enchant_variation BATTLEAXE shiny runed glowing randart
 battleaxe2 BATTLEAXE_MAGIC
@@ -1123,7 +1129,10 @@ pj PJ
 torch2 TORCH2
 
 %sdir player/transform
+spore_form_armataur SPORE_FORM_ARMATAUR
+spore_form_djinni SPORE_FORM_DJINNI
 spore_form_humanoid SPORE_FORM_HUMANOID
+spore_form_naga SPORE_FORM_NAGA
 spore_form_octopode SPORE_FORM_OCTOPODE
 
 %end_ctg

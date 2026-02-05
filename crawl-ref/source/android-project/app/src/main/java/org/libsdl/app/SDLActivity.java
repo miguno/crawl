@@ -274,7 +274,7 @@ public class SDLActivity extends AppCompatActivity {
         }
         mKeyboardExtra.setLayoutParams(extraKeyLParams);
         keyboardsLayout.addView(mKeyboardExtra);
-        if (keyboardOption <= 1) {
+        if (keyboardOption == 1 || keyboardOption == 2) {
             LinearLayout.LayoutParams mainKeyLParams = new LinearLayout.LayoutParams(
                     RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
             mKeyboard.setLayoutParams(mainKeyLParams);
@@ -450,6 +450,14 @@ public class SDLActivity extends AppCompatActivity {
             }
             return true;
         }
+        // TV devices send DPAD_CENTER instead of ENTER
+        else if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                SDLActivity.onNativeKeyDown(KeyEvent.KEYCODE_ENTER);
+            } else {
+                SDLActivity.onNativeKeyUp(KeyEvent.KEYCODE_ENTER);
+            }
+        }
 
         // Ignore certain special keys so they're handled by Android
         if (keyCode == KeyEvent.KEYCODE_CAMERA ||
@@ -605,7 +613,7 @@ public class SDLActivity extends AppCompatActivity {
             {
                 Log.v(TAG, "command update keyboard visibility");
                 if (context instanceof Activity) {
-                    if (mScreenKeyboardShown && keyboardOption < 2) {
+                    if (mScreenKeyboardShown && (keyboardOption == 1 || keyboardOption == 2)) {
                         mKeyboard.setVisibility(View.VISIBLE);
                     } else {
                         mKeyboard.setVisibility(View.GONE);
@@ -616,7 +624,7 @@ public class SDLActivity extends AppCompatActivity {
                         mKeyboardExtra.setVisibility(View.GONE);
                     }
                     // Update SDL Surface heigh
-                    if (keyboardOption == 0) {
+                    if (keyboardOption == 1) {
                         ViewGroup.LayoutParams lParams = mSurface.getLayoutParams();
                         if (mScreenKeyboardShown) {
                             lParams.height = keyboardsLayout.getHeight() - mKeyboard.getHeight();
@@ -803,7 +811,7 @@ public class SDLActivity extends AppCompatActivity {
             mTextEdit.setVisibility(View.VISIBLE);
             mTextEdit.requestFocus();
 
-            if (keyboardOption == 2) {
+            if (keyboardOption == 3) {
                 InputMethodManager imm = (InputMethodManager) SDL.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
                 imm.showSoftInput(mTextEdit, InputMethodManager.SHOW_IMPLICIT);
             }
@@ -844,7 +852,7 @@ public class SDLActivity extends AppCompatActivity {
         }
         mSingleton.sendCommand(COMMAND_UPDATE_KEYBOARD_VISIBILITY, null);
         // This function always shows the system keyboard, it can be hidden with the back key
-        if (keyboardOption == 2 && action > 0) {
+        if (keyboardOption == 3 && action > 0) {
             mSingleton.commandHandler.post(new ShowTextInputTask((int)mSurface.getX(), (int)mSurface.getY(), mSurface.getWidth(), mSurface.getHeight()));
         }
         return mScreenKeyboardShown;
@@ -1627,7 +1635,7 @@ class DummyEdit extends View implements View.OnKeyListener {
     public DummyEdit(Context context, int keyboardOption) {
         super(context);
         // CRAWL HACK: Focusable=false disables the soft keyboard
-        if (keyboardOption != 2) {
+        if (keyboardOption != 3) {
             setFocusableInTouchMode(false);
             setFocusable(false);
         } else {

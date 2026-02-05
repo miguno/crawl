@@ -377,7 +377,12 @@ dice_def Form::get_special_damage(bool random, int skill) const
         skill = get_level(1);
 
     if (special_dice)
-        return (*special_dice)(skill, random);
+    {
+        dice_def dmg = (*special_dice)(skill, random);
+        if (dmg.size <= 0)
+            dmg.size = 1;
+        return dmg;
+    }
     else
         return dice_def();
 }
@@ -626,14 +631,6 @@ public:
     static const FormBlade &instance() { static FormBlade inst; return inst; }
 
     /**
-     * % screen description
-     */
-    string get_long_name() const override
-    {
-        return you.base_hand_name(true, true);
-    }
-
-    /**
      * @ description
      */
     string get_description(bool past_tense) const override
@@ -660,13 +657,13 @@ public:
 
     int get_aux_damage(bool random, int skill) const override
     {
-        return scaling_value(FormScaling().Base(10).Scaling(8), skill, random);
+        return scaling_value(FormScaling().Base(10).Scaling(6), skill, random);
     }
 
     // Base parrying bonus
     int get_effect_size(int skill = -1) const override
     {
-        return max(0, scaling_value(FormScaling().Base(8).Scaling(8), skill));
+        return max(0, scaling_value(FormScaling().Base(6).Scaling(6), skill));
     }
 };
 
@@ -1081,7 +1078,7 @@ public:
     // Bat swarm recharge rate
     int get_effect_size(int skill = -1) const override
     {
-        return max(0, scaling_value(FormScaling().Base(100).Scaling(100), skill));
+        return max(50, scaling_value(FormScaling().Base(100).Scaling(100), skill));
     }
 
     // Daze power
@@ -1170,6 +1167,13 @@ public:
     int will_bonus() const override { return WL_PIP; }
 };
 
+dice_def player_airstrike_melee_damage(int open_spaces, int skill)
+{
+    if (skill == -1)
+        skill = FormSphinx::instance().get_level(1);
+    return dice_def(1 + open_spaces / 2, 1 + skill * 5 / 7);
+}
+
 class FormWerewolf : public Form
 {
 private:
@@ -1212,6 +1216,12 @@ public:
         return scaling_value(FormScaling().Base(4).Scaling(5), skill);
     }
 };
+
+int walking_scroll_skill_bonus(int scale, int skill)
+{
+    int scaled_skill = skill == -1 ? FormWalkingScroll::instance().get_level(10) : skill * 10;
+    return (10 + scaled_skill) * scale / 20;
+}
 
 class FormFortressCrab : public Form
 {
@@ -2057,6 +2067,8 @@ static void _enter_form(int dur, transformation which_trans, bool using_talisman
     // a new artefact talisman or were forcibly polymorphed away from one),
     // refresh equipment properties.
     you.equipment.update();
+    if (which_trans == transformation::fortress_crab)
+        calc_mp();
 
     if (using_talisman && is_artefact(*you.active_talisman()))
         equip_artefact_effect(*you.active_talisman(), nullptr, false);
@@ -2126,10 +2138,9 @@ bool transform(int dur, transformation which_trans, bool involuntary,
         return true;
     }
 
-    // Vampire should shift in and out of bat swarm without reverting to fully untransformed in the middle
+    // Vampire should shift into bat swarm without reverting to fully untransformed in the middle
     if (you.form != transformation::none
-        && !((you.form == transformation::vampire || you.form == transformation::bat_swarm)
-               && (which_trans == transformation::vampire || which_trans == transformation::bat_swarm)))
+        && !(you.form == transformation::vampire && which_trans == transformation::bat_swarm))
     {
         untransform(true, !using_talisman, !using_talisman, which_trans);
     }
@@ -2220,6 +2231,7 @@ void untransform(bool skip_move, bool scale_hp, bool preserve_equipment,
         you.duration[DUR_EELJOLT_COOLDOWN] = 0;
     else if (old_form == transformation::fortress_crab)
     {
+        calc_mp();
         notify_stat_change();
         you.redraw_armour_class = true;
         you.redraw_evasion = true;
@@ -2538,7 +2550,8 @@ monster* get_solar_ember()
 
 bool maw_considers_appetising(const monster& mon)
 {
-    return mons_class_can_leave_corpse(mons_species(mon.type))
+    return (mon.holiness() & (MH_NATURAL | MH_PLANT))
+           && !mon.is_firewood()
            && !mon.is_summoned()
            && !(mon.flags & MF_HARD_RESET);
 }

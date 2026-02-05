@@ -762,13 +762,21 @@ static bool _yred_bind_soul(monster* mons, killer_type killer)
 
 static bool _vampire_make_thrall(monster* mons, killer_type killer)
 {
-    if (!mons->props.exists(VAMPIRIC_THRALL_KEY) || you.allies_forbidden())
+    if (you.allies_forbidden() || mons->has_ench(ENCH_SUMMON_TIMER))
         return false;
 
-    // Check if another thrall is already alive
-    for (monster_iterator mi; mi; ++mi)
-        if (mi->was_created_by(MON_SUMM_THRALL))
+    // Check if another thrall is already alive.
+    // (We don't use a monster_iterator since we want to check 'dead' monsters
+    // to see if one is already a pending thrall, or we can end up with two at
+    // once if we stab them simultaneously.)
+    for (int i = 0; i < MAX_MONSTERS; ++i)
+    {
+        if (env.mons[i].alive_or_reviving()
+            && env.mons[i].was_created_by(MON_SUMM_THRALL))
+        {
             return false;
+        }
+    }
 
     const xp_tracking_type xp_tracking = mons->xp_tracking;
     const unsigned int exp = exp_value(*mons);
@@ -779,7 +787,6 @@ static bool _vampire_make_thrall(monster* mons, killer_type killer)
 
     mons->hit_points = mons->max_hit_points;
     mons->flags |= MF_FAKE_UNDEAD;
-    mons->props.erase(VAMPIRIC_THRALL_KEY);
 
     // End constriction and all status effects.
     mons->stop_constricting_all();
@@ -1107,6 +1114,12 @@ static void _blorkula_bat_merge_message(monster* blork, int bat_count)
 static bool _monster_avoided_death(monster* mons, killer_type killer,
                                    int killer_index)
 {
+    // We need to clean this property up no matter how the monster returns to
+    // life as it should only be on dead monsters
+    const bool can_be_thrall = mons->props.exists(VAMPIRIC_THRALL_KEY);
+    if (can_be_thrall)
+        mons->props.erase(VAMPIRIC_THRALL_KEY);
+
     if (mons->max_hit_points <= 0 || mons->get_hit_dice() < 1)
         return false;
 
@@ -1163,7 +1176,7 @@ static bool _monster_avoided_death(monster* mons, killer_type killer,
     if (_ely_heal_monster(mons, killer, killer_index))
         return true;
 
-    if (_vampire_make_thrall(mons, killer))
+    if (can_be_thrall && _vampire_make_thrall(mons, killer))
         return true;
 
     return false;
@@ -1651,7 +1664,7 @@ static void _orb_of_mayhem(actor& maniac, const monster& victim)
 {
     vector<monster *> witnesses;
     for (monster_near_iterator mi(&victim, LOS_NO_TRANS); mi; ++mi)
-        if (*mi != &victim && mi->can_see(maniac) && mi->can_go_frenzy())
+        if (*mi != &victim && mi->can_see(maniac) && mi->can_go_frenzy() && could_harm(&maniac, *mi))
             witnesses.push_back(*mi);
 
     if (coinflip() && !witnesses.empty())

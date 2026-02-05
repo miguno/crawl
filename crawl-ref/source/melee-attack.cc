@@ -773,6 +773,11 @@ void melee_attack::maybe_do_mesmerism()
 
 static void _grow_mushrooms(const monster& mon)
 {
+    // Can't extract position from a reset monster (which may have happened due
+    // to disto banishment).
+    if (mon.type == MONS_NO_MONSTER || mon.is_firewood() || mon.wont_attack())
+        return;
+
     vector<coord_def> spots = get_wall_ring_spots(mon.pos(),
                                                   mon.pos() + (mon.pos() - you.pos()),
                                                   3);
@@ -953,7 +958,7 @@ bool melee_attack::handle_phase_hit()
     if (attacker->is_player() && you.form == transformation::sphinx && defender->alive())
     {
         const int spaces = min(7, airstrike_space_around(defender->pos(), true));
-        const int dmg = player_airstrike_melee_damage(get_form()->get_level(1), spaces).roll();
+        const int dmg = player_airstrike_melee_damage(spaces).roll();
         special_damage = defender->apply_ac(dmg, 0);
 
         if (needs_message && special_damage)
@@ -981,7 +986,8 @@ bool melee_attack::handle_phase_hit()
     {
         _grow_mushrooms(*defender->as_monster());
 
-        if (!defender->is_unbreathing() && mons_has_attacks(*defender->as_monster(), false)
+        if (defender->alive() && !defender->is_unbreathing()
+            && mons_has_attacks(*defender->as_monster(), false)
             && coinflip())
         {
             mprf("%s is engulfed in spores.", defender->name(DESC_THE).c_str());
@@ -1169,7 +1175,8 @@ static void _devour(monster &victim)
 
     you.duration[DUR_ENGORGED] += 10 + random_range(victim.get_experience_level() * 10 / 3,
                                                     victim.get_experience_level() * 20 / 3);
-
+    if (you.duration[DUR_ENGORGED] > 400)
+        you.duration[DUR_ENGORGED] = 400;
 }
 
 
@@ -1896,7 +1903,7 @@ bool melee_attack::attack()
     if (attacker->is_player() && attacker != defender)
     {
         set_attack_conducts(conducts, *defender->as_monster(),
-                            you.can_see(*defender) && !you.duration[DUR_VEXED]);
+                            you.can_see(*defender) && !is_involuntary);
 
         // Check for stab (and set stab_attempt and stab_bonus)
         player_stab_check();
@@ -4366,12 +4373,13 @@ void melee_attack::mons_apply_attack_flavour(attack_flavour flavour)
                 else
                 {
                     bool initial = you.duration[DUR_SLIMIFYING] == 0;
-                    you.duration[DUR_SLIMIFYING] += random_range(35, 45);
-                    if (you.duration[DUR_SLIMIFYING] >= 100)
+                    you.duration[DUR_SLIMIFYING] += random_range(70, 90);
+                    if (you.duration[DUR_SLIMIFYING] >= 200)
                     {
                         you.duration[DUR_SLIMIFYING] = 0;
                         transform(20 + roll_dice(3, 10),
-                                transformation::jelly, true, false);
+                                  transformation::jelly, true, false);
+                        you.transform_uncancellable = true;
                     }
                     else
                     {
@@ -5249,9 +5257,12 @@ bool coglin_spellmotor_attack()
     if (delay > 10 && !x_chance_in_y(10, delay))
         return false;
 
-    // Gather all possible targets in attack range
+    // Gather all possible targets in attack range.
+    // (We have to manually add aqua form's reaching bonus, since it normally
+    // doesn't apply to cleaving attacks.)
     list<actor*> targets;
-    get_cleave_targets(you, coord_def(), targets, -1, true);
+    get_cleave_targets(you, coord_def(), targets, -1, true, nullptr,
+                       you.form == transformation::aqua ? 2 : 0);
 
     // Test that we have at least one valid non-prompting attack
     vector<actor*> targs;
@@ -5348,10 +5359,4 @@ bool spellclaws_attack(int spell_level)
     }
 
     return true;
-}
-
-// For Sphinx form
-dice_def player_airstrike_melee_damage(int pow, int open_spaces)
-{
-    return dice_def(1 + open_spaces / 2, 1 + pow * 5 / 7);
 }

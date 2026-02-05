@@ -368,6 +368,7 @@ void clear_form_info_on_exit();
 
 void sphinx_notice_riddle_target(monster* mon);
 void sphinx_check_riddle();
+dice_def player_airstrike_melee_damage(int open_spaces, int skill = -1);
 
 void sun_scarab_spawn_ember(bool first_time);
 monster* get_solar_ember();
@@ -376,3 +377,5 @@ bool maw_considers_appetising(const monster& mon);
 bool maw_hunger_check(monster* mon);
 
 bool vampire_mesmerism_check(monster& mon);
+
+int walking_scroll_skill_bonus(int scale, int skill = -1);

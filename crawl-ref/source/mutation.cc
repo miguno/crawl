@@ -107,7 +107,9 @@ COMPILE_CHECK(mutflags::exponent(mutflags::last_exponent) == mutflag::last);
 
 // XXX: Any normal mutation which removes a slot should be in this list, whether
 //      or not it is actually part of a demonspawn facet, as this is used in
-//      code which protects against mutations shattering cursed equipment.
+//      code which protects against mutations shattering cursed equipment, as
+//      well as preventing multiple different mutations that affect the same
+//      slot coexisting.
 static const body_facet_def _body_facets[] =
 {
     { SLOT_HELMET, MUT_HORNS },
@@ -116,6 +118,7 @@ static const body_facet_def _body_facets[] =
     { SLOT_GLOVES, MUT_CLAWS },
     { SLOT_GLOVES, MUT_DEMONIC_TOUCH },
     { SLOT_BOOTS, MUT_HOOVES },
+    { SLOT_BOOTS, MUT_TALONS },
     { SLOT_CLOAK, MUT_WEAKNESS_STINGER }
 };
 
@@ -701,13 +704,13 @@ static vector<pair<string,string>> _get_form_fakemuts()
         && you_can_wear(SLOT_BODY_ARMOUR, false) != false)
     {
         const int penalty_percent = form->get_body_ac_mult();
-        if (penalty_percent)
+        if (penalty_percent < 0)
         {
             result.push_back({"blade armour",
                     _badmut(make_stringf("Your body armour is %s at protecting you.",
-                          penalty_percent >=  60 ? "much less effective"
-                        : penalty_percent >=  30 ? "less effective"
-                                                 : "slightly less effective"
+                          penalty_percent <=  -45 ? "much less effective"
+                        : penalty_percent <   -20 ? "less effective"
+                                                  : "slightly less effective"
             ))});
         }
     }
@@ -860,7 +863,7 @@ static vector<pair<string, string>> _get_fakemuts()
     if (species::is_draconian(you.species))
     {
         armour_mut = {"unfitting armour",
-                      _innatemut("You cannot fit into any form of body armour.")};
+                      _innatemut("You cannot fit into any form of body armour or wear helmets.")};
     }
     if (!weapon_mut.first.empty() && !you.has_mutation(MUT_NO_GRASPING))
         result.push_back(weapon_mut);
@@ -3313,7 +3316,7 @@ void set_evolution_mut_xp(bool malignant)
 
 int protean_grace_amount()
 {
-    return div_round_up(you.how_mutated(true, false, false, true, false), 2);
+    return min(you.how_mutated(true, false, false, true, false) - 1, 7);
 }
 
 const string bane_name(bane_type bane, bool dbkey)

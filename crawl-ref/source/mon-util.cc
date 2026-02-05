@@ -1003,7 +1003,7 @@ static void _destroy_mimic_feature(const coord_def &pos)
 void discover_mimic(const coord_def& pos)
 {
     item_def* item = item_mimic_at(pos);
-    const bool feature_mimic = !item && feature_mimic_at(pos);
+    const bool feature_mimic = !item && current_feature_is_mimic_at(pos);
     // Is there really a mimic here?
     if (!item && !feature_mimic)
         return;
@@ -1399,8 +1399,8 @@ int mons_res_blind(monster_type mc)
 bool mons_resists_drowning(monster_type type, monster_type base)
 {
     const habitat_type ht = mons_habitat_type(type, base, true);
-
-    return mons_is_unbreathing(type) || ht == HT_WATER || ht == HT_AMPHIBIOUS;
+    const bool lives_in_deep_water = (ht & HT_DEEP_WATER) == HT_DEEP_WATER;
+    return mons_is_unbreathing(type) || lives_in_deep_water;
 }
 
 char32_t mons_char(monster_type mc)
@@ -2003,7 +2003,7 @@ mon_attack_def mons_attack_spec(const monster& m, int attk_number,
             attk.damage = 2 + (m.get_hit_dice() * 3 / 2);
     }
     else if (mon.type == MONS_ERYTHROSPITE)
-        attk.damage = 3 + m.get_experience_level();
+        attk.damage = 3 + m.get_experience_level() * 10 / 9;
 
     // Vampires get a bite aux in addition to normal attacks.
     if (mon.has_ench(ENCH_VAMPIRE_THRALL)

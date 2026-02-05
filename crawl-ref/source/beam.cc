@@ -606,6 +606,7 @@ void bolt::initialise_fire()
     extra_range_used   = 0;
     in_explosion_phase = false;
     use_target_as_pos  = false;
+    enchant_chaining_done = false;
     hit_count.clear();
 
     if (special_explosion != nullptr)
@@ -1302,7 +1303,7 @@ void bolt::do_fire()
         // If requested to stop before hitting allies, do so now.
         const actor* act_at = actor_at(pos());
         if (act_at && stop_at_allies && mons_atts_aligned(attitude, act_at->temp_attitude())
-            && can_affect_actor(act_at)
+            && can_affect_actor(act_at) && !aimed_at_feet
             && !(act_at->is_player() && ignores_player() || ignores_monster(act_at->as_monster())))
         {
             ray.regress();
@@ -2959,18 +2960,18 @@ bool bolt::can_burn_trees() const
 
 bool bolt::can_affect_wall(const coord_def& p, bool map_knowledge) const
 {
-    dungeon_feature_type wall = env.grid(p);
-
-    // digging might affect unseen squares, as far as the player knows
-    if (map_knowledge && flavour == BEAM_DIGGING &&
-                                        !env.map_knowledge(pos()).seen())
-    {
-        return true;
-    }
+    dungeon_feature_type wall = map_knowledge ? env.map_knowledge(p).feat()
+                                              : env.grid(p);
 
     // digging
-    if (flavour == BEAM_DIGGING && feat_is_diggable(wall))
-        return true;
+    if (flavour == BEAM_DIGGING)
+    {
+        if (feat_is_diggable(wall))
+            return true;
+        // digging might affect unseen squares, as far as the player knows
+        if (wall == DNGN_UNSEEN)
+            return true;
+    }
 
     if (can_burn_trees())
         return feat_is_flammable(wall);
@@ -4422,7 +4423,7 @@ void bolt::affect_player()
     if (origin_spell == SPELL_THROW_BARBS && final_dam > 0)
         barb_player(random_range(4, 8), 4);
 
-    if (origin_spell == SPELL_GRAVE_CLAW)
+    if (origin_spell == SPELL_GRAVE_CLAW && !you.unrand_equipped(UNRAND_SLICK_SLIPPERS))
     {
         mpr("You are skewered in place!");
         you.increase_duration(DUR_NO_MOMENTUM, random_range(2, 4));
@@ -5067,10 +5068,13 @@ void bolt::handle_enchant_chaining(coord_def centre)
 {
     // Handle ray bounces
     if (!(origin_spell == SPELL_PETRIFY || origin_spell == SPELL_RIMEBLIGHT)
-        || hit_count.size() != 1)
+        || enchant_chaining_done)
     {
         return;
     }
+
+    // Prevent the following calls to affect_actor from recursing into here
+    enchant_chaining_done = true;
 
     vector<coord_def> chain_targs;
     fill_chain_targets(*this, centre, chain_targs, true);

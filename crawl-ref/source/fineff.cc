@@ -524,8 +524,9 @@ public:
         : final_effect(agent, nullptr, you.pos()), power(_power), max_stars(_max),
                                                    is_star_jelly(_is_star_jelly)
     {
-        // If this is a star jelly who just got smashed, cache it.
-        if (agent->is_monster() && !agent->alive())
+        // If this is a star jelly, cache it (even if it's not dead yet; since
+        // it may die to further damage events within the same attack action.)
+        if (is_star_jelly)
             env.final_effect_monster_cache.push_back(*agent->as_monster());
     }
 protected:
@@ -556,6 +557,18 @@ public:
     void fire() override;
 
     celebrant_bloodrite_fineff()
+        : final_effect(&you, nullptr, you.pos())
+    {
+    }
+};
+
+class eeljolt_fineff : public final_effect
+{
+public:
+    bool mergeable(const final_effect&) const override { return true; }
+    void fire() override;
+
+    eeljolt_fineff()
         : final_effect(&you, nullptr, you.pos())
     {
     }
@@ -777,6 +790,11 @@ void schedule_pyromania_fineff()
 void schedule_celebrant_bloodrite_fineff()
 {
     _schedule_final_effect(new celebrant_bloodrite_fineff());
+}
+
+void schedule_eeljolt_fineff()
+{
+    _schedule_final_effect(new eeljolt_fineff());
 }
 
 bool mirror_damage_fineff::mergeable(const final_effect &fe) const
@@ -1787,6 +1805,11 @@ void celebrant_bloodrite_fineff::fire()
         view_clear_overlays();
         ++shots_fired;
     }
+}
+
+void eeljolt_fineff::fire()
+{
+    do_eel_arcjolt();
 }
 
 // Effects that occur after all other effects, even if the monster is dead.

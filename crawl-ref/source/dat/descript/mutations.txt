@@ -154,13 +154,14 @@ types, doubling the duration of all status effects gained via potions.
 protean grace mutation
 
 Your limbs are overflowing with morphogenic power, guiding your every movement.
-Every two non-innate mutations you have (rounded up) also provides +1 EV and
-Slay +1, improving your accuracy and damage with melee and ranged attacks. This
-still applies even when the mutations would be suppressed by a different form.
+Each other non-innate mutation you have also provides +1 EV and Slay +1 (up to
+a limit of 7), improving your accuracy and damage with melee and ranged attacks.
+This still applies even when the mutations would be suppressed by a different
+form.
 
 You currently gain
 {{
-    num = math.ceil(you.how_mutated(true, false, false, true, false) / 2)
+    num = math.min(you.how_mutated(true, false, false, true, false), 7) - 1
     return "+" .. num .. " EV and Slay +" .. num .. " from this mutation."
 }}
 %%%%
@@ -181,7 +182,7 @@ artefact. Each level of this mutation increases that chance.
 %%%%
 reckless mutation
 
-Your recklessness halves your SH, but the damage you deal with two-handed
+Your recklessness halves your SH, but the damage you deal with two-handed melee
 weapons is increased by 15%.
 %%%%
 # ------ Auxes -----
@@ -506,7 +507,7 @@ Your body is covered in a fungus that metabolises beneficial potions you drink
 and sometimes emits spores which transmit their effects to nearby monsters -
 whether friend or foe.
 %%%%
-spiteful blood
+spiteful blood mutation
 
 Your blood pulses with a strange predatory malice. When you become significantly
 injured, some of it may rise up to attack you - though this may not happen again
@@ -1141,13 +1142,13 @@ maw attack mutation
 
 Your maw sometimes bites enemies in melee, at a rate independant of your own
 attack speed (once per 15 aut, on average). Its base damage is directly
-increased by 3/4rd of your strength.
+increased by 75% of your strength.
 %%%%
 devouring maw mutation
 
-When you kill an edible enemy in melee (anything which drops a corpse), your
-maw devours it, greatly increasing your regeneration for a short while. More
-powerful enemies provide a longer duration of this effect.
+When you kill an edible enemy in melee (any hostile, non-summoned, living or
+plant monster), your maw devours it, greatly increasing your regeneration for a
+short while. More powerful enemies provide a longer duration of this effect.
 %%%%
 growling stomach mutation
 
@@ -1156,7 +1157,7 @@ monster, there is a chance to become mesmerised by it and let out a loud growl.
 %%%%
 eel punch mutation
 
-Your melee hits have a 33% chance of discharging an arc of electricity that
+Your melee hits have a 50% chance of discharging an arc of electricity that
 travels between several connected enemies.
 %%%%
 eeljolt mutation

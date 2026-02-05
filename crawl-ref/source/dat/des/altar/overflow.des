@@ -585,7 +585,7 @@ ENDMAP
 
 NAME:   nicolae_cheibriados_dopplering
 TAGS:   decor transparent
-ORIENT: float
+DEPTH:  D:3-
 KFEAT:  pqr = c
 COLOUR: p = white
 # XXX: Not super obvious in tiles. Still need more overflow altar tiles....
@@ -2198,7 +2198,7 @@ TILE:    G = dngn_statue_imp / dngn_statue_demonic_bust
 : standard_overflow_setup(_G, { { "makhleb", "_" } }, false)
 MAP
 xxxxxxxxxxxxxxx
-x............x
+x.............x
 x.ll.......ll.x
 x.ll'.._..'ll.x
 x.ll...3...ll.x
@@ -2297,14 +2297,15 @@ TAGS:   transparent no_monster_gen
 # white imp depth
 DEPTH:  D:5-8
 MONS:   shadow imp w:2 / drude w:4 / crimson imp w:6
-TILE:   c = wall_hall
+KFEAT:  X = x
+TILE:   X = wall_hall
 FTILE:  A_'1 = floor_grey_dirt
 SUBST:  ' = .
 : standard_overflow_setup(_G, { { "makhleb", "_" } }, true)
 MAP
  xxxxx
-xxcccxx
-xwcAcwx
+xxXXXxx
+xwXAXwx
 xww_wwx
 xww1wwx
 x.w'w.x
@@ -5772,6 +5773,54 @@ G@G
 @G.
 ENDMAP
 
+NAME:   hellmonk_zin_sealed_chaos
+TAGS:   transparent no_monster_gen no_item_gen no_descent
+DEPTH:  D:4-
+WEIGHT: 7
+: if crawl.coinflip() then
+MONS:   boggart, swamp drake, chaos spawn, laughing skull
+KITEM:  ' = $ no_pickup
+KFEAT:  ~ = altar_xom
+COLOUR: c = lightmagenta / cyan / yellow
+FTILE:  '1234~ = floor_rough_lightmagenta / floor_rough_cyan / floor_rough_yellow
+: elseif crawl.coinflip() then
+MONS:   weeping skull, brain worm, small abomination, large abomination
+KFEAT:  ~ = altar_lugonu
+TILE:   c : stone_wall_abyss_a / stone_wall_abyss_b / stone_wall_abyss_c
+FTILE:  '1234~ : floor_nerves_magenta / floor_nerves_cyan
+: else
+MONS:   golden eye, jelly, slime creature, eye of devastation
+KFEAT:  ~ = altar_jiyva
+KFEAT:  c = slimy_wall
+FTILE:  '1234~ = floor_rough_green
+: end
+: if you.depth() > 11 then
+SUBST:  2 = 4
+: elseif you.depth() > 7 then
+SUBST:  2 = 3
+: end
+COLOUR: . = white
+FTILE:  _.S = floor_limestone
+FTILE:  = = floor_pebble_darkgray
+KPROP:  '%~1234 = no_tele_into
+COLOUR: v = white
+TILE:   v = dngn_metal_wall_white
+: vault_metal_statue_setup(_G, "S", "silver statue")
+: set_feature_name("metal_wall", "silver wall")
+: standard_overflow_setup(_G, { { "zin", "_" } }, true)
+MAP
+  vvvvv
+ vvcccvv
+ vcc~ccv
+"vc212cv"
+ vc'''cv
+ vv===vv
+  S...S
+  .....
+   ._.
+    .
+ENDMAP
+
 ### The Shining One overflow altars ###########################################
 
 # TSO's small temple (1KB)
@@ -6513,8 +6562,8 @@ SUBST: 2 = 12--
 MONS: mummy / wight / zombie / steam dragon draugr w:2 / \
       howler monkey draugr w:2 / centaur draugr w:2 / phantom w:5 / \
       bes kemwar w:5
-MONS: wraith / vampire / shadowghast / w:5 death knight / w:5 skeletal warrior
-MONS: flayed ghost / death knight
+MONS: wraith / vampire / shadowghast / freezing wraith w:5 / skeletal warrior w:5
+MONS: flayed ghost / phantasmal warrior
 NSUBST: 2 = 2 / 2-
 : end
 SUBST:  1 = 11-
